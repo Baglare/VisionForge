@@ -68,6 +68,14 @@ Model dosyası yoksa uygulama çökmez; kamera modu, profil paneli ve yüz algı
 
 Model dosyası varsa kamera görüntüsünde el üzerinde 21 landmark noktası ve sade bağlantı çizgileri gösterilir. Panelde `El Durumu: El algılandı`, el yoksa `El Durumu: El bekleniyor` bilgisi görünür.
 
+## Beşinci Aşama: Donma Büyüsü
+
+Bu aşamada ilk basit büyü sistemi eklenmiştir. Kullanıcı açık avucunu kameraya gösterip yaklaşık `0.8` saniye sabit tuttuğunda `Donma` büyüsü tetiklenir.
+
+Büyü aktifken panelde `Aktif Büyü: Donma` bilgisi görünür ve kamera görüntüsünün üzerinde kısa süreli mavi/soğuk tonlu Donma efekti gösterilir. Büyü tetiklendikten sonra yaklaşık `2` saniyelik bekleme süresi uygulanır.
+
+Bu aşama yalnızca ilk MVP büyü davranışını içerir; hareket zinciri, farklı büyüler veya kişi tanıma eklenmemiştir.
+
 ## Kurulum
 
 Python 3.12 veya 3.13 kullanılması önerilir. Python 3.14 ile gelen OpenCV 5 paketinde bu aşamada kullanılan bazı klasik OpenCV yüz algılama API'leri bulunmayabilir.

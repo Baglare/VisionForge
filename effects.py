@@ -40,13 +40,15 @@ class Effects:
         profile,
         status_text: str = "Kamera modu aktif",
         hand_status_text: str | None = None,
+        spell_status_text: str | None = None,
     ):
         """Canlı kamera karesinin üzerine basit bir profil paneli çizer."""
         frame_width = frame.shape[1]
         panel_x = 24
         panel_y = 24
         panel_width = min(560, max(320, frame_width - 48))
-        panel_height = 185 if hand_status_text else 155
+        extra_lines = int(hand_status_text is not None) + int(spell_status_text is not None)
+        panel_height = 155 + extra_lines * 30
         padding = 18
 
         overlay = frame.copy()
@@ -75,6 +77,8 @@ class Effects:
         ]
         if hand_status_text:
             lines.append(f"El Durumu: {hand_status_text}")
+        if spell_status_text:
+            lines.append(spell_status_text)
 
         text_x = panel_x + padding
         text_y = panel_y + 34
@@ -88,6 +92,43 @@ class Effects:
                 max_width=panel_width - padding * 2,
                 color=color,
             )
+
+        return frame
+
+    def draw_freeze_effect(self, frame, spell_result):
+        """Donma büyüsü aktifken kısa ve sade bir soğuk ekran efekti çizer."""
+        if (
+            not spell_result
+            or not spell_result.has_active_spell
+            or spell_result.active_spell_name != "Donma"
+        ):
+            return frame
+
+        frame_height, frame_width = frame.shape[:2]
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (0, 0), (frame_width, frame_height), (255, 190, 90), -1)
+        cv2.addWeighted(overlay, 0.24, frame, 0.76, 0, frame)
+
+        crack_color = (255, 245, 220)
+        crack_lines = [
+            ((frame_width // 5, frame_height // 4), (frame_width // 3, frame_height // 3)),
+            ((frame_width // 3, frame_height // 3), (frame_width // 4, frame_height // 2)),
+            ((frame_width * 4 // 5, frame_height // 5), (frame_width * 2 // 3, frame_height // 2)),
+            ((frame_width * 2 // 3, frame_height // 2), (frame_width * 3 // 4, frame_height * 2 // 3)),
+            ((frame_width // 2, frame_height * 3 // 4), (frame_width // 2 + 70, frame_height * 2 // 3)),
+        ]
+        for start_point, end_point in crack_lines:
+            cv2.line(frame, start_point, end_point, crack_color, 2, cv2.LINE_AA)
+
+        text = "DONMA BÜYÜSÜ"
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 1.15
+        thickness = 3
+        text_size, _ = cv2.getTextSize(text, font, font_scale, thickness)
+        text_x = max(20, (frame_width - text_size[0]) // 2)
+        text_y = max(80, frame_height // 2)
+        cv2.putText(frame, text, (text_x, text_y), font, font_scale, (255, 255, 255), thickness, cv2.LINE_AA)
+        cv2.putText(frame, text, (text_x, text_y), font, font_scale, (120, 220, 255), 1, cv2.LINE_AA)
 
         return frame
 

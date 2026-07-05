@@ -7,6 +7,7 @@ from detectors.face_detector import FaceDetector, FaceDetectorError
 from detectors.hand_detector import HandDetector, HandDetectorError
 from effects import Effects
 from guild_profile import load_default_profile
+from spell_engine import SpellEngine
 
 
 def main() -> None:
@@ -15,6 +16,7 @@ def main() -> None:
     face_detector = None
     hand_detector = None
     effects = Effects()
+    spell_engine = SpellEngine()
     face_history = deque(maxlen=8)
     face_confirmed = False
     missing_face_frames = 0
@@ -39,6 +41,7 @@ def main() -> None:
             frame = camera.read_frame()
             face_result = face_detector.detect(frame)
             hand_result = hand_detector.detect(frame)
+            spell_result = spell_engine.update(hand_result)
 
             if not face_result.is_active:
                 face_history.clear()
@@ -67,17 +70,27 @@ def main() -> None:
             else:
                 hand_status_text = "El algılandı" if hand_result.detected else "El bekleniyor"
 
+            if spell_result.has_active_spell:
+                spell_status_text = f"Aktif Büyü: {spell_result.active_spell_name}"
+            elif spell_result.progress > 0:
+                spell_status_text = f"Büyü Durumu: {spell_result.status} %{int(spell_result.progress * 100)}"
+            else:
+                spell_status_text = f"Büyü Durumu: {spell_result.status}"
+
             if hand_result.detected:
                 frame = effects.draw_hand_landmarks(frame, hand_result)
 
             if face_confirmed and face_result.detected and face_result.box is not None:
                 frame = effects.draw_face_box(frame, face_result.box)
 
+            frame = effects.draw_freeze_effect(frame, spell_result)
+
             frame = effects.draw_profile_panel(
                 frame,
                 profile,
                 status_text=status_text,
                 hand_status_text=hand_status_text,
+                spell_status_text=spell_status_text,
             )
 
             camera.show_frame(frame)
