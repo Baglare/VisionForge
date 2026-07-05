@@ -4,6 +4,7 @@ from collections import deque
 
 from camera import Camera, CameraError
 from detectors.face_detector import FaceDetector, FaceDetectorError
+from detectors.hand_detector import HandDetector, HandDetectorError
 from effects import Effects
 from guild_profile import load_default_profile
 
@@ -12,6 +13,7 @@ def main() -> None:
     """Kamera görüntüsünü açar ve üzerine lonca profil panelini çizer."""
     camera = None
     face_detector = None
+    hand_detector = None
     effects = Effects()
     face_history = deque(maxlen=8)
     face_confirmed = False
@@ -21,6 +23,10 @@ def main() -> None:
         face_detector = FaceDetector()
         if face_detector.warning_message:
             print(face_detector.warning_message)
+
+        hand_detector = HandDetector()
+        if hand_detector.warning_message:
+            print(hand_detector.warning_message)
 
         profile = load_default_profile("baglare")
         camera = Camera(source=0, window_name="VisionForge - Kamera Modu")
@@ -32,6 +38,7 @@ def main() -> None:
         while True:
             frame = camera.read_frame()
             face_result = face_detector.detect(frame)
+            hand_result = hand_detector.detect(frame)
 
             if not face_result.is_active:
                 face_history.clear()
@@ -55,14 +62,23 @@ def main() -> None:
 
                 status_text = "Büyücü algılandı" if face_confirmed else "Büyücü bekleniyor"
 
+            if not hand_result.is_active:
+                hand_status_text = "El algılama pasif"
+            else:
+                hand_status_text = "El algılandı" if hand_result.detected else "El bekleniyor"
+
+            if hand_result.detected:
+                frame = effects.draw_hand_landmarks(frame, hand_result)
+
+            if face_confirmed and face_result.detected and face_result.box is not None:
+                frame = effects.draw_face_box(frame, face_result.box)
+
             frame = effects.draw_profile_panel(
                 frame,
                 profile,
                 status_text=status_text,
+                hand_status_text=hand_status_text,
             )
-
-            if face_confirmed and face_result.detected and face_result.box is not None:
-                frame = effects.draw_face_box(frame, face_result.box)
 
             camera.show_frame(frame)
 
@@ -73,9 +89,13 @@ def main() -> None:
         print(f"Kamera hatası: {error}")
     except FaceDetectorError as error:
         print(f"Yüz algılama hatası: {error}")
+    except HandDetectorError as error:
+        print(f"El algılama hatası: {error}")
     except ValueError as error:
         print(f"Profil hatası: {error}")
     finally:
+        if hand_detector is not None:
+            hand_detector.close()
         if face_detector is not None:
             face_detector.close()
         if camera is not None:

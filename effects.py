@@ -3,19 +3,50 @@
 import cv2
 
 
+HAND_CONNECTIONS = [
+    (0, 1),
+    (1, 2),
+    (2, 3),
+    (3, 4),
+    (0, 5),
+    (5, 6),
+    (6, 7),
+    (7, 8),
+    (5, 9),
+    (9, 10),
+    (10, 11),
+    (11, 12),
+    (9, 13),
+    (13, 14),
+    (14, 15),
+    (15, 16),
+    (13, 17),
+    (0, 17),
+    (17, 18),
+    (18, 19),
+    (19, 20),
+]
+
+
 class Effects:
     """Profil paneli ve ileride eklenecek görsel efektler için temel sınıf."""
 
     def __init__(self) -> None:
         self.status = "hazır"
 
-    def draw_profile_panel(self, frame, profile, status_text: str = "Kamera modu aktif"):
+    def draw_profile_panel(
+        self,
+        frame,
+        profile,
+        status_text: str = "Kamera modu aktif",
+        hand_status_text: str | None = None,
+    ):
         """Canlı kamera karesinin üzerine basit bir profil paneli çizer."""
         frame_width = frame.shape[1]
         panel_x = 24
         panel_y = 24
         panel_width = min(560, max(320, frame_width - 48))
-        panel_height = 155
+        panel_height = 185 if hand_status_text else 155
         padding = 18
 
         overlay = frame.copy()
@@ -42,6 +73,8 @@ class Effects:
             f"Açık Büyüler: {', '.join(profile.unlocked_spells)}",
             f"Durum: {status_text}",
         ]
+        if hand_status_text:
+            lines.append(f"El Durumu: {hand_status_text}")
 
         text_x = panel_x + padding
         text_y = panel_y + 34
@@ -55,6 +88,41 @@ class Effects:
                 max_width=panel_width - padding * 2,
                 color=color,
             )
+
+        return frame
+
+    def draw_hand_landmarks(self, frame, hand_result):
+        """Algılanan el landmark noktalarını ve bağlantılarını çizer."""
+        if not hand_result or not hand_result.detected or not hand_result.hands:
+            return frame
+
+        frame_height, frame_width = frame.shape[:2]
+
+        for hand in hand_result.hands:
+            points = [
+                (
+                    max(0, min(frame_width - 1, int(x * frame_width))),
+                    max(0, min(frame_height - 1, int(y * frame_height))),
+                )
+                for x, y, _ in hand.landmarks
+            ]
+
+            if len(points) != 21:
+                continue
+
+            for start_index, end_index in HAND_CONNECTIONS:
+                cv2.line(
+                    frame,
+                    points[start_index],
+                    points[end_index],
+                    (120, 220, 255),
+                    2,
+                    cv2.LINE_AA,
+                )
+
+            for point in points:
+                cv2.circle(frame, point, 4, (245, 245, 245), -1, cv2.LINE_AA)
+                cv2.circle(frame, point, 5, (120, 220, 255), 1, cv2.LINE_AA)
 
         return frame
 

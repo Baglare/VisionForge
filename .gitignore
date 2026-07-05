@@ -25,5 +25,6 @@ outputs/
 captures/
 
 # Yerel MediaPipe model dosyaları
+models/*.task
 models/*.tflite
 !models/.gitkeep

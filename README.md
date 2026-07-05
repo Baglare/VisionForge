@@ -54,6 +54,20 @@ Model dosyası yoksa uygulama çökmez; kamera modu çalışır, panelde yüz al
 
 Model dosyası varsa yüz algılama sonucu birkaç karelik kararlılık filtresinden geçirilir. Böylece tek karelik yanlış pozitif sonuçlar profil durumunu aktif etmez ve ekranda rastgele yanıp sönen kutu çizilmez.
 
+## Dördüncü Aşama: El Algılama
+
+Bu aşamada uygulama MediaPipe Tasks Hand Landmarker ile kamera görüntüsünde el landmark noktalarını algılar. Eski `mp.solutions.hands` API'si kullanılmaz.
+
+El algılama model dosyası şu konuma elle yerleştirilmelidir:
+
+```text
+models/hand_landmarker.task
+```
+
+Model dosyası yoksa uygulama çökmez; kamera modu, profil paneli ve yüz algılama çalışmaya devam eder, el algılama pasif kalır.
+
+Model dosyası varsa kamera görüntüsünde el üzerinde 21 landmark noktası ve sade bağlantı çizgileri gösterilir. Panelde `El Durumu: El algılandı`, el yoksa `El Durumu: El bekleniyor` bilgisi görünür.
+
 ## Kurulum
 
 Python 3.12 veya 3.13 kullanılması önerilir. Python 3.14 ile gelen OpenCV 5 paketinde bu aşamada kullanılan bazı klasik OpenCV yüz algılama API'leri bulunmayabilir.
