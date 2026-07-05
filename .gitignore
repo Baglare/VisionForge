@@ -1,0 +1,25 @@
+# Python çalışma dosyaları
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Sanal ortamlar
+.venv/
+venv/
+env/
+
+# Yerel ortam ve araç çıktıları
+.env
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Editör ve işletim sistemi dosyaları
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Yerel kamera/görüntü çıktıları
+outputs/
+captures/

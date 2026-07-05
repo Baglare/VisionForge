@@ -1,0 +1,18 @@
+{
+  "profiles": [
+    {
+      "username": "baglare",
+      "rank": "S-Seviye Büyücü",
+      "unlocked_spells": [
+        "Ateş",
+        "Kalkan",
+        "Donma"
+      ],
+      "locked_spells": [
+        "Şimşek",
+        "Alan Mührü",
+        "Zaman Kırığı"
+      ]
+    }
+  ]
+}
