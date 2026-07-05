@@ -40,16 +40,14 @@ class Effects:
         profile,
         status_text: str = "Kamera modu aktif",
         hand_status_text: str | None = None,
-        spell_status_text: str | None = None,
     ):
-        """Canlı kamera karesinin üzerine basit bir profil paneli çizer."""
+        """Canlı kamera karesinin üzerine kompakt profil kartı çizer."""
         frame_width = frame.shape[1]
         panel_x = 24
         panel_y = 24
-        panel_width = min(560, max(320, frame_width - 48))
-        extra_lines = int(hand_status_text is not None) + int(spell_status_text is not None)
-        panel_height = 155 + extra_lines * 30
-        padding = 18
+        panel_width = min(390, max(300, frame_width - 48))
+        panel_height = 132
+        padding = 14
 
         overlay = frame.copy()
         cv2.rectangle(
@@ -70,28 +68,153 @@ class Effects:
         )
 
         lines = [
-            profile.rank,
-            profile.username,
-            f"Açık Büyüler: {', '.join(profile.unlocked_spells)}",
+            f"Kullanıcı: {profile.username}",
+            f"Rütbe: {profile.rank}",
             f"Durum: {status_text}",
+            f"El Durumu: {hand_status_text or 'El bekleniyor'}",
         ]
-        if hand_status_text:
-            lines.append(f"El Durumu: {hand_status_text}")
-        if spell_status_text:
-            lines.append(spell_status_text)
 
         text_x = panel_x + padding
-        text_y = panel_y + 34
+        text_y = panel_y + 28
 
         for index, line in enumerate(lines):
-            color = (245, 245, 245) if index != 0 else (120, 220, 255)
+            color = (245, 245, 245) if index != 1 else (120, 220, 255)
             self._draw_text_fit(
                 frame=frame,
                 text=line,
-                origin=(text_x, text_y + index * 30),
+                origin=(text_x, text_y + index * 25),
                 max_width=panel_width - padding * 2,
                 color=color,
+                font_scale=0.58,
             )
+
+        return frame
+
+    def draw_spell_status_panel(self, frame, spell_result):
+        """Aktif büyü, cooldown ve hazırlık bilgisini kompakt panelde gösterir."""
+        frame_width = frame.shape[1]
+        panel_x = 24
+        panel_y = 168
+        panel_width = min(390, max(300, frame_width - 48))
+        panel_height = 92 if not spell_result or spell_result.progress <= 0 or spell_result.has_active_spell else 118
+        padding = 14
+
+        overlay = frame.copy()
+        cv2.rectangle(
+            overlay,
+            (panel_x, panel_y),
+            (panel_x + panel_width, panel_y + panel_height),
+            (22, 28, 42),
+            -1,
+        )
+        cv2.addWeighted(overlay, 0.72, frame, 0.28, 0, frame)
+        cv2.rectangle(
+            frame,
+            (panel_x, panel_y),
+            (panel_x + panel_width, panel_y + panel_height),
+            (170, 190, 255),
+            2,
+        )
+
+        active_spell = "Yok"
+        cooldown_text = "Hazır"
+        progress = 0.0
+        if spell_result:
+            if spell_result.has_active_spell and spell_result.active_spell_name:
+                active_spell = spell_result.active_spell_name
+            if spell_result.cooldown_remaining > 0:
+                cooldown_text = f"{spell_result.cooldown_remaining:.1f} sn"
+            progress = spell_result.progress
+
+        lines = [
+            f"Aktif Büyü: {active_spell}",
+            f"Cooldown: {cooldown_text}",
+        ]
+        if spell_result and not spell_result.has_active_spell and progress > 0:
+            lines.append(f"Hazırlık: %{int(progress * 100)}")
+
+        text_x = panel_x + padding
+        text_y = panel_y + 30
+        for index, line in enumerate(lines):
+            color = (245, 245, 245) if index != 0 else (255, 220, 120)
+            self._draw_text_fit(
+                frame=frame,
+                text=line,
+                origin=(text_x, text_y + index * 26),
+                max_width=panel_width - padding * 2,
+                color=color,
+                font_scale=0.62,
+            )
+
+        return frame
+
+    def draw_spellbook_panel(self, frame, profile):
+        """Açık ve kilitli büyüleri gösteren sağ paneli çizer."""
+        frame_height, frame_width = frame.shape[:2]
+        panel_width = min(360, max(285, frame_width // 3))
+        panel_height = min(360, frame_height - 48)
+        panel_x = max(24, frame_width - panel_width - 24)
+        panel_y = 24
+        padding = 14
+
+        overlay = frame.copy()
+        cv2.rectangle(
+            overlay,
+            (panel_x, panel_y),
+            (panel_x + panel_width, panel_y + panel_height),
+            (20, 24, 36),
+            -1,
+        )
+        cv2.addWeighted(overlay, 0.76, frame, 0.24, 0, frame)
+        cv2.rectangle(
+            frame,
+            (panel_x, panel_y),
+            (panel_x + panel_width, panel_y + panel_height),
+            (255, 220, 120),
+            2,
+        )
+
+        usage_text = {
+            "Donma": "Avucu açık tut",
+            "Ateş": "Yatay savur + avuç göster",
+            "Kalkan": "İki açık el göster",
+        }
+
+        text_x = panel_x + padding
+        text_y = panel_y + 30
+        max_width = panel_width - padding * 2
+
+        self._draw_text_fit(frame, "Büyü Defteri", (text_x, text_y), max_width, (255, 220, 120), font_scale=0.72)
+        text_y += 32
+        self._draw_text_fit(frame, "Açık Büyüler", (text_x, text_y), max_width, (120, 220, 255), font_scale=0.58)
+        text_y += 26
+
+        for spell_name in profile.unlocked_spells:
+            detail = usage_text.get(spell_name, "Kullanım bilgisi yok")
+            self._draw_text_fit(
+                frame,
+                f"{spell_name}: {detail}",
+                (text_x, text_y),
+                max_width,
+                (245, 245, 245),
+                font_scale=0.50,
+            )
+            text_y += 24
+
+        text_y += 10
+        self._draw_text_fit(frame, "Kilitli Büyüler", (text_x, text_y), max_width, (170, 170, 190), font_scale=0.58)
+        text_y += 26
+
+        for spell_name in profile.locked_spells:
+            self._draw_text_fit(
+                frame,
+                f"- {spell_name}",
+                (text_x, text_y),
+                max_width,
+                (145, 145, 165),
+                font_scale=0.50,
+            )
+            text_y += 23
 
         return frame
 
@@ -326,10 +449,17 @@ class Effects:
         )
         return frame
 
-    def _draw_text_fit(self, frame, text: str, origin: tuple[int, int], max_width: int, color) -> None:
+    def _draw_text_fit(
+        self,
+        frame,
+        text: str,
+        origin: tuple[int, int],
+        max_width: int,
+        color,
+        font_scale: float = 0.68,
+    ) -> None:
         """Metni panel genişliğine göre küçük adımlarla sığdırır."""
         font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 0.68
         thickness = 2
 
         while font_scale > 0.42:

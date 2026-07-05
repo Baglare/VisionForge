@@ -15,6 +15,7 @@ class SpellResult:
     status: str
     is_on_cooldown: bool
     progress: float
+    cooldown_remaining: float = 0.0
 
 
 class SpellEngine:
@@ -70,6 +71,7 @@ class SpellEngine:
                 status=f"{self._active_spell_name} büyüsü aktif",
                 is_on_cooldown=current_time < self._cooldown_until,
                 progress=1.0,
+                cooldown_remaining=max(0.0, self._cooldown_until - current_time),
             )
 
         self._active_spell_name = None
@@ -83,6 +85,7 @@ class SpellEngine:
                 status=f"Bekleme süresi: {remaining:.1f} sn",
                 is_on_cooldown=True,
                 progress=0.0,
+                cooldown_remaining=remaining,
             )
 
         hand_center = self._hand_center(hand_result)
@@ -249,6 +252,7 @@ class SpellEngine:
             status=f"{spell_name} büyüsü aktif",
             is_on_cooldown=True,
             progress=1.0,
+            cooldown_remaining=self.cooldown_seconds,
         )
 
     def _result(
@@ -258,6 +262,7 @@ class SpellEngine:
         status: str,
         is_on_cooldown: bool,
         progress: float,
+        cooldown_remaining: float = 0.0,
     ) -> SpellResult:
         """Sonucu saklar ve çağırana döndürür."""
         self.status = status
@@ -267,6 +272,7 @@ class SpellEngine:
             status=status,
             is_on_cooldown=is_on_cooldown,
             progress=max(0.0, min(1.0, progress)),
+            cooldown_remaining=max(0.0, cooldown_remaining),
         )
 
     def _remember_hand_center(

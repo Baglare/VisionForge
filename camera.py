@@ -45,10 +45,17 @@ class Camera:
         """Verilen görüntü karesini OpenCV penceresinde gösterir."""
         cv2.imshow(self.window_name, frame)
 
+    def read_key(self, delay: int = 1) -> int:
+        """OpenCV penceresinden tek tuş okur."""
+        return cv2.waitKey(delay) & 0xFF
+
+    def is_close_key(self, key: int) -> bool:
+        """q veya Esc tuşunun kapatma isteği olup olmadığını döndürür."""
+        return key == ord("q") or key == 27
+
     def should_close(self, delay: int = 1) -> bool:
         """q veya Esc tuşuna basıldığında pencereyi kapatma isteğini döndürür."""
-        key = cv2.waitKey(delay) & 0xFF
-        return key == ord("q") or key == 27
+        return self.is_close_key(self.read_key(delay))
 
     def stop(self) -> None:
         """Kamera kaynağını ve OpenCV pencerelerini güvenli şekilde kapatır."""

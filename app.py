@@ -20,6 +20,8 @@ def main() -> None:
     face_history = deque(maxlen=8)
     face_confirmed = False
     missing_face_frames = 0
+    show_spellbook = True
+    show_hand_debug = True
 
     try:
         face_detector = FaceDetector()
@@ -70,14 +72,7 @@ def main() -> None:
             else:
                 hand_status_text = "El algılandı" if hand_result.detected else "El bekleniyor"
 
-            if spell_result.has_active_spell:
-                spell_status_text = f"Aktif Büyü: {spell_result.active_spell_name}"
-            elif spell_result.progress > 0:
-                spell_status_text = f"Büyü Durumu: {spell_result.status} %{int(spell_result.progress * 100)}"
-            else:
-                spell_status_text = f"Büyü Durumu: {spell_result.status}"
-
-            if hand_result.detected:
+            if show_hand_debug and hand_result.detected:
                 frame = effects.draw_hand_landmarks(frame, hand_result)
 
             if face_confirmed and face_result.detected and face_result.box is not None:
@@ -90,12 +85,20 @@ def main() -> None:
                 profile,
                 status_text=status_text,
                 hand_status_text=hand_status_text,
-                spell_status_text=spell_status_text,
             )
+            frame = effects.draw_spell_status_panel(frame, spell_result)
+            if show_spellbook:
+                frame = effects.draw_spellbook_panel(frame, profile)
 
             camera.show_frame(frame)
 
-            if camera.should_close():
+            key = camera.read_key()
+            if key in (ord("b"), ord("B")):
+                show_spellbook = not show_spellbook
+            elif key in (ord("h"), ord("H")):
+                show_hand_debug = not show_hand_debug
+
+            if camera.is_close_key(key):
                 break
 
     except CameraError as error:

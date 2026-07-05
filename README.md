@@ -96,6 +96,24 @@ Mevcut büyü tetiklemeleri:
 
 Aktif büyü veya bekleme süresi varken yeni büyü başlatılmaz. Kalkan aktifken panelde `Aktif Büyü: Kalkan` görünür ve kamera görüntüsünde kısa süreli koruma halkası efekti gösterilir.
 
+## Sekizinci Aşama: Büyü Defteri ve Arayüz
+
+Bu aşamada kamera üzerindeki arayüz toparlanmıştır. Sol üstte kompakt lonca/profil kartı, altında aktif büyü ve cooldown alanı, sağ tarafta ise Büyü Defteri paneli gösterilir.
+
+Büyü Defteri açık büyüleri ve kilitli büyüleri profil verisinden okur. Açık büyüler:
+
+- `Donma`: Avucu açık tut
+- `Ateş`: Yatay savur + avuç göster
+- `Kalkan`: İki açık el göster
+
+Kilitli büyüler: `Şimşek`, `Alan Mührü`, `Zaman Kırığı`.
+
+Klavye kısayolları:
+
+- `B`: Büyü Defteri panelini açar/kapatır.
+- `H`: El landmark/debug çizimini açar/kapatır.
+- `q` veya `Esc`: Uygulamayı kapatır.
+
 ## Kurulum
 
 Python 3.12 veya 3.13 kullanılması önerilir. Python 3.14 ile gelen OpenCV 5 paketinde bu aşamada kullanılan bazı klasik OpenCV yüz algılama API'leri bulunmayabilir.
