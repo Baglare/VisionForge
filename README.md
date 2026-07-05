@@ -84,6 +84,18 @@ Donma büyüsü açık ve sabit avuç ile çalışmaya devam eder. Ateş büyüs
 
 Ateş aktifken panelde `Aktif Büyü: Ateş` bilgisi görünür ve kamera görüntüsünde kısa süreli kırmızı/turuncu parlama efekti gösterilir.
 
+## Yedinci Aşama: Kalkan Büyüsü
+
+Bu aşamada iki el algılamaya dayalı `Kalkan` büyüsü eklenmiştir. Kullanıcı iki açık avucunu kameraya yaklaşık `0.8` saniye gösterdiğinde Kalkan tetiklenir.
+
+Mevcut büyü tetiklemeleri:
+
+- `Donma`: Açık avuç kısa süre sabit tutulur.
+- `Ateş`: El belirgin yatay savrulur, ardından açık avuç gösterilir.
+- `Kalkan`: İki açık el kısa süre birlikte gösterilir.
+
+Aktif büyü veya bekleme süresi varken yeni büyü başlatılmaz. Kalkan aktifken panelde `Aktif Büyü: Kalkan` görünür ve kamera görüntüsünde kısa süreli koruma halkası efekti gösterilir.
+
 ## Kurulum
 
 Python 3.12 veya 3.13 kullanılması önerilir. Python 3.14 ile gelen OpenCV 5 paketinde bu aşamada kullanılan bazı klasik OpenCV yüz algılama API'leri bulunmayabilir.

@@ -95,7 +95,7 @@ class Effects:
 
         return frame
 
-    def draw_spell_effect(self, frame, spell_result, hand_result=None):
+    def draw_spell_effect(self, frame, spell_result, hand_result=None, face_result=None):
         """Aktif büyü adına göre uygun basit ekran efektini çizer."""
         if not spell_result or not spell_result.has_active_spell:
             return frame
@@ -105,6 +105,9 @@ class Effects:
 
         if spell_result.active_spell_name == "Ateş":
             return self.draw_fire_effect(frame, spell_result, hand_result)
+
+        if spell_result.active_spell_name == "Kalkan":
+            return self.draw_shield_effect(frame, spell_result, face_result)
 
         return frame
 
@@ -195,6 +198,48 @@ class Effects:
 
         return frame
 
+    def draw_shield_effect(self, frame, spell_result, face_result=None):
+        """Kalkan büyüsü aktifken sade bir koruma halkası efekti çizer."""
+        if (
+            not spell_result
+            or not spell_result.has_active_spell
+            or spell_result.active_spell_name != "Kalkan"
+        ):
+            return frame
+
+        frame_height, frame_width = frame.shape[:2]
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (0, 0), (frame_width, frame_height), (180, 160, 40), -1)
+        cv2.addWeighted(overlay, 0.16, frame, 0.84, 0, frame)
+
+        center, axes = self._shield_geometry(frame, face_result)
+        cv2.ellipse(frame, center, axes, 0, 0, 360, (255, 220, 120), 3, cv2.LINE_AA)
+        cv2.ellipse(frame, center, (axes[0] + 22, axes[1] + 30), 0, 0, 360, (120, 220, 255), 2, cv2.LINE_AA)
+        cv2.ellipse(frame, center, (max(20, axes[0] - 22), max(30, axes[1] - 30)), 0, 0, 360, (255, 245, 210), 1, cv2.LINE_AA)
+
+        marker_points = [
+            (center[0], max(0, center[1] - axes[1] - 24)),
+            (min(frame_width - 1, center[0] + axes[0] + 24), center[1]),
+            (center[0], min(frame_height - 1, center[1] + axes[1] + 24)),
+            (max(0, center[0] - axes[0] - 24), center[1]),
+        ]
+        for point in marker_points:
+            cv2.circle(frame, point, 6, (255, 245, 210), -1, cv2.LINE_AA)
+            cv2.circle(frame, point, 9, (255, 220, 120), 1, cv2.LINE_AA)
+
+        text = "KALKAN BÜYÜSÜ"
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 1.05
+        thickness = 3
+        text_size, _ = cv2.getTextSize(text, font, font_scale, thickness)
+        text_x = max(20, (frame_width - text_size[0]) // 2)
+        text_y = max(80, center[1] + axes[1] + 58)
+        text_y = min(frame_height - 28, text_y)
+        cv2.putText(frame, text, (text_x, text_y), font, font_scale, (255, 255, 255), thickness, cv2.LINE_AA)
+        cv2.putText(frame, text, (text_x, text_y), font, font_scale, (255, 220, 120), 1, cv2.LINE_AA)
+
+        return frame
+
     def draw_hand_landmarks(self, frame, hand_result):
         """Algılanan el landmark noktalarını ve bağlantılarını çizer."""
         if not hand_result or not hand_result.detected or not hand_result.hands:
@@ -247,6 +292,23 @@ class Effects:
         return (
             max(0, min(frame_width - 1, int(center_x * frame_width))),
             max(0, min(frame_height - 1, int(center_y * frame_height))),
+        )
+
+    def _shield_geometry(self, frame, face_result) -> tuple[tuple[int, int], tuple[int, int]]:
+        """Yüz kutusu varsa kalkanı kullanıcıya, yoksa ekran merkezine yerleştirir."""
+        frame_height, frame_width = frame.shape[:2]
+        if face_result and face_result.box is not None:
+            x, y, width, height = face_result.box
+            center = (x + width // 2, min(frame_height - 1, y + height))
+            axes = (
+                max(90, int(width * 1.45)),
+                max(130, int(height * 1.75)),
+            )
+            return center, axes
+
+        return (
+            (frame_width // 2, frame_height // 2),
+            (max(110, frame_width // 5), max(150, frame_height // 3)),
         )
 
     def draw_face_box(self, frame, box: tuple[int, int, int, int] | None):

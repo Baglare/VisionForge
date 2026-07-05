@@ -18,14 +18,16 @@ class SpellResult:
 
 
 class SpellEngine:
-    """İlk MVP büyü sistemi: Donma ve Ateş büyülerini üretir."""
+    """İlk MVP büyü sistemi: Donma, Ateş ve Kalkan büyülerini üretir."""
 
     FREEZE_SPELL_NAME = "Donma"
     FIRE_SPELL_NAME = "Ateş"
+    SHIELD_SPELL_NAME = "Kalkan"
 
     def __init__(
         self,
         freeze_hold_seconds: float = 0.8,
+        shield_hold_seconds: float = 0.8,
         cooldown_seconds: float = 2.0,
         effect_seconds: float = 1.1,
         fire_history_seconds: float = 1.3,
@@ -33,11 +35,13 @@ class SpellEngine:
     ) -> None:
         self.status = "Ateş savurması bekleniyor"
         self.freeze_hold_seconds = freeze_hold_seconds
+        self.shield_hold_seconds = shield_hold_seconds
         self.cooldown_seconds = cooldown_seconds
         self.effect_seconds = effect_seconds
         self.fire_history_seconds = fire_history_seconds
         self.fire_seal_window_seconds = fire_seal_window_seconds
         self._freeze_started_at: float | None = None
+        self._shield_started_at: float | None = None
         self._last_palm_center: tuple[float, float, float] | None = None
         self._hand_center_history: deque[tuple[float, tuple[float, float, float]]] = deque()
         self._fire_seal_until = 0.0
@@ -95,6 +99,11 @@ class SpellEngine:
 
         self._remember_hand_center(current_time, hand_center)
 
+        open_palm_centers = self._open_palm_centers(hand_result)
+        shield_result = self._update_shield_spell(current_time, hand_result, open_palm_centers)
+        if shield_result is not None:
+            return shield_result
+
         fire_result = self._update_fire_spell(current_time, open_palm_center)
         if fire_result is not None:
             return fire_result
@@ -104,6 +113,50 @@ class SpellEngine:
     def list_available_spells(self, profile) -> list[str]:
         """Profilde açık olan büyüleri döndürür."""
         return profile.unlocked_spells
+
+    def _update_shield_spell(
+        self,
+        current_time: float,
+        hand_result,
+        open_palm_centers: list[tuple[float, float, float]],
+    ) -> SpellResult | None:
+        """İki açık el pozundan Kalkan büyüsünü üretir."""
+        two_hands_visible = bool(hand_result and hand_result.hand_count >= 2)
+        two_open_hands = len(open_palm_centers) >= 2
+
+        if not two_hands_visible:
+            self._shield_started_at = None
+            return None
+
+        self._freeze_started_at = None
+        self._last_palm_center = None
+
+        if not two_open_hands:
+            self._shield_started_at = None
+            return self._result(
+                has_active_spell=False,
+                active_spell_name=None,
+                status="Kalkan mührü bekleniyor",
+                is_on_cooldown=False,
+                progress=0.0,
+            )
+
+        if self._shield_started_at is None:
+            self._shield_started_at = current_time
+
+        held_seconds = current_time - self._shield_started_at
+        progress = min(1.0, held_seconds / self.shield_hold_seconds)
+
+        if progress >= 1.0:
+            return self._activate_spell(self.SHIELD_SPELL_NAME, current_time)
+
+        return self._result(
+            has_active_spell=False,
+            active_spell_name=None,
+            status="Kalkan mührü bekleniyor",
+            is_on_cooldown=False,
+            progress=progress,
+        )
 
     def _update_fire_spell(
         self,
@@ -263,15 +316,21 @@ class SpellEngine:
 
     def _open_palm_center(self, hand_result) -> tuple[float, float, float] | None:
         """Açık ve kullanılabilir ilk avucun merkez noktasını döndürür."""
-        if not hand_result or not hand_result.detected or not hand_result.hands:
-            return None
+        centers = self._open_palm_centers(hand_result)
+        return centers[0] if centers else None
 
+    def _open_palm_centers(self, hand_result) -> list[tuple[float, float, float]]:
+        """Açık ve kullanılabilir avuç merkezlerini döndürür."""
+        if not hand_result or not hand_result.detected or not hand_result.hands:
+            return []
+
+        centers: list[tuple[float, float, float]] = []
         for hand in hand_result.hands:
             if self._is_open_hand(hand.landmarks):
                 palm_indices = [0, 5, 9, 13, 17]
-                return self._average_point([hand.landmarks[index] for index in palm_indices])
+                centers.append(self._average_point([hand.landmarks[index] for index in palm_indices]))
 
-        return None
+        return centers
 
     def _is_open_hand(self, landmarks: list[tuple[float, float, float]]) -> bool:
         """Parmak uçları avuç merkezinden yeterince açıksa eli açık kabul eder."""
@@ -299,6 +358,7 @@ class SpellEngine:
     def _reset_gesture_state(self, keep_history: bool = True) -> None:
         """Devam eden büyü hazırlık durumlarını temizler."""
         self._freeze_started_at = None
+        self._shield_started_at = None
         self._last_palm_center = None
         self._fire_seal_until = 0.0
         if not keep_history:
