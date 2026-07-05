@@ -114,6 +114,49 @@ Klavye kısayolları:
 - `H`: El landmark/debug çizimini açar/kapatır.
 - `q` veya `Esc`: Uygulamayı kapatır.
 
+## Dokuzuncu Aşama: Büyücü Kaydı ve Lonca Mührü
+
+Bu aşamada uygulama içinden yerel kullanıcı kaydı, yüz örneği toplama, LBPH yüz tanıma eğitimi ve QR tabanlı lonca mührü doğrulaması eklenmiştir.
+
+Bu sistem profesyonel güvenlik sistemi değildir. Portfolyo amaçlı, yerelde çalışan, kamera tabanlı bir doğrulama prototipidir.
+
+Normal kullanıcı akışı:
+
+1. `python app.py` ile uygulamayı aç.
+2. `E` ile yeni büyücü kaydını başlat.
+3. Kullanıcı adını gir.
+4. Kameraya bakarak yüz örneklerinin alınmasını bekle.
+5. Oluşturulan QR/lonca mührünü sakla.
+6. Sonraki girişte yüz + kendi lonca mührün ile tam doğrulan.
+
+Doğrulama davranışı:
+
+- Yüz yoksa profil beklemede kalır.
+- Tanınmayan yüz `Misafir Büyücü` olur ve yalnızca `Donma` kullanabilir.
+- Yüz tanınır ama lonca mührü okunmazsa tam yetki verilmez.
+- Yüz ve doğru lonca mührü birlikte doğrulanırsa kullanıcının tam profili açılır.
+- Başka kullanıcıya ait mühür gösterilirse tam yetki verilmez.
+
+Klavye kısayolları:
+
+- `E`: Yeni büyücü kaydı / yüz eğitimi başlatır.
+- `R`: Doğrulama oturumunu sıfırlar.
+- `B`: Büyü Defteri panelini açar/kapatır.
+- `H`: El landmark/debug çizimini açar/kapatır.
+- `q` veya `Esc`: Uygulamayı kapatır.
+
+Yerel yüz verileri ve kullanıcı QR dosyaları şu konumlarda saklanır:
+
+```text
+data/face_gallery/
+models/face_recognizer_lbph.yml
+data/face_labels.json
+data/local_profiles.json
+assets/guild_seals/
+```
+
+Bu verileri silerek yerel yüz eğitimini ve kullanıcı kayıtlarını temizleyebilirsin. Otomatik üretilen kullanıcı QR dosyaları ve yüz eğitim verileri Git dışında tutulur.
+
 ## Kurulum
 
 Python 3.12 veya 3.13 kullanılması önerilir. Python 3.14 ile gelen OpenCV 5 paketinde bu aşamada kullanılan bazı klasik OpenCV yüz algılama API'leri bulunmayabilir.

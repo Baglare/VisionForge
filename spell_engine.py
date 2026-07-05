@@ -16,6 +16,7 @@ class SpellResult:
     is_on_cooldown: bool
     progress: float
     cooldown_remaining: float = 0.0
+    message: str = ""
 
 
 class SpellEngine:
@@ -49,10 +50,21 @@ class SpellEngine:
         self._cooldown_until = 0.0
         self._active_until = 0.0
         self._active_spell_name: str | None = None
+        self._locked_message_until = 0.0
 
-    def update(self, hand_result, now: float | None = None) -> SpellResult:
+    def update(
+        self,
+        hand_result,
+        allowed_spells: list[str] | None = None,
+        now: float | None = None,
+    ) -> SpellResult:
         """El algılama sonucuna göre büyü durumunu günceller."""
         current_time = now if now is not None else time.monotonic()
+        allowed_spells = allowed_spells or [
+            self.FREEZE_SPELL_NAME,
+            self.FIRE_SPELL_NAME,
+            self.SHIELD_SPELL_NAME,
+        ]
 
         if hand_result is not None and not hand_result.is_active:
             self._reset_gesture_state()
@@ -62,6 +74,16 @@ class SpellEngine:
                 status="El algılama pasif",
                 is_on_cooldown=False,
                 progress=0.0,
+            )
+
+        if current_time < self._locked_message_until:
+            return self._result(
+                has_active_spell=False,
+                active_spell_name=None,
+                status="Lonca yetkisi yetersiz",
+                is_on_cooldown=False,
+                progress=0.0,
+                message="Büyü kilitli",
             )
 
         if current_time < self._active_until and self._active_spell_name:
@@ -103,15 +125,20 @@ class SpellEngine:
         self._remember_hand_center(current_time, hand_center)
 
         open_palm_centers = self._open_palm_centers(hand_result)
-        shield_result = self._update_shield_spell(current_time, hand_result, open_palm_centers)
+        shield_result = self._update_shield_spell(
+            current_time,
+            hand_result,
+            open_palm_centers,
+            allowed_spells,
+        )
         if shield_result is not None:
             return shield_result
 
-        fire_result = self._update_fire_spell(current_time, open_palm_center)
+        fire_result = self._update_fire_spell(current_time, open_palm_center, allowed_spells)
         if fire_result is not None:
             return fire_result
 
-        return self._update_freeze_spell(current_time, open_palm_center)
+        return self._update_freeze_spell(current_time, open_palm_center, allowed_spells)
 
     def list_available_spells(self, profile) -> list[str]:
         """Profilde açık olan büyüleri döndürür."""
@@ -122,6 +149,7 @@ class SpellEngine:
         current_time: float,
         hand_result,
         open_palm_centers: list[tuple[float, float, float]],
+        allowed_spells: list[str],
     ) -> SpellResult | None:
         """İki açık el pozundan Kalkan büyüsünü üretir."""
         two_hands_visible = bool(hand_result and hand_result.hand_count >= 2)
@@ -151,7 +179,7 @@ class SpellEngine:
         progress = min(1.0, held_seconds / self.shield_hold_seconds)
 
         if progress >= 1.0:
-            return self._activate_spell(self.SHIELD_SPELL_NAME, current_time)
+            return self._activate_spell(self.SHIELD_SPELL_NAME, current_time, allowed_spells)
 
         return self._result(
             has_active_spell=False,
@@ -165,6 +193,7 @@ class SpellEngine:
         self,
         current_time: float,
         open_palm_center: tuple[float, float, float] | None,
+        allowed_spells: list[str],
     ) -> SpellResult | None:
         """Yatay savurma + açık avuç zincirinden Ateş büyüsünü üretir."""
         if self._fire_seal_until >= current_time:
@@ -173,7 +202,7 @@ class SpellEngine:
             self._last_palm_center = None
 
             if open_palm_center is not None:
-                return self._activate_spell(self.FIRE_SPELL_NAME, current_time)
+                return self._activate_spell(self.FIRE_SPELL_NAME, current_time, allowed_spells)
 
             return self._result(
                 has_active_spell=False,
@@ -202,6 +231,7 @@ class SpellEngine:
         self,
         current_time: float,
         open_palm_center: tuple[float, float, float] | None,
+        allowed_spells: list[str],
     ) -> SpellResult:
         """Açık ve kısa süre sabit avuçtan Donma büyüsünü üretir."""
         if open_palm_center is None:
@@ -230,7 +260,7 @@ class SpellEngine:
         progress = min(1.0, held_seconds / self.freeze_hold_seconds)
 
         if progress >= 1.0:
-            return self._activate_spell(self.FREEZE_SPELL_NAME, current_time)
+            return self._activate_spell(self.FREEZE_SPELL_NAME, current_time, allowed_spells)
 
         return self._result(
             has_active_spell=False,
@@ -240,9 +270,25 @@ class SpellEngine:
             progress=progress,
         )
 
-    def _activate_spell(self, spell_name: str, current_time: float) -> SpellResult:
+    def _activate_spell(
+        self,
+        spell_name: str,
+        current_time: float,
+        allowed_spells: list[str],
+    ) -> SpellResult:
         """Büyüyü aktif eder ve ortak cooldown başlatır."""
         self._reset_gesture_state()
+        if spell_name not in allowed_spells:
+            self._locked_message_until = current_time + 1.2
+            return self._result(
+                has_active_spell=False,
+                active_spell_name=None,
+                status="Lonca yetkisi yetersiz",
+                is_on_cooldown=False,
+                progress=0.0,
+                message="Büyü kilitli",
+            )
+
         self._active_spell_name = spell_name
         self._active_until = current_time + self.effect_seconds
         self._cooldown_until = current_time + self.cooldown_seconds
@@ -263,6 +309,7 @@ class SpellEngine:
         is_on_cooldown: bool,
         progress: float,
         cooldown_remaining: float = 0.0,
+        message: str = "",
     ) -> SpellResult:
         """Sonucu saklar ve çağırana döndürür."""
         self.status = status
@@ -273,6 +320,7 @@ class SpellEngine:
             is_on_cooldown=is_on_cooldown,
             progress=max(0.0, min(1.0, progress)),
             cooldown_remaining=max(0.0, cooldown_remaining),
+            message=message,
         )
 
     def _remember_hand_center(

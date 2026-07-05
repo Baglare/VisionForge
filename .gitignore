@@ -28,3 +28,11 @@ captures/
 models/*.task
 models/*.tflite
 !models/.gitkeep
+
+# Yerel kullanıcı yüz eğitimi ve doğrulama verileri
+data/face_gallery/
+models/face_recognizer_lbph.yml
+data/face_labels.json
+data/local_profiles.json
+assets/guild_seals/*.png
+!assets/guild_seals/.gitkeep

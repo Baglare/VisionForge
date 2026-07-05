@@ -1,6 +1,22 @@
 {
   "profiles": [
     {
+      "username": "Misafir",
+      "rank": "Misafir Büyücü",
+      "unlocked_spells": [
+        "Donma"
+      ],
+      "locked_spells": [
+        "Ateş",
+        "Kalkan",
+        "Şimşek",
+        "Alan Mührü",
+        "Zaman Kırığı"
+      ],
+      "face_label": "guest",
+      "is_guest": true
+    },
+    {
       "username": "baglare",
       "rank": "S-Seviye Büyücü",
       "unlocked_spells": [
@@ -12,7 +28,8 @@
         "Şimşek",
         "Alan Mührü",
         "Zaman Kırığı"
-      ]
+      ],
+      "face_label": "baglare"
     }
   ]
 }

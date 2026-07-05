@@ -40,13 +40,16 @@ class Effects:
         profile,
         status_text: str = "Kamera modu aktif",
         hand_status_text: str | None = None,
+        verification_status: str | None = None,
+        hint_text: str | None = None,
     ):
         """Canlı kamera karesinin üzerine kompakt profil kartı çizer."""
         frame_width = frame.shape[1]
         panel_x = 24
         panel_y = 24
         panel_width = min(390, max(300, frame_width - 48))
-        panel_height = 132
+        extra_lines = int(verification_status is not None) + int(hint_text is not None)
+        panel_height = 132 + extra_lines * 24
         padding = 14
 
         overlay = frame.copy()
@@ -73,6 +76,10 @@ class Effects:
             f"Durum: {status_text}",
             f"El Durumu: {hand_status_text or 'El bekleniyor'}",
         ]
+        if verification_status:
+            lines.append(f"Doğrulama: {verification_status}")
+        if hint_text:
+            lines.append(hint_text)
 
         text_x = panel_x + padding
         text_y = panel_y + 28
@@ -90,13 +97,93 @@ class Effects:
 
         return frame
 
+    def draw_enrollment_panel(self, frame, enrollment_status):
+        """Kayıt/eğitim modunda yüz örneği toplama bilgisini gösterir."""
+        if not enrollment_status or not enrollment_status.is_active:
+            return frame
+
+        frame_height, frame_width = frame.shape[:2]
+        panel_width = min(520, max(340, frame_width - 48))
+        panel_height = 190
+        panel_x = max(24, (frame_width - panel_width) // 2)
+        panel_y = max(24, (frame_height - panel_height) // 2)
+        padding = 18
+
+        overlay = frame.copy()
+        cv2.rectangle(
+            overlay,
+            (panel_x, panel_y),
+            (panel_x + panel_width, panel_y + panel_height),
+            (18, 24, 38),
+            -1,
+        )
+        cv2.addWeighted(overlay, 0.78, frame, 0.22, 0, frame)
+        cv2.rectangle(
+            frame,
+            (panel_x, panel_y),
+            (panel_x + panel_width, panel_y + panel_height),
+            (255, 220, 120),
+            2,
+        )
+
+        progress = 0.0
+        if enrollment_status.target_count > 0:
+            progress = min(1.0, enrollment_status.sample_count / enrollment_status.target_count)
+
+        lines = [
+            "Büyücü Kaydı",
+            f"Kullanıcı: {enrollment_status.username}",
+            f"Örnek: {enrollment_status.sample_count}/{enrollment_status.target_count}",
+            f"Yönlendirme: {enrollment_status.instruction}",
+            enrollment_status.message,
+        ]
+        if enrollment_status.qr_path:
+            lines.append(f"QR dosyası: {enrollment_status.qr_path}")
+
+        text_x = panel_x + padding
+        text_y = panel_y + 34
+        max_width = panel_width - padding * 2
+        for index, line in enumerate(lines):
+            color = (255, 220, 120) if index == 0 else (245, 245, 245)
+            self._draw_text_fit(
+                frame,
+                line,
+                (text_x, text_y + index * 25),
+                max_width,
+                color,
+                font_scale=0.58 if index else 0.70,
+            )
+
+        bar_x = panel_x + padding
+        bar_y = panel_y + panel_height - 28
+        bar_width = panel_width - padding * 2
+        cv2.rectangle(frame, (bar_x, bar_y), (bar_x + bar_width, bar_y + 10), (65, 70, 90), -1)
+        cv2.rectangle(
+            frame,
+            (bar_x, bar_y),
+            (bar_x + int(bar_width * progress), bar_y + 10),
+            (120, 220, 255),
+            -1,
+        )
+
+        return frame
+
     def draw_spell_status_panel(self, frame, spell_result):
         """Aktif büyü, cooldown ve hazırlık bilgisini kompakt panelde gösterir."""
         frame_width = frame.shape[1]
         panel_x = 24
         panel_y = 168
         panel_width = min(390, max(300, frame_width - 48))
-        panel_height = 92 if not spell_result or spell_result.progress <= 0 or spell_result.has_active_spell else 118
+        show_spell_message = bool(
+            spell_result
+            and not spell_result.has_active_spell
+            and (
+                spell_result.progress > 0
+                or spell_result.message
+                or spell_result.status == "Lonca yetkisi yetersiz"
+            )
+        )
+        panel_height = 118 if show_spell_message else 92
         padding = 14
 
         overlay = frame.copy()
@@ -130,7 +217,11 @@ class Effects:
             f"Aktif Büyü: {active_spell}",
             f"Cooldown: {cooldown_text}",
         ]
-        if spell_result and not spell_result.has_active_spell and progress > 0:
+        if spell_result and not spell_result.has_active_spell and spell_result.message:
+            lines.append(spell_result.message)
+        elif spell_result and not spell_result.has_active_spell and spell_result.status == "Lonca yetkisi yetersiz":
+            lines.append("Lonca yetkisi yetersiz")
+        elif spell_result and not spell_result.has_active_spell and progress > 0:
             lines.append(f"Hazırlık: %{int(progress * 100)}")
 
         text_x = panel_x + padding
