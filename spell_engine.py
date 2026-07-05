@@ -1,5 +1,6 @@
 # El landmark verisinden basit büyü tetikleme durumunu üretir.
 
+from collections import deque
 from dataclasses import dataclass
 import math
 import time
@@ -17,32 +18,39 @@ class SpellResult:
 
 
 class SpellEngine:
-    """İlk MVP büyü sistemi: açık ve sabit avuçtan Donma büyüsü üretir."""
+    """İlk MVP büyü sistemi: Donma ve Ateş büyülerini üretir."""
 
     FREEZE_SPELL_NAME = "Donma"
+    FIRE_SPELL_NAME = "Ateş"
 
     def __init__(
         self,
-        hold_seconds: float = 0.8,
+        freeze_hold_seconds: float = 0.8,
         cooldown_seconds: float = 2.0,
         effect_seconds: float = 1.1,
+        fire_history_seconds: float = 1.3,
+        fire_seal_window_seconds: float = 0.8,
     ) -> None:
-        self.status = "Avuç mührü bekleniyor"
-        self.hold_seconds = hold_seconds
+        self.status = "Ateş savurması bekleniyor"
+        self.freeze_hold_seconds = freeze_hold_seconds
         self.cooldown_seconds = cooldown_seconds
         self.effect_seconds = effect_seconds
-        self._pose_started_at: float | None = None
+        self.fire_history_seconds = fire_history_seconds
+        self.fire_seal_window_seconds = fire_seal_window_seconds
+        self._freeze_started_at: float | None = None
         self._last_palm_center: tuple[float, float, float] | None = None
+        self._hand_center_history: deque[tuple[float, tuple[float, float, float]]] = deque()
+        self._fire_seal_until = 0.0
         self._cooldown_until = 0.0
         self._active_until = 0.0
+        self._active_spell_name: str | None = None
 
     def update(self, hand_result, now: float | None = None) -> SpellResult:
-        """El algılama sonucuna göre Donma büyüsü durumunu günceller."""
+        """El algılama sonucuna göre büyü durumunu günceller."""
         current_time = now if now is not None else time.monotonic()
 
         if hand_result is not None and not hand_result.is_active:
-            self._pose_started_at = None
-            self._last_palm_center = None
+            self._reset_gesture_state()
             return self._result(
                 has_active_spell=False,
                 active_spell_name=None,
@@ -51,19 +59,19 @@ class SpellEngine:
                 progress=0.0,
             )
 
-        if current_time < self._active_until:
+        if current_time < self._active_until and self._active_spell_name:
             return self._result(
                 has_active_spell=True,
-                active_spell_name=self.FREEZE_SPELL_NAME,
-                status="Donma büyüsü aktif",
+                active_spell_name=self._active_spell_name,
+                status=f"{self._active_spell_name} büyüsü aktif",
                 is_on_cooldown=current_time < self._cooldown_until,
                 progress=1.0,
             )
 
-        is_on_cooldown = current_time < self._cooldown_until
-        if is_on_cooldown:
-            self._pose_started_at = None
-            self._last_palm_center = None
+        self._active_spell_name = None
+
+        if current_time < self._cooldown_until:
+            self._reset_gesture_state()
             remaining = self._cooldown_until - current_time
             return self._result(
                 has_active_spell=False,
@@ -73,44 +81,100 @@ class SpellEngine:
                 progress=0.0,
             )
 
-        palm_center = self._open_palm_center(hand_result)
-        if palm_center is None:
-            self._pose_started_at = None
+        hand_center = self._hand_center(hand_result)
+        open_palm_center = self._open_palm_center(hand_result)
+        if hand_center is None:
+            self._reset_gesture_state(keep_history=False)
+            return self._result(
+                has_active_spell=False,
+                active_spell_name=None,
+                status="Ateş savurması bekleniyor",
+                is_on_cooldown=False,
+                progress=0.0,
+            )
+
+        self._remember_hand_center(current_time, hand_center)
+
+        fire_result = self._update_fire_spell(current_time, open_palm_center)
+        if fire_result is not None:
+            return fire_result
+
+        return self._update_freeze_spell(current_time, open_palm_center)
+
+    def list_available_spells(self, profile) -> list[str]:
+        """Profilde açık olan büyüleri döndürür."""
+        return profile.unlocked_spells
+
+    def _update_fire_spell(
+        self,
+        current_time: float,
+        open_palm_center: tuple[float, float, float] | None,
+    ) -> SpellResult | None:
+        """Yatay savurma + açık avuç zincirinden Ateş büyüsünü üretir."""
+        if self._fire_seal_until >= current_time:
+            progress = 1.0 - max(0.0, self._fire_seal_until - current_time) / self.fire_seal_window_seconds
+            self._freeze_started_at = None
+            self._last_palm_center = None
+
+            if open_palm_center is not None:
+                return self._activate_spell(self.FIRE_SPELL_NAME, current_time)
+
+            return self._result(
+                has_active_spell=False,
+                active_spell_name=None,
+                status="Ateş mührü bekleniyor",
+                is_on_cooldown=False,
+                progress=progress,
+            )
+
+        self._fire_seal_until = 0.0
+        if self._has_horizontal_swipe():
+            self._fire_seal_until = current_time + self.fire_seal_window_seconds
+            self._freeze_started_at = None
             self._last_palm_center = None
             return self._result(
                 has_active_spell=False,
                 active_spell_name=None,
-                status="Avuç mührü bekleniyor",
+                status="Ateş mührü bekleniyor",
+                is_on_cooldown=False,
+                progress=0.0,
+            )
+
+        return None
+
+    def _update_freeze_spell(
+        self,
+        current_time: float,
+        open_palm_center: tuple[float, float, float] | None,
+    ) -> SpellResult:
+        """Açık ve kısa süre sabit avuçtan Donma büyüsünü üretir."""
+        if open_palm_center is None:
+            self._freeze_started_at = None
+            self._last_palm_center = None
+            return self._result(
+                has_active_spell=False,
+                active_spell_name=None,
+                status="Ateş savurması bekleniyor",
                 is_on_cooldown=False,
                 progress=0.0,
             )
 
         if (
             self._last_palm_center is not None
-            and self._distance(palm_center, self._last_palm_center) > 0.08
+            and self._distance(open_palm_center, self._last_palm_center) > 0.08
         ):
-            self._pose_started_at = current_time
+            self._freeze_started_at = current_time
 
-        self._last_palm_center = palm_center
+        self._last_palm_center = open_palm_center
 
-        if self._pose_started_at is None:
-            self._pose_started_at = current_time
+        if self._freeze_started_at is None:
+            self._freeze_started_at = current_time
 
-        held_seconds = current_time - self._pose_started_at
-        progress = min(1.0, held_seconds / self.hold_seconds)
+        held_seconds = current_time - self._freeze_started_at
+        progress = min(1.0, held_seconds / self.freeze_hold_seconds)
 
         if progress >= 1.0:
-            self._pose_started_at = None
-            self._last_palm_center = None
-            self._active_until = current_time + self.effect_seconds
-            self._cooldown_until = current_time + self.cooldown_seconds
-            return self._result(
-                has_active_spell=True,
-                active_spell_name=self.FREEZE_SPELL_NAME,
-                status="Donma büyüsü aktif",
-                is_on_cooldown=True,
-                progress=1.0,
-            )
+            return self._activate_spell(self.FREEZE_SPELL_NAME, current_time)
 
         return self._result(
             has_active_spell=False,
@@ -120,9 +184,19 @@ class SpellEngine:
             progress=progress,
         )
 
-    def list_available_spells(self, profile) -> list[str]:
-        """Profilde açık olan büyüleri döndürür."""
-        return profile.unlocked_spells
+    def _activate_spell(self, spell_name: str, current_time: float) -> SpellResult:
+        """Büyüyü aktif eder ve ortak cooldown başlatır."""
+        self._reset_gesture_state()
+        self._active_spell_name = spell_name
+        self._active_until = current_time + self.effect_seconds
+        self._cooldown_until = current_time + self.cooldown_seconds
+        return self._result(
+            has_active_spell=True,
+            active_spell_name=spell_name,
+            status=f"{spell_name} büyüsü aktif",
+            is_on_cooldown=True,
+            progress=1.0,
+        )
 
     def _result(
         self,
@@ -141,6 +215,51 @@ class SpellEngine:
             is_on_cooldown=is_on_cooldown,
             progress=max(0.0, min(1.0, progress)),
         )
+
+    def _remember_hand_center(
+        self,
+        current_time: float,
+        hand_center: tuple[float, float, float],
+    ) -> None:
+        """Son el merkezi geçmişini zaman penceresi içinde tutar."""
+        self._hand_center_history.append((current_time, hand_center))
+        min_time = current_time - self.fire_history_seconds
+        while self._hand_center_history and self._hand_center_history[0][0] < min_time:
+            self._hand_center_history.popleft()
+
+    def _has_horizontal_swipe(self) -> bool:
+        """Küçük titreşimleri dışlayarak belirgin yatay savurma arar."""
+        if len(self._hand_center_history) < 5:
+            return False
+
+        first_time, first_center = self._hand_center_history[0]
+        last_time, last_center = self._hand_center_history[-1]
+        elapsed = last_time - first_time
+        if elapsed < 0.18:
+            return False
+
+        horizontal_delta = abs(last_center[0] - first_center[0])
+        vertical_delta = abs(last_center[1] - first_center[1])
+
+        if horizontal_delta < 0.22:
+            return False
+
+        if vertical_delta > 0.18:
+            return False
+
+        return horizontal_delta > vertical_delta * 1.8
+
+    def _hand_center(self, hand_result) -> tuple[float, float, float] | None:
+        """Algılanan ilk elin yaklaşık merkez noktasını döndürür."""
+        if not hand_result or not hand_result.detected or not hand_result.hands:
+            return None
+
+        landmarks = hand_result.hands[0].landmarks
+        if len(landmarks) < 21:
+            return None
+
+        center_indices = [0, 5, 9, 13, 17]
+        return self._average_point([landmarks[index] for index in center_indices])
 
     def _open_palm_center(self, hand_result) -> tuple[float, float, float] | None:
         """Açık ve kullanılabilir ilk avucun merkez noktasını döndürür."""
@@ -176,6 +295,14 @@ class SpellEngine:
                 extended_fingers += 1
 
         return extended_fingers >= 4
+
+    def _reset_gesture_state(self, keep_history: bool = True) -> None:
+        """Devam eden büyü hazırlık durumlarını temizler."""
+        self._freeze_started_at = None
+        self._last_palm_center = None
+        self._fire_seal_until = 0.0
+        if not keep_history:
+            self._hand_center_history.clear()
 
     def _average_point(self, points: list[tuple[float, float, float]]) -> tuple[float, float, float]:
         """Verilen noktaların ortalamasını döndürür."""

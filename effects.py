@@ -95,6 +95,19 @@ class Effects:
 
         return frame
 
+    def draw_spell_effect(self, frame, spell_result, hand_result=None):
+        """Aktif büyü adına göre uygun basit ekran efektini çizer."""
+        if not spell_result or not spell_result.has_active_spell:
+            return frame
+
+        if spell_result.active_spell_name == "Donma":
+            return self.draw_freeze_effect(frame, spell_result)
+
+        if spell_result.active_spell_name == "Ateş":
+            return self.draw_fire_effect(frame, spell_result, hand_result)
+
+        return frame
+
     def draw_freeze_effect(self, frame, spell_result):
         """Donma büyüsü aktifken kısa ve sade bir soğuk ekran efekti çizer."""
         if (
@@ -132,6 +145,56 @@ class Effects:
 
         return frame
 
+    def draw_fire_effect(self, frame, spell_result, hand_result=None):
+        """Ateş büyüsü aktifken kısa ve sade bir sıcak ekran efekti çizer."""
+        if (
+            not spell_result
+            or not spell_result.has_active_spell
+            or spell_result.active_spell_name != "Ateş"
+        ):
+            return frame
+
+        frame_height, frame_width = frame.shape[:2]
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (0, 0), (frame_width, frame_height), (30, 90, 255), -1)
+        cv2.addWeighted(overlay, 0.20, frame, 0.80, 0, frame)
+
+        origin = self._hand_effect_origin(frame, hand_result)
+        if origin is None:
+            origin = (frame_width // 2, frame_height // 2)
+
+        ring_color = (40, 160, 255)
+        ray_color = (60, 210, 255)
+        cv2.circle(frame, origin, 42, ring_color, 3, cv2.LINE_AA)
+        cv2.circle(frame, origin, 72, (30, 90, 255), 2, cv2.LINE_AA)
+
+        ray_offsets = [
+            (95, 0),
+            (-95, 0),
+            (65, 55),
+            (-65, 55),
+            (65, -55),
+            (-65, -55),
+        ]
+        for offset_x, offset_y in ray_offsets:
+            end_point = (
+                max(0, min(frame_width - 1, origin[0] + offset_x)),
+                max(0, min(frame_height - 1, origin[1] + offset_y)),
+            )
+            cv2.line(frame, origin, end_point, ray_color, 3, cv2.LINE_AA)
+
+        text = "ATEŞ BÜYÜSÜ"
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 1.15
+        thickness = 3
+        text_size, _ = cv2.getTextSize(text, font, font_scale, thickness)
+        text_x = max(20, (frame_width - text_size[0]) // 2)
+        text_y = max(80, frame_height // 2)
+        cv2.putText(frame, text, (text_x, text_y), font, font_scale, (255, 255, 255), thickness, cv2.LINE_AA)
+        cv2.putText(frame, text, (text_x, text_y), font, font_scale, (40, 160, 255), 1, cv2.LINE_AA)
+
+        return frame
+
     def draw_hand_landmarks(self, frame, hand_result):
         """Algılanan el landmark noktalarını ve bağlantılarını çizer."""
         if not hand_result or not hand_result.detected or not hand_result.hands:
@@ -166,6 +229,25 @@ class Effects:
                 cv2.circle(frame, point, 5, (120, 220, 255), 1, cv2.LINE_AA)
 
         return frame
+
+    def _hand_effect_origin(self, frame, hand_result) -> tuple[int, int] | None:
+        """Efektin elde başlayacağı yaklaşık ekran noktasını döndürür."""
+        if not hand_result or not hand_result.detected or not hand_result.hands:
+            return None
+
+        landmarks = hand_result.hands[0].landmarks
+        if len(landmarks) < 21:
+            return None
+
+        frame_height, frame_width = frame.shape[:2]
+        center_indices = [0, 5, 9, 13, 17]
+        center_x = sum(landmarks[index][0] for index in center_indices) / len(center_indices)
+        center_y = sum(landmarks[index][1] for index in center_indices) / len(center_indices)
+
+        return (
+            max(0, min(frame_width - 1, int(center_x * frame_width))),
+            max(0, min(frame_height - 1, int(center_y * frame_height))),
+        )
 
     def draw_face_box(self, frame, box: tuple[int, int, int, int] | None):
         """Algılanan yüzün etrafına sade bir kutu çizer."""

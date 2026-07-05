@@ -83,7 +83,7 @@ def main() -> None:
             if face_confirmed and face_result.detected and face_result.box is not None:
                 frame = effects.draw_face_box(frame, face_result.box)
 
-            frame = effects.draw_freeze_effect(frame, spell_result)
+            frame = effects.draw_spell_effect(frame, spell_result, hand_result)
 
             frame = effects.draw_profile_panel(
                 frame,
