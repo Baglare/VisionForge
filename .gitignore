@@ -23,3 +23,7 @@ Thumbs.db
 # Yerel kamera/görüntü çıktıları
 outputs/
 captures/
+
+# Yerel MediaPipe model dosyaları
+models/*.tflite
+!models/.gitkeep

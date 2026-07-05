@@ -58,6 +58,21 @@ class Effects:
 
         return frame
 
+    def draw_face_box(self, frame, box: tuple[int, int, int, int] | None):
+        """Algılanan yüzün etrafına sade bir kutu çizer."""
+        if box is None:
+            return frame
+
+        x, y, width, height = box
+        cv2.rectangle(
+            frame,
+            (x, y),
+            (x + width, y + height),
+            (120, 220, 255),
+            2,
+        )
+        return frame
+
     def _draw_text_fit(self, frame, text: str, origin: tuple[int, int], max_width: int, color) -> None:
         """Metni panel genişliğine göre küçük adımlarla sığdırır."""
         font = cv2.FONT_HERSHEY_SIMPLEX

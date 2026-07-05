@@ -40,7 +40,23 @@ Bu aşamada uygulama varsayılan kamerayı OpenCV ile açar ve canlı görüntü
 
 Panelde örnek `baglare` profili, rütbe, açık büyüler ve kamera modu durumu gösterilir. Çıkış için kamera penceresindeyken `q` veya `Esc` tuşuna basın.
 
+## Üçüncü Aşama: Yüz Algılama
+
+Bu aşamada uygulama MediaPipe Tasks Face Detector ile kamera görüntüsünde yüz olup olmadığını algılar. Eski `mp.solutions.face_detection` API'si kullanılmaz.
+
+Yüz algılama model dosyası şu konuma elle yerleştirilmelidir:
+
+```text
+models/face_detector.tflite
+```
+
+Model dosyası yoksa uygulama çökmez; kamera modu çalışır, panelde yüz algılamanın pasif olduğu gösterilir ve terminalde kısa bir uyarı yazılır.
+
+Model dosyası varsa yüz algılama sonucu birkaç karelik kararlılık filtresinden geçirilir. Böylece tek karelik yanlış pozitif sonuçlar profil durumunu aktif etmez ve ekranda rastgele yanıp sönen kutu çizilmez.
+
 ## Kurulum
+
+Python 3.12 veya 3.13 kullanılması önerilir. Python 3.14 ile gelen OpenCV 5 paketinde bu aşamada kullanılan bazı klasik OpenCV yüz algılama API'leri bulunmayabilir.
 
 ```powershell
 python -m venv .venv
