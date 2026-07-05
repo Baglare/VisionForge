@@ -1,6 +1,8 @@
 # Kamera görüntüsü üzerine basit lonca/profil arayüzü çizer.
 
 import cv2
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont
 
 
 HAND_CONNECTIONS = [
@@ -33,6 +35,7 @@ class Effects:
 
     def __init__(self) -> None:
         self.status = "hazır"
+        self._font_cache: dict[int, ImageFont.FreeTypeFont | ImageFont.ImageFont] = {}
 
     def draw_profile_panel(
         self,
@@ -357,8 +360,20 @@ class Effects:
         text_size, _ = cv2.getTextSize(text, font, font_scale, thickness)
         text_x = max(20, (frame_width - text_size[0]) // 2)
         text_y = max(80, frame_height // 2)
-        cv2.putText(frame, text, (text_x, text_y), font, font_scale, (255, 255, 255), thickness, cv2.LINE_AA)
-        cv2.putText(frame, text, (text_x, text_y), font, font_scale, (120, 220, 255), 1, cv2.LINE_AA)
+        self._draw_text(
+            frame,
+            text,
+            (text_x, text_y - text_size[1]),
+            (255, 255, 255),
+            font_size=34,
+        )
+        self._draw_text(
+            frame,
+            text,
+            (text_x, text_y - text_size[1]),
+            (120, 220, 255),
+            font_size=34,
+        )
 
         return frame
 
@@ -407,8 +422,20 @@ class Effects:
         text_size, _ = cv2.getTextSize(text, font, font_scale, thickness)
         text_x = max(20, (frame_width - text_size[0]) // 2)
         text_y = max(80, frame_height // 2)
-        cv2.putText(frame, text, (text_x, text_y), font, font_scale, (255, 255, 255), thickness, cv2.LINE_AA)
-        cv2.putText(frame, text, (text_x, text_y), font, font_scale, (40, 160, 255), 1, cv2.LINE_AA)
+        self._draw_text(
+            frame,
+            text,
+            (text_x, text_y - text_size[1]),
+            (255, 255, 255),
+            font_size=34,
+        )
+        self._draw_text(
+            frame,
+            text,
+            (text_x, text_y - text_size[1]),
+            (40, 160, 255),
+            font_size=34,
+        )
 
         return frame
 
@@ -449,8 +476,20 @@ class Effects:
         text_x = max(20, (frame_width - text_size[0]) // 2)
         text_y = max(80, center[1] + axes[1] + 58)
         text_y = min(frame_height - 28, text_y)
-        cv2.putText(frame, text, (text_x, text_y), font, font_scale, (255, 255, 255), thickness, cv2.LINE_AA)
-        cv2.putText(frame, text, (text_x, text_y), font, font_scale, (255, 220, 120), 1, cv2.LINE_AA)
+        self._draw_text(
+            frame,
+            text,
+            (text_x, text_y - text_size[1]),
+            (255, 255, 255),
+            font_size=32,
+        )
+        self._draw_text(
+            frame,
+            text,
+            (text_x, text_y - text_size[1]),
+            (255, 220, 120),
+            font_size=32,
+        )
 
         return frame
 
@@ -549,26 +588,71 @@ class Effects:
         color,
         font_scale: float = 0.68,
     ) -> None:
-        """Metni panel genişliğine göre küçük adımlarla sığdırır."""
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        thickness = 2
+        """Türkçe karakter destekli metni panel genişliğine sığdırır."""
+        font_size = max(14, int(font_scale * 32))
 
-        while font_scale > 0.42:
-            text_size, _ = cv2.getTextSize(text, font, font_scale, thickness)
-            if text_size[0] <= max_width:
+        while font_size > 13:
+            font = self._get_font(font_size)
+            text_width = self._text_width(text, font)
+            if text_width <= max_width:
                 break
-            font_scale -= 0.04
+            font_size -= 1
 
-        cv2.putText(
+        self._draw_text(
             frame,
             text,
             origin,
-            font,
-            font_scale,
             color,
-            thickness,
-            cv2.LINE_AA,
+            font_size=font_size,
         )
+
+    def _draw_text(
+        self,
+        frame,
+        text: str,
+        origin: tuple[int, int],
+        color,
+        font_size: int,
+    ) -> None:
+        """OpenCV karesine Pillow ile Unicode destekli metin çizer."""
+        if not text:
+            return
+
+        font = self._get_font(font_size)
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        image = Image.fromarray(rgb_frame)
+        draw = ImageDraw.Draw(image)
+        rgb_color = (int(color[2]), int(color[1]), int(color[0]))
+        draw.text(origin, text, font=font, fill=rgb_color)
+        frame[:] = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+
+    def _get_font(self, font_size: int):
+        """Windows'ta Türkçe destekli sistem fontunu döndürür."""
+        if font_size in self._font_cache:
+            return self._font_cache[font_size]
+
+        font_candidates = [
+            "C:/Windows/Fonts/segoeui.ttf",
+            "C:/Windows/Fonts/arial.ttf",
+            "C:/Windows/Fonts/calibri.ttf",
+        ]
+
+        for font_path in font_candidates:
+            try:
+                font = ImageFont.truetype(font_path, font_size)
+                self._font_cache[font_size] = font
+                return font
+            except OSError:
+                continue
+
+        font = ImageFont.load_default()
+        self._font_cache[font_size] = font
+        return font
+
+    def _text_width(self, text: str, font) -> int:
+        """Pillow fontu ile metin genişliğini hesaplar."""
+        bbox = ImageDraw.Draw(Image.new("RGB", (1, 1))).textbbox((0, 0), text, font=font)
+        return bbox[2] - bbox[0]
 
     def apply_profile_effect(self, frame, profile):
         """Profil görünümüne efekt uygulamak için yer tutucu."""
