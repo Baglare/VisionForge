@@ -36,6 +36,19 @@ class SpellResult:
     hand_tracking_quality_message: str = ""
     spell_uses_tracker: bool = False
     tracker_source_used: str = "-"
+    freeze_state: str = "idle"
+    freeze_elapsed_time: float = 0.0
+    freeze_required_time: float = 0.0
+    freeze_progress_raw: float = 0.0
+    freeze_progress_display: float = 0.0
+    freeze_velocity: float = 0.0
+    freeze_velocity_deadzone: float = 0.0
+    freeze_is_stable: bool = False
+    freeze_block_reason: str = "-"
+    competing_spell_candidate: str = "-"
+    fire_candidate_active: bool = False
+    fire_start_reason: str = "-"
+    fire_min_distance_met: bool = False
 
 
 class SpellEngine:
@@ -243,6 +256,7 @@ class SpellEngine:
             self._shield_started_at = None
             return None
 
+        self._debug_scores["competing_spell_candidate"] = self.SHIELD_SPELL_NAME
         self._freeze_started_at = None
         self._last_palm_center = None
 
@@ -288,12 +302,24 @@ class SpellEngine:
 
         if self._fire_state == "idle":
             if tracker_source != "mediapipe":
+                self._debug_scores["fire_candidate_active"] = False
+                self._debug_scores["fire_start_reason"] = "optical_flow_başlatmaz"
+                self._debug_scores["fire_min_distance_met"] = False
                 return None
-            self._start_fire_tracking(current_time, hand_center)
+            fire_candidate = self._fire_start_candidate(profile)
+            self._debug_scores["fire_candidate_active"] = fire_candidate["active"]
+            self._debug_scores["fire_start_reason"] = fire_candidate["reason"]
+            self._debug_scores["fire_min_distance_met"] = fire_candidate["min_distance_met"]
+            if not fire_candidate["active"]:
+                return None
+            self._debug_scores["competing_spell_candidate"] = self.FIRE_SPELL_NAME
+            self._start_fire_tracking(current_time, fire_candidate["start_center"] or hand_center)
 
         if self._fire_state == "fire_seal_window":
             self._update_fire_position(hand_center, profile, current_time)
             self._debug_scores["fire_seal_window_active"] = True
+            self._debug_scores["fire_candidate_active"] = True
+            self._debug_scores["competing_spell_candidate"] = self.FIRE_SPELL_NAME
             if current_time > self._fire_seal_until:
                 self._reset_fire_state()
                 return None
@@ -323,6 +349,8 @@ class SpellEngine:
             )
 
         self._update_fire_position(hand_center, profile, current_time)
+        self._debug_scores["fire_candidate_active"] = True
+        self._debug_scores["competing_spell_candidate"] = self.FIRE_SPELL_NAME
         elapsed = current_time - self._fire_started_at
         required_distance = profile["fire_sweep_distance"]
         travel_distance = self._debug_scores["fire_travel_distance"]
@@ -404,19 +432,34 @@ class SpellEngine:
     ) -> SpellResult:
         """Açık ve kısa süre sabit avuçtan Donma büyüsünü üretir."""
         palm_score = self._debug_scores["palm_open_score"]
+        self._debug_scores["freeze_required_time"] = profile["freeze_hold_seconds"]
+        self._debug_scores["freeze_velocity_deadzone"] = profile["freeze_velocity_deadzone"]
+        self._debug_scores["competing_spell_candidate"] = "-"
         raw_palm_ready = open_palm_center is not None and tracker_source == "mediapipe"
         if not raw_palm_ready or palm_score < profile["palm_score_threshold"]:
             self._freeze_missing_frames += 1
+            self._debug_scores["freeze_state"] = "waiting"
+            self._debug_scores["freeze_block_reason"] = (
+                "raw_avuç_yok" if not raw_palm_ready else "palm_score_düşük"
+            )
+            self._debug_scores["freeze_is_stable"] = False
             if self._freeze_missing_frames > profile["freeze_missing_tolerance"]:
                 self._freeze_started_at = None
                 self._last_palm_center = None
-            self._last_palm_center = None
+            held_seconds = 0.0
+            if self._freeze_started_at is not None:
+                held_seconds = max(0.0, current_time - self._freeze_started_at)
+            raw_progress = min(1.0, held_seconds / profile["freeze_hold_seconds"])
+            display_progress = min(raw_progress, palm_score * 0.60)
+            self._debug_scores["freeze_elapsed_time"] = held_seconds
+            self._debug_scores["freeze_progress_raw"] = raw_progress
+            self._debug_scores["freeze_progress_display"] = display_progress
             return self._result(
                 has_active_spell=False,
                 active_spell_name=None,
                 status="Ateş: yatay süpürme bekleniyor",
                 is_on_cooldown=False,
-                progress=0.0 if self._freeze_started_at is None else palm_score * 0.35,
+                progress=display_progress,
             )
 
         self._freeze_missing_frames = 0
@@ -430,23 +473,44 @@ class SpellEngine:
             self._freeze_started_at = current_time
 
         tracker_speed = self._tracker_speed(tracker_velocity)
+        effective_speed = 0.0
         if tracker_source == "mediapipe" and tracker_speed is not None:
-            velocity_score = max(0.0, 1.0 - tracker_speed / profile["freeze_velocity_limit"])
+            effective_speed = max(0.0, tracker_speed - profile["freeze_velocity_deadzone"])
+            velocity_range = max(
+                0.001,
+                profile["freeze_velocity_limit"] - profile["freeze_velocity_deadzone"],
+            )
+            velocity_score = max(0.0, 1.0 - effective_speed / velocity_range)
             stability_score = min(stability_score, velocity_score)
-            if tracker_speed > profile["freeze_velocity_limit"]:
+            if effective_speed > velocity_range:
                 self._freeze_started_at = current_time
 
         self._debug_scores["freeze_stability_score"] = stability_score
+        self._debug_scores["freeze_velocity"] = effective_speed
         self._last_palm_center = stability_center
 
         if self._freeze_started_at is None:
             self._freeze_started_at = current_time
 
         held_seconds = current_time - self._freeze_started_at
-        progress = min(1.0, held_seconds / profile["freeze_hold_seconds"])
-        progress = min(progress, (palm_score + stability_score) / 2)
+        raw_progress = min(1.0, held_seconds / profile["freeze_hold_seconds"])
+        is_stable = stability_score >= profile["freeze_stability_threshold"]
+        quality_cap = 1.0 if is_stable else (palm_score + max(stability_score, 0.80)) / 2
+        display_progress = min(raw_progress, quality_cap)
+        self._debug_scores["freeze_state"] = "charging"
+        self._debug_scores["freeze_elapsed_time"] = held_seconds
+        self._debug_scores["freeze_progress_raw"] = raw_progress
+        self._debug_scores["freeze_progress_display"] = display_progress
+        self._debug_scores["freeze_is_stable"] = is_stable
+        self._debug_scores["freeze_block_reason"] = "-" if is_stable else "hareketli"
 
-        if progress >= 1.0:
+        if (
+            held_seconds >= profile["freeze_hold_seconds"] * profile["freeze_trigger_ratio"]
+            and palm_score >= profile["palm_score_threshold"]
+            and is_stable
+        ):
+            self._debug_scores["freeze_state"] = "triggered"
+            self._debug_scores["freeze_progress_display"] = 1.0
             return self._activate_spell(self.FREEZE_SPELL_NAME, current_time, allowed_spells)
 
         return self._result(
@@ -454,7 +518,7 @@ class SpellEngine:
             active_spell_name=None,
             status="Avuç mührü hazırlanıyor",
             is_on_cooldown=False,
-            progress=progress,
+            progress=display_progress,
         )
 
     def _activate_spell(
@@ -544,6 +608,19 @@ class SpellEngine:
             hand_tracking_quality_message=self._debug_scores["hand_tracking_quality_message"],
             spell_uses_tracker=self._debug_scores["spell_uses_tracker"],
             tracker_source_used=self._debug_scores["tracker_source_used"],
+            freeze_state=self._debug_scores["freeze_state"],
+            freeze_elapsed_time=self._debug_scores["freeze_elapsed_time"],
+            freeze_required_time=self._debug_scores["freeze_required_time"],
+            freeze_progress_raw=self._debug_scores["freeze_progress_raw"],
+            freeze_progress_display=self._debug_scores["freeze_progress_display"],
+            freeze_velocity=self._debug_scores["freeze_velocity"],
+            freeze_velocity_deadzone=self._debug_scores["freeze_velocity_deadzone"],
+            freeze_is_stable=self._debug_scores["freeze_is_stable"],
+            freeze_block_reason=self._debug_scores["freeze_block_reason"],
+            competing_spell_candidate=self._debug_scores["competing_spell_candidate"],
+            fire_candidate_active=self._debug_scores["fire_candidate_active"],
+            fire_start_reason=self._debug_scores["fire_start_reason"],
+            fire_min_distance_met=self._debug_scores["fire_min_distance_met"],
         )
 
     def _remember_hand_center(
@@ -588,6 +665,57 @@ class SpellEngine:
             return 0.0
         return abs(self._hand_center_history[-1][1][0] - self._hand_center_history[0][1][0])
 
+    def _fire_start_candidate(self, profile: dict) -> dict:
+        """Ateş state'ini başlatmak için yeterli yatay hareket olup olmadığını döndürür."""
+        result = {
+            "active": False,
+            "min_distance_met": False,
+            "reason": "yetersiz_geçmiş",
+            "start_center": None,
+        }
+        if len(self._hand_center_history) < 3:
+            return result
+
+        current_time, current_center = self._hand_center_history[-1]
+        best_center = None
+        best_horizontal = 0.0
+        best_vertical = 0.0
+        best_elapsed = 0.0
+        for previous_time, previous_center in self._hand_center_history:
+            elapsed = current_time - previous_time
+            if elapsed < profile["fire_start_min_elapsed"]:
+                continue
+            horizontal = abs(current_center[0] - previous_center[0])
+            vertical = abs(current_center[1] - previous_center[1])
+            if horizontal > best_horizontal:
+                best_horizontal = horizontal
+                best_vertical = vertical
+                best_elapsed = elapsed
+                best_center = previous_center
+
+        self._debug_scores["fire_horizontal_distance"] = best_horizontal
+        result["min_distance_met"] = best_horizontal >= profile["fire_start_min_distance"]
+        if not result["min_distance_met"]:
+            result["reason"] = "küçük_hareket"
+            return result
+
+        if best_elapsed < profile["fire_start_min_elapsed"]:
+            result["reason"] = "çok_kısa"
+            return result
+
+        if best_vertical > profile["fire_max_vertical_distance"]:
+            result["reason"] = "dikey_sapma"
+            return result
+
+        if best_horizontal <= best_vertical * profile["fire_direction_ratio"]:
+            result["reason"] = "yatay_yön_zayıf"
+            return result
+
+        result["active"] = True
+        result["reason"] = "belirgin_yatay_süpürme"
+        result["start_center"] = best_center
+        return result
+
     def _start_fire_tracking(
         self,
         current_time: float,
@@ -609,6 +737,9 @@ class SpellEngine:
         self._debug_scores["fire_missing_time"] = 0.0
         self._debug_scores["fire_swing_detected"] = False
         self._debug_scores["fire_seal_window_active"] = False
+        self._debug_scores["fire_candidate_active"] = False
+        self._debug_scores["fire_start_reason"] = "-"
+        self._debug_scores["fire_min_distance_met"] = False
 
     def _update_fire_position(
         self,
@@ -784,8 +915,13 @@ class SpellEngine:
                 "freeze_hold_seconds": 0.65,
                 "shield_hold_seconds": 0.65,
                 "freeze_stability_distance": 0.10,
+                "freeze_stability_threshold": 0.65,
+                "freeze_trigger_ratio": 0.95,
+                "freeze_velocity_deadzone": 0.18,
                 "freeze_missing_tolerance": 4,
                 "fire_min_elapsed": 0.16,
+                "fire_start_min_elapsed": 0.10,
+                "fire_start_min_distance": 0.075,
                 "fire_min_horizontal_distance": 0.18,
                 "fire_max_vertical_distance": 0.22,
                 "fire_direction_ratio": 1.45,
@@ -803,8 +939,13 @@ class SpellEngine:
                 "freeze_hold_seconds": self.freeze_hold_seconds,
                 "shield_hold_seconds": self.shield_hold_seconds,
                 "freeze_stability_distance": 0.08,
+                "freeze_stability_threshold": 0.72,
+                "freeze_trigger_ratio": 0.95,
+                "freeze_velocity_deadzone": 0.14,
                 "freeze_missing_tolerance": 3,
                 "fire_min_elapsed": 0.18,
+                "fire_start_min_elapsed": 0.12,
+                "fire_start_min_distance": 0.10,
                 "fire_min_horizontal_distance": 0.22,
                 "fire_max_vertical_distance": 0.18,
                 "fire_direction_ratio": 1.8,
@@ -822,8 +963,13 @@ class SpellEngine:
                 "freeze_hold_seconds": 0.95,
                 "shield_hold_seconds": 0.95,
                 "freeze_stability_distance": 0.055,
+                "freeze_stability_threshold": 0.80,
+                "freeze_trigger_ratio": 0.97,
+                "freeze_velocity_deadzone": 0.10,
                 "freeze_missing_tolerance": 2,
                 "fire_min_elapsed": 0.22,
+                "fire_start_min_elapsed": 0.15,
+                "fire_start_min_distance": 0.13,
                 "fire_min_horizontal_distance": 0.28,
                 "fire_max_vertical_distance": 0.14,
                 "fire_direction_ratio": 2.2,
@@ -856,6 +1002,19 @@ class SpellEngine:
             "hand_tracking_quality_message": "",
             "spell_uses_tracker": False,
             "tracker_source_used": "-",
+            "freeze_state": "idle",
+            "freeze_elapsed_time": 0.0,
+            "freeze_required_time": 0.0,
+            "freeze_progress_raw": 0.0,
+            "freeze_progress_display": 0.0,
+            "freeze_velocity": 0.0,
+            "freeze_velocity_deadzone": 0.0,
+            "freeze_is_stable": False,
+            "freeze_block_reason": "-",
+            "competing_spell_candidate": "-",
+            "fire_candidate_active": False,
+            "fire_start_reason": "-",
+            "fire_min_distance_met": False,
         }
 
     def _reset_gesture_state(self, keep_history: bool = True) -> None:

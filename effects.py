@@ -288,7 +288,7 @@ class Effects:
 
         frame_height, frame_width = frame.shape[:2]
         panel_width = min(460, max(330, frame_width // 3))
-        panel_height = min(frame_height - 36, 360)
+        panel_height = min(frame_height - 36, 440)
         panel_x = max(16, frame_width - panel_width - 18)
         panel_y = max(18, frame_height - panel_height - 18)
 
@@ -364,9 +364,20 @@ class Effects:
                     f"cooldown: {debug_info.get('cooldown', '-')}",
                     f"spell_uses_tracker: {debug_info.get('spell_uses_tracker', '-')}",
                     f"tracker_source_used: {debug_info.get('tracker_source_used', '-')}",
+                    f"freeze_state: {debug_info.get('freeze_state', '-')}",
+                    f"freeze_elapsed: {debug_info.get('freeze_elapsed_time', '-')}/{debug_info.get('freeze_required_time', '-')}",
+                    f"freeze_progress: {debug_info.get('freeze_progress_raw', '-')}/{debug_info.get('freeze_progress_display', '-')}",
+                    f"freeze_velocity: {debug_info.get('freeze_velocity', '-')}",
+                    f"freeze_deadzone: {debug_info.get('freeze_velocity_deadzone', '-')}",
+                    f"freeze_is_stable: {debug_info.get('freeze_is_stable', '-')}",
+                    f"freeze_block: {debug_info.get('freeze_block_reason', '-')}",
                     f"palm_open_score: {debug_info.get('palm_open_score', '-')}",
                     f"freeze_stability_score: {debug_info.get('freeze_stability_score', '-')}",
+                    f"competing_candidate: {debug_info.get('competing_spell_candidate', '-')}",
                     f"fire_state: {debug_info.get('fire_state', '-')}",
+                    f"fire_candidate_active: {debug_info.get('fire_candidate_active', '-')}",
+                    f"fire_start_reason: {debug_info.get('fire_start_reason', '-')}",
+                    f"fire_min_distance_met: {debug_info.get('fire_min_distance_met', '-')}",
                     f"fire_travel_distance: {debug_info.get('fire_travel_distance', '-')}",
                     f"fire_required_distance: {debug_info.get('fire_required_distance', '-')}",
                     f"fire_missing_time: {debug_info.get('fire_missing_time', '-')}",

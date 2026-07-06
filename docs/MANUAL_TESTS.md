@@ -113,7 +113,10 @@ Beklenen sonuç:
 - Yetki varsa ilgili büyü tetiklenir.
 - Cooldown büyü spamlenmesini engeller.
 - Yetki yoksa kilitli büyü efekti başlamaz.
+- Donma açık avuç sabit tutulduğunda %98-99 civarında takılı kalmadan tetiklenir.
+- Debug > Büyü / Trial sayfasında `freeze_state`, `freeze_elapsed`, `freeze_progress`, `freeze_velocity`, `freeze_deadzone`, `freeze_is_stable` ve `freeze_block` alanları Donma kararını açıklar.
 - Ateş için çok hızlı savurma gerekmez; küçük titreşimler tetikleme sayılmaz.
+- Minimal el titreşimi `fire_candidate_active` değerini gereksiz yere True yapmamalıdır.
 - Ateş sırasında el çok kısa kaybolursa hazırlık hemen sıfırlanmaz; final tetikleme için yine gerçek açık avuç görülmelidir.
 - Büyü / Trial debug sayfasında `spell_uses_tracker`, `tracker_source_used`, `fire_travel_distance`, `fire_required_distance` ve `fire_seal_window_active` alanları görünür.
 - `tracker_source_used` kısa süre `optical_flow` olsa bile Donma veya Kalkan tek başına tetiklenmemelidir.
