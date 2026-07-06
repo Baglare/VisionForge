@@ -277,7 +277,7 @@ class Effects:
 
         frame_height, frame_width = frame.shape[:2]
         panel_width = min(430, max(320, frame_width // 3))
-        panel_height = 335
+        panel_height = 420
         panel_x = max(16, frame_width - panel_width - 18)
         panel_y = max(18, frame_height - panel_height - 18)
 
@@ -313,6 +313,11 @@ class Effects:
             f"Yüz skoru: {debug_info.get('face_score', '-')}",
             f"FPS: {debug_info.get('fps', '-')}",
             f"Cooldown: {debug_info.get('cooldown', '-')}",
+            f"Trial state: {debug_info.get('trial_state', '-')}",
+            f"Trial step: {debug_info.get('trial_current_step', '-')}",
+            f"Trial required: {debug_info.get('trial_required_spell', '-')}",
+            f"Trial mühürler: {debug_info.get('trial_completed_steps', '-')}",
+            f"Trial mesaj: {debug_info.get('last_trial_message', '-')}",
         ]
         for index, line in enumerate(lines):
             color = (120, 220, 255) if index == 0 else (235, 235, 235)
@@ -436,6 +441,69 @@ class Effects:
             (190, 170, 120),
             font_scale=0.42,
         )
+
+        return frame
+
+    def draw_trial_panel(self, frame, trial_status):
+        """Mühürlü Kapı trial ilerlemesini küçük bir panelde gösterir."""
+        if trial_status is None:
+            return frame
+
+        panel_x = 24
+        panel_y = 118
+        panel_width = 315
+        panel_height = 134
+        padding = 14
+
+        overlay = frame.copy()
+        cv2.rectangle(
+            overlay,
+            (panel_x, panel_y),
+            (panel_x + panel_width, panel_y + panel_height),
+            (18, 22, 32),
+            -1,
+        )
+        cv2.addWeighted(overlay, 0.48, frame, 0.52, 0, frame)
+        cv2.rectangle(
+            frame,
+            (panel_x, panel_y),
+            (panel_x + panel_width, panel_y + panel_height),
+            (150, 170, 220),
+            1,
+        )
+
+        state_text = {
+            "idle": "Kapalı",
+            "active": "Aktif",
+            "completed": "Tamamlandı",
+        }.get(trial_status.state, trial_status.state)
+        required_spell = trial_status.required_spell or "-"
+        lines = [
+            f"Trial: {trial_status.name}",
+            f"Durum: {state_text}",
+            f"Sıradaki Büyü: {required_spell}",
+            f"Mühürler: {trial_status.completed_count}/{trial_status.total_steps}",
+        ]
+        if trial_status.message:
+            lines.append(trial_status.message)
+
+        for index, line in enumerate(lines):
+            color = (255, 220, 120) if index == 0 else (235, 235, 235)
+            if "kilitli" in line.lower() or line == "Yanlış büyü":
+                color = (80, 140, 255)
+            self._draw_text_fit(
+                frame,
+                line,
+                (panel_x + padding, panel_y + 18 + index * 21),
+                panel_width - padding * 2,
+                color,
+                font_scale=0.45 if index else 0.50,
+            )
+
+        self._draw_trial_seals(frame, panel_x + padding, panel_y + panel_height - 24, trial_status)
+
+        if trial_status.is_completed:
+            self._draw_trial_completed_banner(frame)
 
         return frame
 
@@ -672,6 +740,60 @@ class Effects:
         return (
             max(0, min(frame_width - 1, int(center_x * frame_width))),
             max(0, min(frame_height - 1, int(center_y * frame_height))),
+        )
+
+    def _draw_trial_seals(self, frame, x: int, y: int, trial_status) -> None:
+        """Trial panelinde Donma, Ateş ve Kalkan mühür noktalarını çizer."""
+        spells = ["Donma", "Ateş", "Kalkan"]
+        completed = set(trial_status.completed_steps)
+        colors = {
+            "Donma": (255, 220, 120),
+            "Ateş": (40, 160, 255),
+            "Kalkan": (120, 220, 255),
+        }
+
+        for index, spell_name in enumerate(spells):
+            center = (x + 24 + index * 46, y)
+            color = colors.get(spell_name, (220, 220, 220))
+            if spell_name in completed:
+                cv2.circle(frame, center, 10, color, -1, cv2.LINE_AA)
+                cv2.circle(frame, center, 13, (245, 245, 245), 1, cv2.LINE_AA)
+            else:
+                cv2.circle(frame, center, 10, (70, 72, 82), -1, cv2.LINE_AA)
+                cv2.circle(frame, center, 12, color, 1, cv2.LINE_AA)
+
+    def _draw_trial_completed_banner(self, frame) -> None:
+        """Trial tamamlandığında kısa Kapı Açıldı yazısı çizer."""
+        frame_height, frame_width = frame.shape[:2]
+        text = "Kapı Açıldı"
+        banner_width = min(360, frame_width - 48)
+        banner_height = 54
+        banner_x = max(24, (frame_width - banner_width) // 2)
+        banner_y = max(24, frame_height // 2 - banner_height // 2)
+
+        overlay = frame.copy()
+        cv2.rectangle(
+            overlay,
+            (banner_x, banner_y),
+            (banner_x + banner_width, banner_y + banner_height),
+            (24, 24, 34),
+            -1,
+        )
+        cv2.addWeighted(overlay, 0.56, frame, 0.44, 0, frame)
+        cv2.rectangle(
+            frame,
+            (banner_x, banner_y),
+            (banner_x + banner_width, banner_y + banner_height),
+            (255, 220, 120),
+            1,
+        )
+        self._draw_centered_text_fit(
+            frame,
+            text,
+            (banner_x, banner_y + 13),
+            banner_width - 20,
+            (255, 220, 120),
+            font_scale=0.68,
         )
 
     def _draw_spellbook_cover(self, frame, x: int, y: int, width: int, height: int):

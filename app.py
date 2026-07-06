@@ -14,6 +14,7 @@ from effects import Effects
 from enrollment.enrollment_manager import EnrollmentManager
 from guild_profile import find_profile_by_face_label, guest_profile
 from spell_engine import SpellEngine
+from trial_engine import TrialEngine
 
 
 RIGHT_ARROW_KEYS = {83, 2555904, 65363}
@@ -27,6 +28,7 @@ def main() -> None:
     hand_detector = None
     effects = Effects()
     spell_engine = SpellEngine()
+    trial_engine = TrialEngine()
     enrollment_manager = EnrollmentManager()
     face_identity_detector = FaceIdentityDetector()
     guild_seal_detector = GuildSealDetector()
@@ -67,7 +69,7 @@ def main() -> None:
         camera.start()
 
         print("VisionForge kamera modu aktif.")
-        print("Q: ayar menüsü, E: kayıt/import, R: sıfırla, B: büyü kitabı, H: el çizimi, Esc: çıkış.")
+        print("Q: ayar menüsü, E: kayıt/import, T: Trial, R: sıfırla, B: büyü kitabı, H: el çizimi, Esc: çıkış.")
 
         while True:
             processing_frame = camera.read_frame()
@@ -122,6 +124,7 @@ def main() -> None:
                     enrollment_manager,
                     face_identity_detector,
                     face_detector,
+                    trial_engine,
                     allow_enrollment_start=False,
                 )
                 if camera.is_close_key(key):
@@ -157,6 +160,11 @@ def main() -> None:
                 hand_status_text = "El algılandı" if hand_result.detected else "El bekleniyor"
 
             spell_result = spell_engine.update(hand_result, allowed_spells=allowed_spells)
+            active_trial_spell = spell_result.active_spell_name if spell_result.has_active_spell else None
+            trial_status = trial_engine.update(
+                active_spell_name=active_trial_spell,
+                allowed_spells=allowed_spells,
+            )
 
             if ui_settings["show_hand_debug"] and display_hand_result.detected:
                 display_frame = effects.draw_hand_landmarks(display_frame, display_hand_result)
@@ -184,6 +192,7 @@ def main() -> None:
                 verification_status=verification_status,
             )
             display_frame = effects.draw_spell_status_panel(display_frame, spell_result)
+            display_frame = effects.draw_trial_panel(display_frame, trial_status)
 
             if ui_settings["show_spellbook"]:
                 display_frame = effects.draw_spellbook_panel(display_frame, active_profile, page=spellbook_page)
@@ -203,6 +212,11 @@ def main() -> None:
                 "cooldown": f"{spell_result.cooldown_remaining:.1f} sn" if spell_result.cooldown_remaining > 0 else "hazır",
                 "verification_status": verification_status,
                 "verification_mode": "QR + Yüz" if ui_settings["verification_requires_qr"] else "Yalnızca Yüz",
+                "trial_state": trial_status.state,
+                "trial_current_step": trial_status.current_step,
+                "trial_required_spell": trial_status.required_spell or "-",
+                "trial_completed_steps": f"{trial_status.completed_count}/{trial_status.total_steps}",
+                "last_trial_message": trial_status.message,
             }
             display_frame = effects.draw_debug_panel(display_frame, debug_info)
             display_frame = effects.draw_settings_menu(display_frame, ui_settings)
@@ -218,6 +232,7 @@ def main() -> None:
                 enrollment_manager,
                 face_identity_detector,
                 face_detector,
+                trial_engine,
                 allow_enrollment_start=True,
             )
 
@@ -324,6 +339,7 @@ def _handle_key(
     enrollment_manager: EnrollmentManager,
     face_identity_detector: FaceIdentityDetector,
     face_detector: FaceDetector | None,
+    trial_engine: TrialEngine,
     allow_enrollment_start: bool,
 ) -> tuple[str | None, int]:
     """Klavye kısayollarını tek merkezden işler."""
@@ -347,6 +363,9 @@ def _handle_key(
     elif key in (ord("r"), ord("R")):
         verified_face_label = None
         print("Doğrulama oturumu sıfırlandı.")
+    elif key in (ord("t"), ord("T")):
+        trial_engine.start_or_restart()
+        print("Mühürlü Kapı Trial başlatıldı.")
     elif key in (ord("e"), ord("E")) and allow_enrollment_start:
         enrollment_status = enrollment_manager.start(face_detector=face_detector)
         if enrollment_status.message:

@@ -144,6 +144,7 @@ Klavye kısayolları:
 
 - `E`: Yeni büyücü kaydı / yüz eğitimi başlatır.
 - `R`: Doğrulama oturumunu sıfırlar.
+- `T`: Mühürlü Kapı Trial görevini başlatır veya baştan başlatır.
 - `Q`: Ayar menüsünü açar/kapatır.
 - `B`: Büyü Kitabı panelini açar/kapatır.
 - `H`: El landmark/debug çizimini açar/kapatır.
@@ -192,6 +193,20 @@ Büyü Kitabı paneli kapak ve iki sayfalı kitap görünümüyle çalışır. S
 Kamera aynalama ayarı yalnızca ekranda gösterilen görüntüye uygulanır. Yüz algılama, yüz tanıma, QR okuma ve el algılama ham kamera karesiyle çalışır; çizimler ekrandaki aynalama durumuna göre dönüştürülür.
 
 Yüz tanıma modeli, eğitim sırasında yüz örneklerinin aynalanmış kopyalarını da kullanır. Doğrulama sırasında normal ve aynalı yüz kırpımı ayrı ayrı denenir; daha iyi LBPH skoru veren tahmin kullanılır.
+
+## Trial Mode: Mühürlü Kapı
+
+Bu aşamada mevcut büyü sistemi üzerine küçük bir görev modu eklenmiştir. `T` tuşu ile `Mühürlü Kapı` görevi başlatılır veya baştan başlatılır.
+
+Görev sırası:
+
+1. `Donma`
+2. `Ateş`
+3. `Kalkan`
+
+Doğru sıradaki büyü yapıldığında mühür ilerlemesi artar. Yanlış büyü yapılırsa görev sıfırlanmaz; ekranda `Yanlış büyü` mesajı gösterilir. Üç büyü doğru sırayla tamamlanırsa `Kapı Açıldı` ve `Trial tamamlandı` durumu görünür.
+
+Trial Mode mevcut yetki sistemine uyar. Misafir kullanıcı yalnızca `Donma` kullanabildiği için ilk adımı geçebilir, ancak `Ateş` aşamasında daha yüksek yetki gerektiği gösterilir. Tam görev için `Donma`, `Ateş` ve `Kalkan` büyülerine erişimi olan doğrulanmış kullanıcı gerekir.
 
 ## Kurulum
 
