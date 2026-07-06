@@ -1553,3 +1553,230 @@ def _vf_draw_spellbook_panel(self, frame, profile, page=0, *args, **kwargs):
 
 
 Effects.draw_spellbook_panel = _vf_draw_spellbook_panel
+
+
+try:
+    from PIL import Image as _VFImage
+    from PIL import ImageDraw as _VFImageDraw
+    from PIL import ImageFont as _VFImageFont
+except ImportError:
+    _VFImage = None
+    _VFImageDraw = None
+    _VFImageFont = None
+
+import numpy as _vf_np
+
+_ORIGINAL_CV2_PUT_TEXT = cv2.putText
+_ORIGINAL_CV2_GET_TEXT_SIZE = cv2.getTextSize
+_UNICODE_FONT_CACHE = {}
+_UNICODE_FONT_PATHS = [
+    "C:/Windows/Fonts/segoeui.ttf",
+    "C:/Windows/Fonts/arial.ttf",
+    "C:/Windows/Fonts/calibri.ttf",
+]
+
+
+def _unicode_font_size(font_scale):
+    return max(9, int(round(float(font_scale) * 31)))
+
+
+def _load_unicode_font(font_size):
+    if _VFImageFont is None:
+        return None
+
+    font_size = int(font_size)
+    if font_size in _UNICODE_FONT_CACHE:
+        return _UNICODE_FONT_CACHE[font_size]
+
+    for font_path in _UNICODE_FONT_PATHS:
+        try:
+            font = _VFImageFont.truetype(font_path, font_size)
+            _UNICODE_FONT_CACHE[font_size] = font
+            return font
+        except OSError:
+            continue
+
+    font = _VFImageFont.load_default()
+    _UNICODE_FONT_CACHE[font_size] = font
+    return font
+
+
+def _bgr_to_rgba(color):
+    if color is None:
+        return (255, 255, 255, 255)
+
+    if len(color) >= 3:
+        return (
+            int(max(0, min(255, color[2]))),
+            int(max(0, min(255, color[1]))),
+            int(max(0, min(255, color[0]))),
+            255,
+        )
+
+    value = int(max(0, min(255, color[0])))
+    return (value, value, value, 255)
+
+
+def draw_unicode_text(
+    frame,
+    text,
+    position,
+    font_size,
+    color=(255, 255, 255),
+    anchor="ls",
+    stroke_width=0,
+    stroke_fill=None,
+):
+    """OpenCV BGR frame üzerine Türkçe karakter destekli metin çizer."""
+    if _VFImage is None or _VFImageDraw is None or _VFImageFont is None:
+        return frame
+
+    if frame is None:
+        return frame
+
+    text = str(text)
+    if not text:
+        return frame
+
+    font = _load_unicode_font(font_size)
+    if font is None:
+        return frame
+
+    x, y = int(position[0]), int(position[1])
+    stroke_width = max(0, int(stroke_width))
+    fill = _bgr_to_rgba(color)
+    stroke_fill_rgba = _bgr_to_rgba(stroke_fill if stroke_fill is not None else color)
+
+    measure = _VFImage.new("RGBA", (1, 1), (0, 0, 0, 0))
+    measure_draw = _VFImageDraw.Draw(measure)
+
+    try:
+        bbox = measure_draw.textbbox((0, 0), text, font=font, anchor=anchor, stroke_width=stroke_width)
+    except (TypeError, ValueError):
+        anchor = None
+        bbox = measure_draw.textbbox((0, 0), text, font=font, stroke_width=stroke_width)
+
+    padding = max(3, stroke_width + 2)
+    patch_width = max(1, bbox[2] - bbox[0] + padding * 2)
+    patch_height = max(1, bbox[3] - bbox[1] + padding * 2)
+    origin_x = x + bbox[0] - padding
+    origin_y = y + bbox[1] - padding
+
+    patch = _VFImage.new("RGBA", (patch_width, patch_height), (0, 0, 0, 0))
+    draw = _VFImageDraw.Draw(patch)
+    draw_position = (padding - bbox[0], padding - bbox[1])
+
+    if anchor:
+        draw.text(
+            draw_position,
+            text,
+            font=font,
+            fill=fill,
+            anchor=anchor,
+            stroke_width=stroke_width,
+            stroke_fill=stroke_fill_rgba,
+        )
+    else:
+        draw.text(
+            draw_position,
+            text,
+            font=font,
+            fill=fill,
+            stroke_width=stroke_width,
+            stroke_fill=stroke_fill_rgba,
+        )
+
+    frame_height, frame_width = frame.shape[:2]
+    x1 = max(0, origin_x)
+    y1 = max(0, origin_y)
+    x2 = min(frame_width, origin_x + patch_width)
+    y2 = min(frame_height, origin_y + patch_height)
+
+    if x1 >= x2 or y1 >= y2:
+        return frame
+
+    patch_x1 = x1 - origin_x
+    patch_y1 = y1 - origin_y
+    patch_x2 = patch_x1 + (x2 - x1)
+    patch_y2 = patch_y1 + (y2 - y1)
+
+    patch_array = _vf_np.asarray(patch, dtype=_vf_np.float32)[patch_y1:patch_y2, patch_x1:patch_x2]
+    rgb = patch_array[:, :, :3]
+    alpha = patch_array[:, :, 3:4] / 255.0
+    if not alpha.any():
+        return frame
+
+    bgr = rgb[:, :, ::-1]
+    roi = frame[y1:y2, x1:x2].astype(_vf_np.float32)
+    blended = (bgr * alpha) + (roi * (1.0 - alpha))
+    frame[y1:y2, x1:x2] = blended.astype(frame.dtype)
+    return frame
+
+
+def draw_centered_unicode_text(frame, text, center, font_size, color=(255, 255, 255), stroke_width=0, stroke_fill=None):
+    """OpenCV BGR frame üzerine ortalanmış Türkçe karakter destekli metin çizer."""
+    return draw_unicode_text(
+        frame,
+        text,
+        center,
+        font_size,
+        color=color,
+        anchor="mm",
+        stroke_width=stroke_width,
+        stroke_fill=stroke_fill,
+    )
+
+
+def _unicode_get_text_size(text, fontFace, fontScale, thickness=1):
+    if _VFImage is None or _VFImageDraw is None or _VFImageFont is None:
+        return _ORIGINAL_CV2_GET_TEXT_SIZE(text, fontFace, fontScale, thickness)
+
+    font_size = _unicode_font_size(fontScale)
+    font = _load_unicode_font(font_size)
+    if font is None:
+        return _ORIGINAL_CV2_GET_TEXT_SIZE(text, fontFace, fontScale, thickness)
+
+    measure = _VFImage.new("RGBA", (1, 1), (0, 0, 0, 0))
+    draw = _VFImageDraw.Draw(measure)
+    stroke_width = max(0, int(thickness) - 1)
+    bbox = draw.textbbox((0, 0), str(text), font=font, stroke_width=stroke_width)
+    width = max(1, bbox[2] - bbox[0])
+    height = max(1, bbox[3] - bbox[1])
+    baseline = max(2, int(font_size * 0.22))
+    return (width, height), baseline
+
+
+def _unicode_put_text(
+    image,
+    text,
+    org,
+    fontFace,
+    fontScale,
+    color,
+    thickness=1,
+    lineType=None,
+    bottomLeftOrigin=False,
+):
+    if _VFImage is None or _VFImageDraw is None or _VFImageFont is None:
+        if lineType is None:
+            return _ORIGINAL_CV2_PUT_TEXT(image, text, org, fontFace, fontScale, color, thickness)
+        return _ORIGINAL_CV2_PUT_TEXT(image, text, org, fontFace, fontScale, color, thickness, lineType)
+
+    font_size = _unicode_font_size(fontScale)
+    stroke_width = max(0, int(thickness) - 1)
+    stroke_fill = color
+    y = image.shape[0] - int(org[1]) if bottomLeftOrigin else int(org[1])
+    return draw_unicode_text(
+        image,
+        text,
+        (int(org[0]), y),
+        font_size,
+        color=color,
+        anchor="ls",
+        stroke_width=stroke_width,
+        stroke_fill=stroke_fill,
+    )
+
+
+cv2.getTextSize = _unicode_get_text_size
+cv2.putText = _unicode_put_text

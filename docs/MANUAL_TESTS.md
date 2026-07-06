@@ -190,3 +190,11 @@ Beklenen sonuç:
 8. Baglare / S-Seviye doğrulamasında Donma, Ateş ve Kalkan'ın `Açık` göründüğünü kontrol et.
 9. Kilitli büyülerde gereken rütbe bilgisinin yalnızca bilgilendirme olduğunu, yeni rütbe/XP sistemi açmadığını doğrula.
 10. Sol ve sağ oklarla sayfa geçişinin bozulmadığını kontrol et.
+
+## Türkçe Karakter UI Testi
+
+1. Uygulamayı başlat.
+2. Büyü Kitabı kapağında `Büyü Kitabı`, `VisionForge Lonca Arşivi` ve `Sağ ok ile aç` metinlerini kontrol et.
+3. Kitap sayfalarında `Şimşek`, `Alan Mührü` ve `Zaman Kırığı` metinlerinin bozulmadan göründüğünü doğrula.
+4. Kafa üstü etikette `S-Seviye Büyücü` metninin düzgün göründüğünü kontrol et.
+5. Q menüsü, Debug paneli, Sistem Durumu ve Trial panelindeki Türkçe karakterlerin `?` karakterlerine dönüşmediğini doğrula.

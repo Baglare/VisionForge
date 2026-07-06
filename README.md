@@ -332,3 +332,9 @@ Komut çalıştığında kamera penceresi açılır ve canlı görüntünün üz
 Büyü Kitabı kapak ve iki sayfalı kitap görünümünü korur. Kapakta `Büyü Kitabı`, `VisionForge Lonca Arşivi` ve sağ ok yönlendirmesi görünür. Kapaktan sonra her sayfada yalnızca bir büyü gösterilir; iki sayfalı görünümde aynı anda en fazla iki büyü detayı okunur.
 
 Her büyü sayfasında büyü adı, tür, tetikleme, etki, durum ve gereken rütbe bilgisi yer alır. `Durum` aktif profile göre belirlenir: Misafir modunda yalnızca Donma açık görünür; baglare / S-Seviye doğrulamasında Donma, Ateş ve Kalkan açık görünür. Gereken rütbe alanı bu aşamada bilgilendirme amaçlıdır; XP, rütbe yükseltme veya lonca yönetimi sistemi eklenmemiştir.
+
+### Türkçe karakter desteği
+
+OpenCV'nin varsayılan metin çizimi Türkçe karakterleri doğru göstermediği için kullanıcıya görünen UI metinleri Pillow tabanlı Unicode metin çizimiyle işlenir. Uygulama Windows sistem fontlarını sırayla dener: `segoeui.ttf`, `arial.ttf`, `calibri.ttf`. Font dosyaları projeye kopyalanmaz ve Git'e eklenmez.
+
+Kontrol edilmesi gereken örnek metinler: `Büyü Kitabı`, `VisionForge Lonca Arşivi`, `Sağ ok ile aç`, `Şimşek`, `Alan Mührü`, `Zaman Kırığı`, `S-Seviye Büyücü`.
