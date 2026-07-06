@@ -30,6 +30,24 @@ HAND_CONNECTIONS = [
 ]
 
 
+UI_THEME = {
+    "panel_bg": (14, 18, 28),
+    "panel_border": (120, 170, 210),
+    "panel_border_soft": (90, 118, 150),
+    "text": (238, 238, 238),
+    "muted": (175, 178, 186),
+    "accent": (255, 220, 120),
+    "danger": (80, 140, 255),
+    "freeze": (255, 215, 120),
+    "fire": (45, 145, 255),
+    "shield": (135, 215, 255),
+    "panel_alpha": 0.38,
+    "panel_alpha_strong": 0.48,
+    "panel_alpha_light": 0.30,
+    "padding": 14,
+}
+
+
 class Effects:
     """Profil paneli ve ileride eklenecek görsel efektler için temel sınıf."""
 
@@ -43,43 +61,38 @@ class Effects:
         if face_result and face_result.box is not None:
             x, y, width, height = face_result.box
             center_x = x + width // 2
-            tag_y = max(10, y - 66)
-            tag_width = min(240, max(160, width + 60))
+            tag_y = max(10, y - 60)
+            tag_width = min(220, max(150, width + 42))
         else:
             center_x = frame_width // 2
             tag_y = 24
-            tag_width = 210
+            tag_width = 190
 
         tag_x = max(12, min(frame_width - tag_width - 12, center_x - tag_width // 2))
-        tag_height = 58
-        overlay = frame.copy()
-        cv2.rectangle(
-            overlay,
-            (tag_x, tag_y),
-            (tag_x + tag_width, tag_y + tag_height),
-            (18, 22, 32),
-            -1,
-        )
-        cv2.addWeighted(overlay, 0.52, frame, 0.48, 0, frame)
-        cv2.rectangle(
+        tag_height = 52
+        self._draw_panel(
             frame,
-            (tag_x, tag_y),
-            (tag_x + tag_width, tag_y + tag_height),
-            (110, 180, 210),
-            1,
+            tag_x,
+            tag_y,
+            tag_width,
+            tag_height,
+            alpha=UI_THEME["panel_alpha_light"],
+            border_color=UI_THEME["panel_border_soft"],
         )
 
         short_status = self._short_verification_status(verification_status)
         lines = [profile.username, profile.rank, short_status]
         for index, line in enumerate(lines):
-            color = (255, 220, 120) if index == 0 else (245, 245, 245)
+            color = UI_THEME["accent"] if index == 0 else UI_THEME["text"]
+            if index == 2:
+                color = UI_THEME["muted"] if short_status in {"Bekleniyor", "Sınırlı yetki"} else UI_THEME["shield"]
             self._draw_centered_text_fit(
                 frame,
                 line,
-                (tag_x, tag_y + 6 + index * 17),
+                (tag_x, tag_y + 5 + index * 15),
                 tag_width - 20,
                 color,
-                font_scale=0.38,
+                font_scale=0.34 if index else 0.36,
             )
 
         return frame
@@ -235,21 +248,14 @@ class Effects:
         panel_y = 24
         panel_width = 455
         panel_height = 334
-        overlay = frame.copy()
-        cv2.rectangle(
-            overlay,
-            (panel_x, panel_y),
-            (panel_x + panel_width, panel_y + panel_height),
-            (16, 20, 30),
-            -1,
-        )
-        cv2.addWeighted(overlay, 0.78, frame, 0.22, 0, frame)
-        cv2.rectangle(
+        self._draw_panel(
             frame,
-            (panel_x, panel_y),
-            (panel_x + panel_width, panel_y + panel_height),
-            (255, 220, 120),
-            2,
+            panel_x,
+            panel_y,
+            panel_width,
+            panel_height,
+            alpha=UI_THEME["panel_alpha_strong"],
+            border_color=UI_THEME["accent"],
         )
 
         mode = "QR + Yüz" if settings.get("verification_requires_qr", True) else "Yalnızca Yüz"
@@ -269,7 +275,11 @@ class Effects:
         ]
 
         for index, line in enumerate(lines):
-            color = (255, 220, 120) if index == 0 else (245, 245, 245)
+            color = UI_THEME["accent"] if index == 0 else UI_THEME["text"]
+            if ": Açık" in line or "Yalnızca Yüz" in line:
+                color = UI_THEME["shield"]
+            elif ": Kapalı" in line:
+                color = UI_THEME["muted"]
             self._draw_text_fit(
                 frame,
                 line,
@@ -292,21 +302,14 @@ class Effects:
         panel_x = max(16, frame_width - panel_width - 18)
         panel_y = max(18, frame_height - panel_height - 18)
 
-        overlay = frame.copy()
-        cv2.rectangle(
-            overlay,
-            (panel_x, panel_y),
-            (panel_x + panel_width, panel_y + panel_height),
-            (16, 20, 30),
-            -1,
-        )
-        cv2.addWeighted(overlay, 0.58, frame, 0.42, 0, frame)
-        cv2.rectangle(
+        self._draw_panel(
             frame,
-            (panel_x, panel_y),
-            (panel_x + panel_width, panel_y + panel_height),
-            (120, 190, 255),
-            1,
+            panel_x,
+            panel_y,
+            panel_width,
+            panel_height,
+            alpha=UI_THEME["panel_alpha_strong"],
+            border_color=UI_THEME["panel_border"],
         )
 
         page_index = int(debug_info.get("debug_page", 0)) % 4
@@ -394,7 +397,7 @@ class Effects:
         lines = [f"Debug {page_index + 1}/4 - {title}", *page_lines, "D: sonraki sayfa"]
         text_step = max(15, min(20, (panel_height - 34) // max(1, len(lines) - 1)))
         for index, line in enumerate(lines):
-            color = (120, 220, 255) if index == 0 else (235, 235, 235)
+            color = UI_THEME["shield"] if index == 0 else UI_THEME["text"]
             if len(line) > 62:
                 line = f"{line[:59]}..."
             self._draw_text_fit(
@@ -419,21 +422,14 @@ class Effects:
         panel_x = max(16, frame_width - panel_width - 18)
         panel_y = max(18, frame_height - panel_height - 18)
 
-        overlay = frame.copy()
-        cv2.rectangle(
-            overlay,
-            (panel_x, panel_y),
-            (panel_x + panel_width, panel_y + panel_height),
-            (16, 20, 30),
-            -1,
-        )
-        cv2.addWeighted(overlay, 0.58, frame, 0.42, 0, frame)
-        cv2.rectangle(
+        self._draw_panel(
             frame,
-            (panel_x, panel_y),
-            (panel_x + panel_width, panel_y + panel_height),
-            (150, 170, 220),
-            1,
+            panel_x,
+            panel_y,
+            panel_width,
+            panel_height,
+            alpha=UI_THEME["panel_alpha"],
+            border_color=UI_THEME["panel_border_soft"],
         )
 
         self._draw_text_fit(
@@ -441,7 +437,7 @@ class Effects:
             "Sistem Durumu",
             (panel_x + 14, panel_y + 16),
             panel_width - 28,
-            (255, 220, 120),
+            UI_THEME["accent"],
             font_scale=0.58,
         )
 
@@ -450,9 +446,9 @@ class Effects:
             line = f"{item.label}: {status}"
             if not item.exists and item.hint:
                 line = f"{line} - {item.hint}"
-            color = (235, 235, 235) if item.exists else (120, 190, 255)
+            color = UI_THEME["text"] if item.exists else UI_THEME["shield"]
             if item.required and not item.exists:
-                color = (80, 140, 255)
+                color = UI_THEME["danger"]
             self._draw_text_fit(
                 frame,
                 line,
@@ -475,21 +471,14 @@ class Effects:
         panel_x = 24
         panel_y = max(24, frame_height - panel_height - 24)
 
-        overlay = frame.copy()
-        cv2.rectangle(
-            overlay,
-            (panel_x, panel_y),
-            (panel_x + panel_width, panel_y + panel_height),
-            (18, 22, 32),
-            -1,
-        )
-        cv2.addWeighted(overlay, 0.42, frame, 0.58, 0, frame)
-        cv2.rectangle(
+        self._draw_panel(
             frame,
-            (panel_x, panel_y),
-            (panel_x + panel_width, panel_y + panel_height),
-            (150, 170, 220),
-            1,
+            panel_x,
+            panel_y,
+            panel_width,
+            panel_height,
+            alpha=UI_THEME["panel_alpha_light"],
+            border_color=UI_THEME["panel_border_soft"],
         )
         self._draw_text_fit(
             frame,
@@ -516,54 +505,53 @@ class Effects:
                 or spell_result.status == "Lonca yetkisi yetersiz"
             )
         )
-        panel_height = 104 if show_spell_message else 80
-        padding = 14
+        show_progress = bool(spell_result and (spell_result.progress > 0 or spell_result.has_active_spell))
+        panel_height = 118 if show_spell_message or show_progress else 86
+        padding = UI_THEME["padding"]
 
-        overlay = frame.copy()
-        cv2.rectangle(
-            overlay,
-            (panel_x, panel_y),
-            (panel_x + panel_width, panel_y + panel_height),
-            (22, 28, 42),
-            -1,
-        )
-        cv2.addWeighted(overlay, 0.50, frame, 0.50, 0, frame)
-        cv2.rectangle(
+        self._draw_panel(
             frame,
-            (panel_x, panel_y),
-            (panel_x + panel_width, panel_y + panel_height),
-            (150, 170, 220),
-            1,
+            panel_x,
+            panel_y,
+            panel_width,
+            panel_height,
+            alpha=UI_THEME["panel_alpha"],
+            border_color=UI_THEME["panel_border_soft"],
         )
 
         active_spell = "Yok"
         cooldown_text = "Hazır"
+        prep_text = "Hazırlık: Yok"
         progress = 0.0
+        progress_spell = None
         if spell_result:
             if spell_result.has_active_spell and spell_result.active_spell_name:
                 active_spell = spell_result.active_spell_name
+                prep_text = "Hazırlık: Tetiklendi"
+                progress_spell = spell_result.active_spell_name
             if spell_result.cooldown_remaining > 0:
                 cooldown_text = f"{spell_result.cooldown_remaining:.1f} sn"
             progress = spell_result.progress
+            if not spell_result.has_active_spell and progress > 0:
+                prep_text = f"{spell_result.status}: %{int(progress * 100)}"
+                progress_spell = self._spell_name_from_status(spell_result.status)
 
         lines = [
             f"Aktif Büyü: {active_spell}",
             f"Cooldown: {cooldown_text}",
+            prep_text,
         ]
         if spell_result and not spell_result.has_active_spell and spell_result.message:
-            lines.append(spell_result.message)
+            lines[-1] = spell_result.message
         elif spell_result and not spell_result.has_active_spell and spell_result.status == "Lonca yetkisi yetersiz":
-            lines.append("Lonca yetkisi yetersiz")
-        elif spell_result and not spell_result.has_active_spell and progress > 0:
-            if spell_result.status.startswith("Ateş"):
-                lines.append(spell_result.status)
-            else:
-                lines.append(f"Hazırlık: %{int(progress * 100)}")
+            lines[-1] = "Lonca yetkisi yetersiz"
 
         text_x = panel_x + padding
         text_y = panel_y + 27
         for index, line in enumerate(lines):
-            color = (245, 245, 245) if index != 0 else (255, 220, 120)
+            color = UI_THEME["text"] if index != 0 else UI_THEME["accent"]
+            if index == 2 and line != "Hazırlık: Yok":
+                color = self._spell_color(progress_spell)
             self._draw_text_fit(
                 frame=frame,
                 text=line,
@@ -571,6 +559,19 @@ class Effects:
                 max_width=panel_width - padding * 2,
                 color=color,
                 font_scale=0.54,
+            )
+
+        if show_progress:
+            bar_x = panel_x + padding
+            bar_y = panel_y + panel_height - 22
+            self._draw_progress_bar(
+                frame,
+                bar_x,
+                bar_y,
+                panel_width - padding * 2,
+                8,
+                progress,
+                self._spell_color(progress_spell),
             )
 
         return frame
@@ -591,9 +592,16 @@ class Effects:
         left_rect = (book_x, book_y, page_width, book_height)
         right_rect = (book_x + page_width + page_gap, book_y, page_width, book_height)
 
-        overlay = frame.copy()
-        cv2.rectangle(overlay, (book_x, book_y), (book_x + book_width, book_y + book_height), (30, 26, 20), -1)
-        cv2.addWeighted(overlay, 0.42, frame, 0.58, 0, frame)
+        self._draw_panel(
+            frame,
+            book_x,
+            book_y,
+            book_width,
+            book_height,
+            alpha=0.24,
+            bg_color=(30, 26, 20),
+            border_color=(115, 95, 65),
+        )
         self._draw_book_page(frame, left_rect, f"Sayfa {page * 2 - 1}")
         self._draw_book_page(frame, right_rect, f"Sayfa {page * 2}")
 
@@ -627,23 +635,16 @@ class Effects:
         panel_y = 118
         panel_width = 315
         panel_height = 134
-        padding = 14
+        padding = UI_THEME["padding"]
 
-        overlay = frame.copy()
-        cv2.rectangle(
-            overlay,
-            (panel_x, panel_y),
-            (panel_x + panel_width, panel_y + panel_height),
-            (18, 22, 32),
-            -1,
-        )
-        cv2.addWeighted(overlay, 0.48, frame, 0.52, 0, frame)
-        cv2.rectangle(
+        self._draw_panel(
             frame,
-            (panel_x, panel_y),
-            (panel_x + panel_width, panel_y + panel_height),
-            (150, 170, 220),
-            1,
+            panel_x,
+            panel_y,
+            panel_width,
+            panel_height,
+            alpha=UI_THEME["panel_alpha"],
+            border_color=UI_THEME["panel_border_soft"],
         )
 
         state_text = {
@@ -662,9 +663,9 @@ class Effects:
             lines.append(trial_status.message)
 
         for index, line in enumerate(lines):
-            color = (255, 220, 120) if index == 0 else (235, 235, 235)
+            color = UI_THEME["accent"] if index == 0 else UI_THEME["text"]
             if "kilitli" in line.lower() or line == "Yanlış büyü":
-                color = (80, 140, 255)
+                color = UI_THEME["danger"]
             self._draw_text_fit(
                 frame,
                 line,
@@ -674,7 +675,7 @@ class Effects:
                 font_scale=0.45 if index else 0.50,
             )
 
-        self._draw_trial_seals(frame, panel_x + padding, panel_y + panel_height - 24, trial_status)
+        self._draw_trial_seals(frame, panel_x + padding, panel_y + panel_height - 28, trial_status)
 
         if trial_status.is_completed:
             self._draw_trial_completed_banner(frame)
@@ -927,14 +928,28 @@ class Effects:
         }
 
         for index, spell_name in enumerate(spells):
-            center = (x + 24 + index * 46, y)
+            center = (x + 26 + index * 76, y - 6)
             color = colors.get(spell_name, (220, 220, 220))
+            is_completed = spell_name in completed
+            is_next = trial_status.state == "active" and trial_status.required_spell == spell_name
+            if is_next:
+                cv2.circle(frame, center, 16, (55, 58, 72), -1, cv2.LINE_AA)
+                cv2.circle(frame, center, 18, UI_THEME["accent"], 1, cv2.LINE_AA)
             if spell_name in completed:
                 cv2.circle(frame, center, 10, color, -1, cv2.LINE_AA)
-                cv2.circle(frame, center, 13, (245, 245, 245), 1, cv2.LINE_AA)
+                cv2.circle(frame, center, 14, UI_THEME["text"], 1, cv2.LINE_AA)
             else:
-                cv2.circle(frame, center, 10, (70, 72, 82), -1, cv2.LINE_AA)
-                cv2.circle(frame, center, 12, color, 1, cv2.LINE_AA)
+                cv2.circle(frame, center, 9, (58, 62, 72), -1, cv2.LINE_AA)
+                cv2.circle(frame, center, 12, color if is_next else (88, 92, 105), 1, cv2.LINE_AA)
+            label_color = color if is_completed or is_next else UI_THEME["muted"]
+            self._draw_centered_text_fit(
+                frame,
+                spell_name,
+                (center[0] - 34, y + 8),
+                68,
+                label_color,
+                font_scale=0.30,
+            )
 
     def _draw_trial_completed_banner(self, frame) -> None:
         """Trial tamamlandığında kısa Kapı Açıldı yazısı çizer."""
@@ -945,44 +960,43 @@ class Effects:
         banner_x = max(24, (frame_width - banner_width) // 2)
         banner_y = max(24, frame_height // 2 - banner_height // 2)
 
-        overlay = frame.copy()
-        cv2.rectangle(
-            overlay,
-            (banner_x, banner_y),
-            (banner_x + banner_width, banner_y + banner_height),
-            (24, 24, 34),
-            -1,
-        )
-        cv2.addWeighted(overlay, 0.56, frame, 0.44, 0, frame)
-        cv2.rectangle(
+        self._draw_panel(
             frame,
-            (banner_x, banner_y),
-            (banner_x + banner_width, banner_y + banner_height),
-            (255, 220, 120),
-            1,
+            banner_x,
+            banner_y,
+            banner_width,
+            banner_height,
+            alpha=0.46,
+            border_color=UI_THEME["accent"],
         )
         self._draw_centered_text_fit(
             frame,
             text,
             (banner_x, banner_y + 13),
             banner_width - 20,
-            (255, 220, 120),
+            UI_THEME["accent"],
             font_scale=0.68,
         )
 
     def _draw_spellbook_cover(self, frame, x: int, y: int, width: int, height: int):
         """Büyü kitabı kapak sayfasını çizer."""
-        overlay = frame.copy()
-        cv2.rectangle(overlay, (x, y), (x + width, y + height), (24, 20, 34), -1)
-        cv2.addWeighted(overlay, 0.60, frame, 0.40, 0, frame)
-        cv2.rectangle(frame, (x, y), (x + width, y + height), (220, 190, 120), 2)
-        cv2.rectangle(frame, (x + 16, y + 16), (x + width - 16, y + height - 16), (120, 220, 255), 1)
+        self._draw_panel(
+            frame,
+            x,
+            y,
+            width,
+            height,
+            alpha=0.42,
+            bg_color=(24, 20, 34),
+            border_color=UI_THEME["accent"],
+        )
+        cv2.rectangle(frame, (x + 16, y + 16), (x + width - 16, y + height - 16), UI_THEME["shield"], 1)
         self._draw_text_fit(
             frame,
             "Büyü Kitabı",
             (x + 34, y + height // 2 - 26),
             width - 68,
-            (255, 220, 120),
+            UI_THEME["accent"],
             font_scale=0.92,
         )
         self._draw_text_fit(
@@ -990,7 +1004,7 @@ class Effects:
             "Sağ ok ile aç",
             (x + 36, y + height // 2 + 22),
             width - 72,
-            (235, 235, 235),
+            UI_THEME["text"],
             font_scale=0.52,
         )
         return frame
@@ -998,11 +1012,17 @@ class Effects:
     def _draw_book_page(self, frame, rect: tuple[int, int, int, int], title: str) -> None:
         """Tek kitap sayfasını çizer."""
         x, y, width, height = rect
-        overlay = frame.copy()
-        cv2.rectangle(overlay, (x, y), (x + width, y + height), (45, 38, 28), -1)
-        cv2.addWeighted(overlay, 0.56, frame, 0.44, 0, frame)
-        cv2.rectangle(frame, (x, y), (x + width, y + height), (190, 165, 105), 1)
-        self._draw_text_fit(frame, title, (x + 12, y + 16), width - 24, (255, 220, 120), font_scale=0.48)
+        self._draw_panel(
+            frame,
+            x,
+            y,
+            width,
+            height,
+            alpha=0.38,
+            bg_color=(45, 38, 28),
+            border_color=(190, 165, 105),
+        )
+        self._draw_text_fit(frame, title, (x + 12, y + 16), width - 24, UI_THEME["accent"], font_scale=0.48)
 
     def _draw_spell_entries(self, frame, rect: tuple[int, int, int, int], entries: list[dict]) -> None:
         """Kitap sayfasındaki büyü girişlerini çizer."""
@@ -1013,7 +1033,7 @@ class Effects:
             return
 
         for entry in entries:
-            status_color = (120, 220, 255) if entry["unlocked"] else (150, 145, 150)
+            status_color = UI_THEME["shield"] if entry["unlocked"] else UI_THEME["muted"]
             title = entry["name"] if entry["unlocked"] else f"{entry['name']}  Kilitli"
             self._draw_text_fit(frame, title, (x + 12, text_y), width - 24, status_color, font_scale=0.56)
             text_y += 32
@@ -1032,7 +1052,7 @@ class Effects:
                 ]
 
             for detail in detail_lines:
-                self._draw_text_fit(frame, detail, (x + 12, text_y), width - 24, (235, 235, 235), font_scale=0.40)
+                self._draw_text_fit(frame, detail, (x + 12, text_y), width - 24, UI_THEME["text"], font_scale=0.40)
                 text_y += 28
 
     def _spellbook_entries(self, profile) -> list[dict]:
@@ -1093,10 +1113,10 @@ class Effects:
         """Profil etiketi için doğrulama durumunu kısaltır."""
         mapping = {
             "Bekleniyor": "Bekleniyor",
-            "Misafir": "Misafir",
+            "Misafir": "Sınırlı yetki",
             "Yüz tanındı, mühür bekleniyor": "Mühür bekleniyor",
             "Yüz tanındı": "Yüz tanındı",
-            "Yüz + lonca mührü onaylandı": "Yüz + mühür onaylandı",
+            "Yüz + lonca mührü onaylandı": "Mühür onaylandı",
             "Mühür kullanıcıyla eşleşmedi": "Mühür eşleşmedi",
             "Yüz tanıma pasif": "Yüz tanıma pasif",
         }
@@ -1133,6 +1153,66 @@ class Effects:
             2,
         )
         return frame
+
+    def _draw_panel(
+        self,
+        frame,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+        alpha: float | None = None,
+        bg_color=None,
+        border_color=None,
+        border_thickness: int = 1,
+    ) -> None:
+        """Ortak yarı saydam panel arka planı ve ince sınır çizer."""
+        alpha = UI_THEME["panel_alpha"] if alpha is None else alpha
+        bg_color = UI_THEME["panel_bg"] if bg_color is None else bg_color
+        border_color = UI_THEME["panel_border"] if border_color is None else border_color
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (x, y), (x + width, y + height), bg_color, -1)
+        cv2.addWeighted(overlay, alpha, frame, 1.0 - alpha, 0, frame)
+        cv2.rectangle(frame, (x, y), (x + width, y + height), border_color, border_thickness)
+
+    def _draw_progress_bar(
+        self,
+        frame,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+        progress: float,
+        color,
+    ) -> None:
+        """Hazırlık durumunu küçük ve sade bir bar olarak gösterir."""
+        progress = max(0.0, min(1.0, progress or 0.0))
+        cv2.rectangle(frame, (x, y), (x + width, y + height), (48, 52, 64), -1)
+        fill_width = int(width * progress)
+        if fill_width > 0:
+            cv2.rectangle(frame, (x, y), (x + fill_width, y + height), color, -1)
+        cv2.rectangle(frame, (x, y), (x + width, y + height), UI_THEME["panel_border_soft"], 1)
+
+    def _spell_color(self, spell_name: str | None):
+        """Büyü adına göre kullanıcı arayüzü vurgu rengini döndürür."""
+        if spell_name == "Donma":
+            return UI_THEME["freeze"]
+        if spell_name == "Ateş":
+            return UI_THEME["fire"]
+        if spell_name == "Kalkan":
+            return UI_THEME["shield"]
+        return UI_THEME["accent"]
+
+    def _spell_name_from_status(self, status: str) -> str | None:
+        """Hazırlık durumu metninden büyü adını çıkarır."""
+        if not status:
+            return None
+        for spell_name in ("Donma", "Ateş", "Kalkan"):
+            if status.startswith(spell_name) or spell_name in status:
+                return spell_name
+        if "Avuç" in status:
+            return "Donma"
+        return None
 
     def _draw_centered_text_fit(
         self,

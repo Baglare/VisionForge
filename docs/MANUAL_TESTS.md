@@ -113,6 +113,8 @@ Beklenen sonuç:
 - Yetki varsa ilgili büyü tetiklenir.
 - Cooldown büyü spamlenmesini engeller.
 - Yetki yoksa kilitli büyü efekti başlamaz.
+- Sol üst büyü panelinde hazırlık durumu metinle birlikte küçük progress bar olarak görünür.
+- Donma hazırlığında bar soğuk tonlu, Ateş hazırlığında sıcak tonlu, Kalkan hazırlığında mavi/altın tonlu görünür.
 - Donma açık avuç sabit tutulduğunda %98-99 civarında takılı kalmadan tetiklenir.
 - Debug > Büyü / Trial sayfasında `freeze_state`, `freeze_elapsed`, `freeze_progress`, `freeze_velocity`, `freeze_deadzone`, `freeze_is_stable` ve `freeze_block` alanları Donma kararını açıklar.
 - Ateş için çok hızlı savurma gerekmez; küçük titreşimler tetikleme sayılmaz.
@@ -135,6 +137,7 @@ Beklenen sonuç:
 - Kitap kapak sayfasıyla açılır.
 - Her sayfada bir büyü bilgisi görünür.
 - Açık/kilitli büyüler aktif yetkiye göre değişir.
+- Kitap paneli kamera görüntüsünü tamamen kapatmayacak kadar saydam kalır.
 
 ## Trial Mode testi
 
@@ -147,6 +150,8 @@ Adımlar:
 Beklenen sonuç:
 - Trial paneli sadece aktifken veya tamamlandıktan sonraki kısa sonuç süresinde görünür.
 - Doğru sırada mühür ilerlemesi artar.
+- Donma, Ateş ve Kalkan mühürleri ayrı göstergeler olarak görünür.
+- Açılmamış mühürler soluk, açılmış mühürler parlak, sıradaki mühür hafif vurgulu görünür.
 - Yanlış büyü görevi sıfırlamaz.
 - Tamamlanınca `Kapı Açıldı` / `Trial tamamlandı` görünür ve panel kısa süre sonra kaybolur.
 
