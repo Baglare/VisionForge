@@ -277,7 +277,7 @@ class Effects:
 
         frame_height, frame_width = frame.shape[:2]
         panel_width = min(430, max(320, frame_width // 3))
-        panel_height = 245
+        panel_height = 335
         panel_x = max(16, frame_width - panel_width - 18)
         panel_y = max(18, frame_height - panel_height - 18)
 
@@ -304,11 +304,15 @@ class Effects:
             f"El: {debug_info.get('hand_status', '-')}",
             f"QR: {debug_info.get('qr_status', '-')}",
             f"Yüz tanıma: {debug_info.get('identity_status', '-')}",
+            f"Tanınan kullanıcı: {debug_info.get('recognized_user', '-')}",
             f"Aktif profil: {debug_info.get('active_profile', '-')}",
             f"Doğrulama modu: {debug_info.get('verification_mode', '-')}",
+            f"Doğrulama: {debug_info.get('verification_status', '-')}",
+            f"İzinli büyüler: {debug_info.get('allowed_spells', '-')}",
+            f"Kilit denemesi: {debug_info.get('attempted_locked_spell', '-')}",
+            f"Yüz skoru: {debug_info.get('face_score', '-')}",
             f"FPS: {debug_info.get('fps', '-')}",
             f"Cooldown: {debug_info.get('cooldown', '-')}",
-            f"Doğrulama: {debug_info.get('verification_status', '-')}",
         ]
         for index, line in enumerate(lines):
             color = (120, 220, 255) if index == 0 else (235, 235, 235)

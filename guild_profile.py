@@ -7,6 +7,9 @@ from pathlib import Path
 
 
 DEFAULT_LOCKED_SPELLS = ["Ateş", "Kalkan", "Şimşek", "Alan Mührü", "Zaman Kırığı"]
+BAGLARE_FACE_LABEL = "baglare"
+BAGLARE_UNLOCKED_SPELLS = ["Donma", "Ateş", "Kalkan"]
+BAGLARE_LOCKED_SPELLS = ["Şimşek", "Alan Mührü", "Zaman Kırığı"]
 
 
 @dataclass
@@ -106,13 +109,69 @@ def display_username(username: str) -> str:
     return cleaned
 
 
+def normalize_profile(profile: GuildProfile) -> GuildProfile:
+    """Özel demo profilleri ve boş açık büyü listelerini tek yerde düzeltir."""
+    if _is_baglare_profile(profile):
+        return GuildProfile(
+            username="baglare",
+            rank="S-Seviye Büyücü",
+            unlocked_spells=BAGLARE_UNLOCKED_SPELLS.copy(),
+            locked_spells=BAGLARE_LOCKED_SPELLS.copy(),
+            guild_seal_code=profile.guild_seal_code,
+            face_label=BAGLARE_FACE_LABEL,
+            is_guest=False,
+        )
+
+    unlocked_spells = profile.unlocked_spells or ["Donma"]
+    locked_spells = [spell for spell in profile.locked_spells if spell not in unlocked_spells]
+    return GuildProfile(
+        username=profile.username,
+        rank=profile.rank,
+        unlocked_spells=unlocked_spells,
+        locked_spells=locked_spells,
+        guild_seal_code=profile.guild_seal_code,
+        face_label=profile.face_label or profile.username,
+        is_guest=profile.is_guest,
+    )
+
+
+def repair_local_profiles() -> None:
+    """Yerel profillerde eski baglare yetkisi varsa dosyayı otomatik düzeltir."""
+    path = local_profiles_path()
+    if not path.exists():
+        return
+
+    data = json.loads(path.read_text(encoding="utf-8"))
+    raw_profiles = [GuildProfile.from_dict(item) for item in data.get("profiles", [])]
+    normalized_profiles = [normalize_profile(profile) for profile in raw_profiles]
+    raw_payload = {"profiles": [profile.to_dict() for profile in raw_profiles]}
+    normalized_payload = {"profiles": [profile.to_dict() for profile in normalized_profiles]}
+
+    if raw_payload != normalized_payload:
+        path.write_text(json.dumps(normalized_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _is_baglare_profile(profile: GuildProfile) -> bool:
+    """Profilin baglare demo kullanıcısına ait olup olmadığını döndürür."""
+    return _profile_key(profile.username) == BAGLARE_FACE_LABEL or _profile_key(profile.face_label) == BAGLARE_FACE_LABEL
+
+
+def _profile_key(value: str | None) -> str:
+    """Karşılaştırma için güvenli profil anahtarı üretir."""
+    if not value:
+        return ""
+    cleaned = value.strip().lower()
+    cleaned = re.sub(r"[^a-z0-9_]+", "_", cleaned)
+    return re.sub(r"_+", "_", cleaned).strip("_")
+
+
 def load_profiles_from_file(path: Path) -> list[GuildProfile]:
     """Verilen JSON dosyasındaki profilleri okur."""
     if not path.exists():
         return []
 
     data = json.loads(path.read_text(encoding="utf-8"))
-    return [GuildProfile.from_dict(profile) for profile in data.get("profiles", [])]
+    return [normalize_profile(GuildProfile.from_dict(profile)) for profile in data.get("profiles", [])]
 
 
 def load_all_profiles() -> list[GuildProfile]:
@@ -122,6 +181,7 @@ def load_all_profiles() -> list[GuildProfile]:
     for profile in load_profiles_from_file(default_profiles_path()):
         profiles_by_key[profile.face_label or profile.username] = profile
 
+    repair_local_profiles()
     for profile in load_profiles_from_file(local_profiles_path()):
         profiles_by_key[profile.face_label or profile.username] = profile
 
@@ -166,18 +226,20 @@ def find_profile_by_seal_code(seal_code: str | None) -> GuildProfile | None:
 def build_local_profile(username: str, guild_seal_code: str) -> GuildProfile:
     """Yeni kayıt için varsayılan yerel profil oluşturur."""
     safe_name = sanitize_username(username)
-    return GuildProfile(
-        username=display_username(username),
-        rank="C-Seviye Büyücü",
-        unlocked_spells=["Donma"],
-        locked_spells=DEFAULT_LOCKED_SPELLS.copy(),
+    profile = GuildProfile(
+        username="baglare" if safe_name == BAGLARE_FACE_LABEL else display_username(username),
+        rank="S-Seviye Büyücü" if safe_name == BAGLARE_FACE_LABEL else "C-Seviye Büyücü",
+        unlocked_spells=BAGLARE_UNLOCKED_SPELLS.copy() if safe_name == BAGLARE_FACE_LABEL else ["Donma"],
+        locked_spells=BAGLARE_LOCKED_SPELLS.copy() if safe_name == BAGLARE_FACE_LABEL else DEFAULT_LOCKED_SPELLS.copy(),
         guild_seal_code=guild_seal_code,
         face_label=safe_name,
     )
+    return normalize_profile(profile)
 
 
 def save_local_profile(profile: GuildProfile) -> None:
     """Yerel kullanıcı profilini local_profiles.json içine ekler veya günceller."""
+    profile = normalize_profile(profile)
     path = local_profiles_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     profiles = load_profiles_from_file(path)

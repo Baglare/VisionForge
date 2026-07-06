@@ -194,7 +194,11 @@ def main() -> None:
                 "hand_status": hand_status_text,
                 "qr_status": auth_state["qr_status"],
                 "identity_status": auth_state["identity_status"],
+                "recognized_user": auth_state.get("recognized_user", "-"),
                 "active_profile": f"{active_profile.username} / {active_profile.rank}",
+                "allowed_spells": ", ".join(allowed_spells) if allowed_spells else "-",
+                "attempted_locked_spell": _attempted_locked_spell_debug(spell_result),
+                "face_score": auth_state.get("face_score", "-"),
                 "fps": f"{fps:.1f}",
                 "cooldown": f"{spell_result.cooldown_remaining:.1f} sn" if spell_result.cooldown_remaining > 0 else "hazır",
                 "verification_status": verification_status,
@@ -390,11 +394,13 @@ def _resolve_auth_state(
 
     base = {
         "active_profile": guest,
-        "allowed_spells": [],
+        "allowed_spells": guest.unlocked_spells,
         "verification_status": "Bekleniyor",
         "verified_face_label": None,
         "identity_status": "yüz yok",
         "qr_status": "okunmadı",
+        "recognized_user": "-",
+        "face_score": "-",
     }
 
     if not face_result.detected or face_result.box is None:
@@ -422,6 +428,7 @@ def _resolve_auth_state(
         return base
 
     identity_status = _identity_debug_status(identity_result)
+    face_score = _face_score_debug(identity_result)
     candidate_profile = find_profile_by_face_label(identity_result.face_label)
     if not identity_result.matched or candidate_profile is None:
         seal_result = guild_seal_detector.detect(frame, None) if verification_requires_qr else None
@@ -431,6 +438,8 @@ def _resolve_auth_state(
                 "verification_status": "Mühür kullanıcıyla eşleşmedi" if seal_result and seal_result.mismatch else "Misafir",
                 "identity_status": identity_status,
                 "qr_status": _qr_debug_status(seal_result),
+                "recognized_user": identity_result.face_label or "-",
+                "face_score": face_score,
             }
         )
         return base
@@ -443,6 +452,8 @@ def _resolve_auth_state(
             "verified_face_label": candidate_profile.face_label,
             "identity_status": identity_status,
             "qr_status": "devre dışı",
+            "recognized_user": candidate_profile.username,
+            "face_score": face_score,
         }
 
     seal_result = guild_seal_detector.detect(frame, candidate_profile)
@@ -454,6 +465,8 @@ def _resolve_auth_state(
             "verified_face_label": None,
             "identity_status": identity_status,
             "qr_status": _qr_debug_status(seal_result),
+            "recognized_user": candidate_profile.username,
+            "face_score": face_score,
         }
 
     if seal_result.matched or verified_face_label == candidate_profile.face_label:
@@ -464,6 +477,8 @@ def _resolve_auth_state(
             "verified_face_label": candidate_profile.face_label,
             "identity_status": identity_status,
             "qr_status": _qr_debug_status(seal_result) if seal_result.detected else "oturum onaylı",
+            "recognized_user": candidate_profile.username,
+            "face_score": face_score,
         }
 
     return {
@@ -473,6 +488,8 @@ def _resolve_auth_state(
         "verified_face_label": None,
         "identity_status": identity_status,
         "qr_status": _qr_debug_status(seal_result),
+        "recognized_user": candidate_profile.username,
+        "face_score": face_score,
     }
 
 
@@ -484,6 +501,32 @@ def _identity_debug_status(identity_result) -> str:
         score = f"{identity_result.confidence:.1f}"
     match_status = "eşleşti" if identity_result.matched else "eşleşmedi"
     return f"{label} / {score} / {match_status}"
+
+
+def _face_score_debug(identity_result) -> str:
+    """Debug paneli için yalnızca yüz tanıma skorunu döndürür."""
+    if identity_result.confidence is None:
+        return "-"
+    return f"{identity_result.confidence:.1f}"
+
+
+def _attempted_locked_spell_debug(spell_result) -> str:
+    """Debug panelinde kilitli büyü denemesini güvenli şekilde gösterir."""
+    if spell_result is None:
+        return "-"
+
+    for attribute_name in ("attempted_spell_name", "locked_spell_name", "requested_spell_name"):
+        value = getattr(spell_result, attribute_name, None)
+        if value:
+            return str(value)
+
+    status = getattr(spell_result, "status", "")
+    message = getattr(spell_result, "message", "")
+    if status == "Lonca yetkisi yetersiz":
+        return message or status
+    if "kilit" in str(message).lower():
+        return str(message)
+    return "-"
 
 
 def _qr_debug_status(seal_result) -> str:
