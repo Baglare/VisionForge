@@ -177,3 +177,16 @@ Beklenen sonuç:
 - Debug paneli tek uzun liste yerine sayfalara bölünür.
 - El / Tracker sayfasında raw el sayısı, takip kaynağı, kalite uyarıları, brightness ve blur bilgisi görünür.
 - `0` doğrulama oturumunu sıfırlar.
+
+## Büyü Kitabı İçerik Testi
+
+1. Uygulamayı başlat.
+2. `B` ile Büyü Kitabı'nı aç.
+3. Kapakta `Büyü Kitabı`, `VisionForge Lonca Arşivi` ve `Sağ ok ile aç` yazılarını kontrol et.
+4. Sağ ok ile kitap sayfalarına geç.
+5. Her sayfada yalnızca bir büyünün detaylarının göründüğünü doğrula.
+6. Donma sayfasında tür, tetikleme, etki, durum ve gereken rütbe alanlarını kontrol et.
+7. Misafir modunda Donma'nın `Açık`, Ateş ve Kalkan dahil diğer büyülerin `Kilitli` göründüğünü doğrula.
+8. Baglare / S-Seviye doğrulamasında Donma, Ateş ve Kalkan'ın `Açık` göründüğünü kontrol et.
+9. Kilitli büyülerde gereken rütbe bilgisinin yalnızca bilgilendirme olduğunu, yeni rütbe/XP sistemi açmadığını doğrula.
+10. Sol ve sağ oklarla sayfa geçişinin bozulmadığını kontrol et.

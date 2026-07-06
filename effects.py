@@ -1350,3 +1350,206 @@ class Effects:
     def apply_spell_effect(self, frame, spell_name: str):
         """Büyü etkisini görüntüye uygulamak için yer tutucu."""
         return frame
+
+
+_SPELLBOOK_DETAILS = {
+    "Donma": {
+        "type": "Sabit mühür",
+        "trigger": "Avucu açık tut",
+        "effect": "Kısa süreli soğuk büyü aktivasyonu",
+        "required_rank": "Misafir Büyücü",
+    },
+    "Ateş": {
+        "type": "Hareket zinciri",
+        "trigger": "Kontrollü yatay süpürme + avuç göster",
+        "effect": "Kısa ateş patlaması",
+        "required_rank": "S-Seviye Büyücü",
+    },
+    "Kalkan": {
+        "type": "Çift el mührü",
+        "trigger": "İki açık el göster",
+        "effect": "Koruyucu kalkan aktivasyonu",
+        "required_rank": "S-Seviye Büyücü",
+    },
+    "Şimşek": {
+        "type": "Yüksek hız mührü",
+        "trigger": "Kilitli",
+        "effect": "İleri seviye saldırı büyüsü",
+        "required_rank": "S+ Seviye",
+    },
+    "Alan Mührü": {
+        "type": "Bölgesel kontrol",
+        "trigger": "Kilitli",
+        "effect": "Alan etkili mühür aktivasyonu",
+        "required_rank": "A-Seviye veya üstü",
+    },
+    "Zaman Kırığı": {
+        "type": "Üst düzey mühür",
+        "trigger": "Kilitli",
+        "effect": "Zaman temalı ileri seviye büyü",
+        "required_rank": "S+ Seviye",
+    },
+}
+
+_SPELLBOOK_ORDER = [
+    "Donma",
+    "Ateş",
+    "Kalkan",
+    "Şimşek",
+    "Alan Mührü",
+    "Zaman Kırığı",
+]
+
+
+def _vf_spellbook_spells(profile):
+    open_spells = set(getattr(profile, "open_spells", None) or getattr(profile, "unlocked_spells", None) or [])
+    locked_spells = set(getattr(profile, "locked_spells", None) or [])
+    ordered = list(_SPELLBOOK_ORDER)
+
+    for spell_name in [*open_spells, *locked_spells]:
+        if spell_name not in ordered:
+            ordered.append(spell_name)
+
+    spells = []
+    for spell_name in ordered:
+        details = dict(
+            _SPELLBOOK_DETAILS.get(
+                spell_name,
+                {
+                    "type": "Lonca büyüsü",
+                    "trigger": "Kilitli",
+                    "effect": "Büyü defterinde kayıtlı",
+                    "required_rank": "Lonca yetkisi gerekli",
+                },
+            )
+        )
+        details["name"] = spell_name
+        details["status"] = "Açık" if spell_name in open_spells else "Kilitli"
+        spells.append(details)
+
+    return spells
+
+
+def _vf_rect(frame, x1, y1, x2, y2, color, alpha=0.45, border=None, border_thickness=1):
+    height, width = frame.shape[:2]
+    x1 = max(0, min(width - 1, int(x1)))
+    y1 = max(0, min(height - 1, int(y1)))
+    x2 = max(x1 + 1, min(width, int(x2)))
+    y2 = max(y1 + 1, min(height, int(y2)))
+
+    overlay = frame.copy()
+    cv2.rectangle(overlay, (x1, y1), (x2, y2), color, -1)
+    cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame)
+    if border:
+        cv2.rectangle(frame, (x1, y1), (x2, y2), border, border_thickness)
+
+
+def _vf_text(frame, text, x, y, scale=0.42, color=(235, 235, 225), thickness=1):
+    cv2.putText(frame, str(text), (int(x) + 1, int(y) + 1), cv2.FONT_HERSHEY_SIMPLEX, scale, (18, 15, 12), thickness + 1, cv2.LINE_AA)
+    cv2.putText(frame, str(text), (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, scale, color, thickness, cv2.LINE_AA)
+
+
+def _vf_center_text(frame, text, x1, x2, y, scale=0.62, color=(238, 226, 185), thickness=1):
+    text = str(text)
+    max_width = max(20, int(x2 - x1 - 16))
+    fitted_scale = scale
+    while fitted_scale > 0.34 and cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, fitted_scale, thickness)[0][0] > max_width:
+        fitted_scale -= 0.04
+    text_width = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, fitted_scale, thickness)[0][0]
+    _vf_text(frame, text, x1 + ((x2 - x1 - text_width) / 2), y, fitted_scale, color, thickness)
+
+
+def _vf_wrap(text, max_width, scale=0.38, thickness=1):
+    words = str(text).split()
+    lines = []
+    current = ""
+    for word in words:
+        candidate = f"{current} {word}".strip()
+        width = cv2.getTextSize(candidate, cv2.FONT_HERSHEY_SIMPLEX, scale, thickness)[0][0]
+        if current and width > max_width:
+            lines.append(current)
+            current = word
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+    return lines or [""]
+
+
+def _vf_spellbook_field(frame, label, value, x, y, max_width, muted=False):
+    label_color = (210, 190, 135) if muted else (90, 230, 245)
+    value_color = (176, 170, 158) if muted else (238, 235, 220)
+    _vf_text(frame, f"{label}:", x, y, 0.36, label_color)
+    y += 17
+    for line in _vf_wrap(value, max_width, 0.36):
+        _vf_text(frame, line, x + 8, y, 0.36, value_color)
+        y += 16
+    return y + 3
+
+
+def _vf_draw_spellbook_page(frame, spell, rect):
+    x1, y1, x2, y2 = rect
+    is_locked = spell["status"] == "Kilitli"
+    page_color = (74, 62, 44) if is_locked else (86, 72, 48)
+    border_color = (118, 112, 95) if is_locked else (95, 205, 225)
+    title_color = (150, 150, 145) if is_locked else (245, 226, 140)
+    max_width = x2 - x1 - 28
+
+    _vf_rect(frame, x1, y1, x2, y2, page_color, 0.58, border_color, 1)
+    _vf_center_text(frame, spell["name"], x1, x2, y1 + 31, 0.52, title_color, 1)
+
+    status_color = (135, 135, 135) if is_locked else (80, 220, 155)
+    _vf_center_text(frame, spell["status"], x1, x2, y1 + 53, 0.35, status_color, 1)
+
+    y = y1 + 78
+    y = _vf_spellbook_field(frame, "Tür", spell["type"], x1 + 14, y, max_width, is_locked)
+    y = _vf_spellbook_field(frame, "Tetikleme", spell["trigger"], x1 + 14, y, max_width, is_locked)
+    y = _vf_spellbook_field(frame, "Etki", spell["effect"], x1 + 14, y, max_width, is_locked)
+    _vf_spellbook_field(frame, "Gereken rütbe", spell["required_rank"], x1 + 14, y, max_width, is_locked)
+
+
+def _vf_draw_spellbook_panel(self, frame, profile, page=0, *args, **kwargs):
+    """Kapak + iki sayfa düzeninde, sayfa başına tek büyü gösteren Büyü Kitabı."""
+    height, width = frame.shape[:2]
+    book_width = min(max(380, int(width * 0.56)), width - 36)
+    book_height = min(max(292, int(height * 0.58)), height - 76)
+    x1 = max(18, width - book_width - 18)
+    y1 = max(44, int(height * 0.10))
+    x2 = x1 + book_width
+    y2 = y1 + book_height
+
+    if page <= 0:
+        _vf_rect(frame, x1, y1, x2, y2, (42, 34, 27), 0.62, (92, 220, 238), 1)
+        _vf_center_text(frame, "Büyü Kitabı", x1, x2, y1 + int(book_height * 0.37), 0.82, (245, 222, 135), 2)
+        _vf_center_text(frame, "VisionForge Lonca Arşivi", x1, x2, y1 + int(book_height * 0.50), 0.43, (235, 232, 218), 1)
+        _vf_center_text(frame, "Sağ ok ile aç", x1, x2, y2 - 34, 0.36, (168, 225, 235), 1)
+        return frame
+
+    spells = _vf_spellbook_spells(profile)
+    max_page = max(1, (len(spells) + 1) // 2)
+    page = max(1, min(int(page), max_page))
+    start_index = (page - 1) * 2
+
+    _vf_rect(frame, x1, y1, x2, y2, (32, 27, 24), 0.42, (82, 96, 105), 1)
+    gutter_x = x1 + book_width // 2
+    cv2.line(frame, (gutter_x, y1 + 12), (gutter_x, y2 - 12), (92, 85, 72), 1)
+
+    padding = 13
+    gap = 10
+    page_width = (book_width - (padding * 2) - gap) // 2
+    left_rect = (x1 + padding, y1 + padding, x1 + padding + page_width, y2 - padding)
+    right_rect = (left_rect[2] + gap, y1 + padding, x2 - padding, y2 - padding)
+
+    for spell, rect in zip(spells[start_index : start_index + 2], [left_rect, right_rect]):
+        _vf_draw_spellbook_page(frame, spell, rect)
+
+    if start_index + 1 >= len(spells):
+        _vf_rect(frame, *right_rect, (58, 50, 40), 0.36, (95, 90, 78), 1)
+        _vf_center_text(frame, "Boş Sayfa", right_rect[0], right_rect[2], right_rect[1] + 42, 0.42, (150, 145, 132), 1)
+
+    footer = f"Sayfa {start_index + 1}-{min(start_index + 2, len(spells))}"
+    _vf_center_text(frame, footer, x1, x2, y2 - 8, 0.30, (172, 180, 176), 1)
+    return frame
+
+
+Effects.draw_spellbook_panel = _vf_draw_spellbook_panel

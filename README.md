@@ -326,3 +326,9 @@ python app.py
 ```
 
 Komut çalıştığında kamera penceresi açılır ve canlı görüntünün üzerinde örnek lonca profil paneli gösterilir.
+
+### Büyü Kitabı içerik düzeni
+
+Büyü Kitabı kapak ve iki sayfalı kitap görünümünü korur. Kapakta `Büyü Kitabı`, `VisionForge Lonca Arşivi` ve sağ ok yönlendirmesi görünür. Kapaktan sonra her sayfada yalnızca bir büyü gösterilir; iki sayfalı görünümde aynı anda en fazla iki büyü detayı okunur.
+
+Her büyü sayfasında büyü adı, tür, tetikleme, etki, durum ve gereken rütbe bilgisi yer alır. `Durum` aktif profile göre belirlenir: Misafir modunda yalnızca Donma açık görünür; baglare / S-Seviye doğrulamasında Donma, Ateş ve Kalkan açık görünür. Gereken rütbe alanı bu aşamada bilgilendirme amaçlıdır; XP, rütbe yükseltme veya lonca yönetimi sistemi eklenmemiştir.
