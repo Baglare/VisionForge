@@ -210,3 +210,14 @@ Beklenen sonuç:
 7. Debug panelini açıp `D` ile Yüz / Doğrulama sayfasına geç.
 8. `face_identity_score`, `face_identity_threshold`, `face_identity_match`, `stable_label`, `stability_count` ve `identity_health` alanlarının göründüğünü doğrula.
 9. Yüz kadrajdan çıkınca tanıma durumunun sıfırlandığını, tekrar girince birkaç kare sonra stabil hale geldiğini kontrol et.
+
+## Bildirim / Toast Testi
+
+1. Uygulamayı başlat ve bildirimlerin alt orta bölgede küçük kartlar olarak göründüğünü kontrol et.
+2. Donma, Ateş veya Kalkan büyüsü tetikle; ilgili büyü bildiriminin geldiğini doğrula.
+3. QR + Yüz modunda tanınan kullanıcı için QR göstermeden `Lonca mührü bekleniyor` bildiriminin yalnızca durum değişince geldiğini kontrol et.
+4. Doğru QR gösterildiğinde `Lonca mührü onaylandı` bildiriminin geldiğini doğrula.
+5. Yanlış QR gösterildiğinde `Mühür kullanıcıyla eşleşmedi` bildiriminin geldiğini doğrula.
+6. T ile Trial başlat; `Mühürlü Kapı başladı` bildirimi görünmeli.
+7. Trial tamamlanınca `Kapı açıldı` bildirimi görünmeli.
+8. Bildirimlerin birkaç saniye sonra kaybolduğunu ve aynı durumun her karede spam yapmadığını kontrol et.

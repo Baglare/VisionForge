@@ -344,3 +344,9 @@ Kontrol edilmesi gereken örnek metinler: `Büyü Kitabı`, `VisionForge Lonca A
 Uygulama açılırken ve kayıt sonrasında LBPH model dosyası, `data/face_labels.json`, `data/local_profiles.json` ve demo profilleri tutarlılık açısından kontrol edilir. Model veya label dosyası eksikse uygulama çökmez; Sistem Durumu ve Debug ekranlarında uyarı gösterilir.
 
 Kayıt/eğitim tamamlandıktan sonra yüz tanıma modeli ve etiketler yeniden yüklenir. Bu yüzden yeni kaydedilen kullanıcıyı denemek için uygulamayı kapatıp açmak gerekmez. Yüz tanıma kararı tek kareye göre verilmez; kısa bir geçmiş içinde aynı kullanıcı tutarlı görünürse stabil tanıma kabul edilir.
+
+### Bildirimler
+
+VisionForge önemli kullanıcı olaylarını kısa süreli bildirimlerle gösterir. Bildirimler alt orta bölgede görünür, birkaç saniye sonra otomatik kaybolur ve aynı durum her karede tekrar edilmez.
+
+Bildirim üreten örnek olaylar: kayıt tamamlandı, lonca mührü oluşturuldu, kullanıcı tanındı, lonca mührü bekleniyor/onaylandı, mühür eşleşmedi, doğrulama modu değişti, Donma/Ateş/Kalkan tetiklendi, kilitli büyü denendi, Mühürlü Kapı başladı/tamamlandı ve kritik model dosyası eksik görüldü.

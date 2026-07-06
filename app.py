@@ -18,6 +18,7 @@ from spell_engine import SpellEngine
 from system_status import get_system_status, has_registered_wizard
 from tracking.hand_state_tracker import HandStateTracker
 from trial_engine import TrialEngine
+from ui_notifications import NotificationManager
 
 
 RIGHT_ARROW_KEYS = {83, 2555904, 65363}
@@ -36,9 +37,17 @@ def main() -> None:
     face_identity_detector = FaceIdentityDetector()
     guild_seal_detector = GuildSealDetector()
     hand_state_tracker = HandStateTracker()
+    notification_manager = NotificationManager()
 
     ui_settings = load_ui_settings()
     ui_settings["debug_page"] = int(ui_settings.get("debug_page", 0)) % 4
+    notification_state = {
+        "verification_status": "",
+        "recognized_user": "-",
+        "active_spell_name": "",
+        "locked_spell_attempt": "",
+        "trial_state": "idle",
+    }
 
     face_history = deque(maxlen=8)
     face_confirmed = False
@@ -66,6 +75,14 @@ def main() -> None:
 
         print("VisionForge kamera modu aktif.")
         print("Q: ayar menüsü, E: kayıt/import, T: Trial, R: sıfırla, B: büyü kitabı, H: el çizimi, Esc: çıkış.")
+        if any(item.required and not item.exists for item in get_system_status()):
+            notification_manager.notify(
+                "Eksik model dosyası",
+                type="warning",
+                duration=4.0,
+                key="missing-required-model",
+                min_interval=9999.0,
+            )
 
         while True:
             processing_frame = camera.read_frame()
@@ -101,6 +118,14 @@ def main() -> None:
                     if face_identity_detector.warning_message:
                         print(face_identity_detector.warning_message)
                     verified_face_label = None
+                    notification_manager.notify("Kayıt tamamlandı", type="success", key="enrollment-complete", min_interval=9999.0)
+                    if enrollment_status.qr_path:
+                        notification_manager.notify(
+                            "Lonca mührü oluşturuldu",
+                            type="success",
+                            key="guild-seal-created",
+                            min_interval=9999.0,
+                        )
                     enrollment_reload_done = True
 
                 if (
@@ -112,6 +137,7 @@ def main() -> None:
 
                 display_frame = effects.draw_enrollment_panel(display_frame, enrollment_status)
                 display_frame = effects.draw_settings_menu(display_frame, ui_settings)
+                display_frame = effects.draw_notifications(display_frame, notification_manager.active())
                 camera.show_frame(display_frame)
                 key = camera.read_key()
                 verified_face_label, spellbook_page = _handle_key(
@@ -124,6 +150,7 @@ def main() -> None:
                     face_detector,
                     hand_detector,
                     trial_engine,
+                    notification_manager,
                     allow_enrollment_start=False,
                 )
                 if camera.is_close_key(key):
@@ -156,6 +183,7 @@ def main() -> None:
             active_profile = auth_state["active_profile"]
             allowed_spells = auth_state["allowed_spells"]
             verification_status = auth_state["verification_status"]
+            _emit_auth_notifications(notification_manager, auth_state, notification_state)
 
             status_text = "Büyücü algılandı" if face_confirmed and face_result.detected else "Büyücü bekleniyor"
             if not hand_result.is_active:
@@ -175,6 +203,8 @@ def main() -> None:
                 active_spell_name=active_trial_spell,
                 allowed_spells=allowed_spells,
             )
+            _emit_spell_notifications(notification_manager, spell_result, notification_state)
+            _emit_trial_notifications(notification_manager, trial_status, notification_state)
 
             if ui_settings["show_hand_debug"] and display_hand_result.detected:
                 display_frame = effects.draw_hand_landmarks(display_frame, display_hand_result)
@@ -307,6 +337,7 @@ def main() -> None:
             if ui_settings.get("show_system_status", False):
                 display_frame = effects.draw_system_status_panel(display_frame, get_system_status())
             display_frame = effects.draw_settings_menu(display_frame, ui_settings)
+            display_frame = effects.draw_notifications(display_frame, notification_manager.active())
 
             camera.show_frame(display_frame)
 
@@ -321,6 +352,7 @@ def main() -> None:
                 face_detector,
                 hand_detector,
                 trial_engine,
+                notification_manager,
                 allow_enrollment_start=True,
             )
 
@@ -498,6 +530,7 @@ def _handle_key(
     face_detector: FaceDetector | None,
     hand_detector: HandDetector | None,
     trial_engine: TrialEngine,
+    notification_manager: NotificationManager | None,
     allow_enrollment_start: bool,
 ) -> tuple[str | None, int]:
     """Klavye kısayollarını tek merkezden işler."""
@@ -531,6 +564,8 @@ def _handle_key(
         print("Doğrulama oturumu sıfırlandı.")
     elif key in (ord("t"), ord("T")):
         trial_engine.start_or_restart()
+        if notification_manager is not None:
+            notification_manager.notify("Mühürlü Kapı başladı", type="trial", key="trial-start", min_interval=2.0)
         print("Mühürlü Kapı Trial başlatıldı.")
     elif key in (ord("e"), ord("E")) and allow_enrollment_start:
         enrollment_status = enrollment_manager.start(face_detector=face_detector)
@@ -542,6 +577,15 @@ def _handle_key(
             verified_face_label = None
             if face_identity_detector.warning_message:
                 print(face_identity_detector.warning_message)
+            if notification_manager is not None:
+                notification_manager.notify("Kayıt tamamlandı", type="success", key="enrollment-complete", min_interval=9999.0)
+                if enrollment_status.qr_path:
+                    notification_manager.notify(
+                        "Lonca mührü oluşturuldu",
+                        type="success",
+                        key="guild-seal-created",
+                        min_interval=9999.0,
+                    )
 
     if ui_settings["show_settings_menu"]:
         if key == ord("1"):
@@ -553,6 +597,14 @@ def _handle_key(
         elif key == ord("3"):
             ui_settings["verification_requires_qr"] = not ui_settings["verification_requires_qr"]
             verified_face_label = None
+            if notification_manager is not None:
+                mode_text = "QR + Yüz" if ui_settings["verification_requires_qr"] else "Yalnızca Yüz"
+                notification_manager.notify(
+                    f"Doğrulama modu: {mode_text}",
+                    type="info",
+                    key="verification-mode",
+                    min_interval=0.5,
+                )
             settings_changed = True
         elif key == ord("4"):
             ui_settings["show_spellbook"] = not ui_settings["show_spellbook"]
@@ -584,6 +636,103 @@ def _handle_key(
         save_ui_settings(ui_settings)
 
     return verified_face_label, spellbook_page
+
+
+def _emit_auth_notifications(notification_manager: NotificationManager, auth_state: dict, notification_state: dict) -> None:
+    """Doğrulama durum değişikliklerini kısa bildirimlere çevirir."""
+    verification_status = auth_state.get("verification_status", "")
+    recognized_user = auth_state.get("recognized_user", "-")
+    stable_label = auth_state.get("face_identity_stable_label", "-")
+
+    if recognized_user != "-" and stable_label not in ("", "-") and recognized_user != notification_state.get("recognized_user"):
+        notification_manager.notify(
+            f"{recognized_user} tanındı",
+            type="success",
+            key=f"recognized:{recognized_user}",
+            min_interval=8.0,
+        )
+        notification_state["recognized_user"] = recognized_user
+    elif recognized_user == "-":
+        notification_state["recognized_user"] = "-"
+
+    if verification_status == notification_state.get("verification_status"):
+        return
+
+    if verification_status == "Yüz tanındı, mühür bekleniyor":
+        notification_manager.notify(
+            "Lonca mührü bekleniyor",
+            type="warning",
+            key="guild-seal-waiting",
+            min_interval=5.0,
+        )
+    elif verification_status == "Yüz + lonca mührü onaylandı":
+        notification_manager.notify(
+            "Lonca mührü onaylandı",
+            type="success",
+            key="guild-seal-approved",
+            min_interval=5.0,
+        )
+    elif verification_status == "Mühür kullanıcıyla eşleşmedi":
+        notification_manager.notify(
+            "Mühür kullanıcıyla eşleşmedi",
+            type="error",
+            key="guild-seal-mismatch",
+            min_interval=5.0,
+        )
+
+    notification_state["verification_status"] = verification_status
+
+
+def _emit_spell_notifications(notification_manager: NotificationManager, spell_result, notification_state: dict) -> None:
+    """Büyü tetikleme ve kilitli büyü denemelerini bildirimlere çevirir."""
+    active_spell_name = getattr(spell_result, "active_spell_name", None)
+    if getattr(spell_result, "has_active_spell", False) and active_spell_name:
+        if active_spell_name != notification_state.get("active_spell_name"):
+            notification_manager.notify(
+                f"{active_spell_name} büyüsü",
+                type="spell",
+                key=f"spell:{active_spell_name}",
+                min_interval=2.0,
+            )
+            notification_state["active_spell_name"] = active_spell_name
+    else:
+        notification_state["active_spell_name"] = ""
+
+    locked_spell_attempt = _attempted_locked_spell_debug(spell_result)
+    if locked_spell_attempt != "-" and locked_spell_attempt != notification_state.get("locked_spell_attempt"):
+        notification_manager.notify(
+            "Büyü kilitli",
+            type="warning",
+            key=f"locked-spell:{locked_spell_attempt}",
+            min_interval=2.5,
+        )
+        notification_state["locked_spell_attempt"] = locked_spell_attempt
+    elif locked_spell_attempt == "-":
+        notification_state["locked_spell_attempt"] = ""
+
+
+def _emit_trial_notifications(notification_manager: NotificationManager, trial_status, notification_state: dict) -> None:
+    """Trial durum değişikliklerini kısa bildirimlere çevirir."""
+    trial_state = getattr(trial_status, "state", "idle")
+    if trial_state == notification_state.get("trial_state"):
+        return
+
+    if trial_state == "active":
+        notification_manager.notify(
+            "Mühürlü Kapı başladı",
+            type="trial",
+            key="trial-start",
+            min_interval=2.0,
+        )
+    elif trial_state == "completed":
+        notification_manager.notify(
+            "Kapı açıldı",
+            type="trial",
+            key="trial-complete",
+            min_interval=5.0,
+        )
+
+    notification_state["trial_state"] = trial_state
 
 
 def _resolve_auth_state(

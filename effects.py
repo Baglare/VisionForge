@@ -1785,3 +1785,55 @@ def _unicode_put_text(
 
 cv2.getTextSize = _unicode_get_text_size
 cv2.putText = _unicode_put_text
+
+
+_NOTIFICATION_COLORS = {
+    "info": (38, 52, 72),
+    "success": (42, 84, 62),
+    "warning": (50, 76, 130),
+    "error": (58, 48, 120),
+    "spell": (70, 58, 105),
+    "trial": (64, 66, 48),
+}
+
+_NOTIFICATION_BORDERS = {
+    "info": (150, 205, 230),
+    "success": (110, 230, 170),
+    "warning": (80, 170, 255),
+    "error": (95, 110, 255),
+    "spell": (225, 175, 255),
+    "trial": (120, 225, 245),
+}
+
+
+def _vf_draw_notifications(self, frame, notifications):
+    """Aktif toast bildirimlerini alt orta bölgede çizer."""
+    if not notifications:
+        return frame
+
+    height, width = frame.shape[:2]
+    panel_width = min(390, max(280, width - 48))
+    panel_height = 38
+    gap = 8
+    x = max(16, (width - panel_width) // 2)
+    y = height - 28 - panel_height
+
+    for notification in reversed(notifications[-3:]):
+        color = _NOTIFICATION_COLORS.get(notification.type, _NOTIFICATION_COLORS["info"])
+        border = _NOTIFICATION_BORDERS.get(notification.type, _NOTIFICATION_BORDERS["info"])
+        _vf_rect(frame, x, y, x + panel_width, y + panel_height, color, 0.58, border, 1)
+        _vf_text(
+            frame,
+            notification.message,
+            x + 14,
+            y + 24,
+            scale=0.42,
+            color=(242, 242, 235),
+            thickness=1,
+        )
+        y -= panel_height + gap
+
+    return frame
+
+
+Effects.draw_notifications = _vf_draw_notifications
