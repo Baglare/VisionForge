@@ -448,6 +448,8 @@ class Effects:
         """Mühürlü Kapı trial ilerlemesini küçük bir panelde gösterir."""
         if trial_status is None:
             return frame
+        if trial_status.state == "idle":
+            return frame
 
         panel_x = 24
         panel_y = 118

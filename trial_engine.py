@@ -1,6 +1,7 @@
 # Mühürlü Kapı görev modunun sıralı büyü ilerlemesini yönetir.
 
 from dataclasses import dataclass, field
+import time
 
 
 TRIAL_NAME = "Mühürlü Kapı"
@@ -48,6 +49,8 @@ class TrialEngine:
         self.completed_steps: list[str] = []
         self.message = "T ile Trial başlat"
         self._last_seen_spell: str | None = None
+        self.completed_at = 0.0
+        self.completion_display_duration = 2.5
 
     def start_or_restart(self) -> TrialStatus:
         """Trial görevini başlatır veya baştan başlatır."""
@@ -56,6 +59,7 @@ class TrialEngine:
         self.completed_steps = []
         self.message = "Trial başladı"
         self._last_seen_spell = None
+        self.completed_at = 0.0
         return self.status()
 
     def update(
@@ -64,6 +68,8 @@ class TrialEngine:
         allowed_spells: list[str] | tuple[str, ...] | None = None,
     ) -> TrialStatus:
         """Aktif büyü olayını görev sırasına göre değerlendirir."""
+        self._expire_completed_state()
+
         if self.state != "active":
             self._remember_spell(active_spell_name)
             return self.status()
@@ -90,6 +96,7 @@ class TrialEngine:
 
         if self.current_step >= len(TRIAL_SEQUENCE):
             self.state = "completed"
+            self.completed_at = time.monotonic()
             self.message = "Trial tamamlandı"
         else:
             self.message = f"{required_spell} mührü açıldı"
@@ -130,3 +137,18 @@ class TrialEngine:
             self._last_seen_spell = None
         else:
             self._last_seen_spell = active_spell_name
+
+    def _expire_completed_state(self) -> None:
+        """Tamamlandı mesajını kısa süre gösterdikten sonra paneli gizler."""
+        if self.state != "completed" or self.completed_at <= 0:
+            return
+
+        if time.monotonic() - self.completed_at < self.completion_display_duration:
+            return
+
+        self.state = "idle"
+        self.current_step = 0
+        self.completed_steps = []
+        self.message = "T ile Trial başlat"
+        self.completed_at = 0.0
+        self._last_seen_spell = None
