@@ -338,3 +338,9 @@ Her büyü sayfasında büyü adı, tür, tetikleme, etki, durum ve gereken rüt
 OpenCV'nin varsayılan metin çizimi Türkçe karakterleri doğru göstermediği için kullanıcıya görünen UI metinleri Pillow tabanlı Unicode metin çizimiyle işlenir. Uygulama Windows sistem fontlarını sırayla dener: `segoeui.ttf`, `arial.ttf`, `calibri.ttf`. Font dosyaları projeye kopyalanmaz ve Git'e eklenmez.
 
 Kontrol edilmesi gereken örnek metinler: `Büyü Kitabı`, `VisionForge Lonca Arşivi`, `Sağ ok ile aç`, `Şimşek`, `Alan Mührü`, `Zaman Kırığı`, `S-Seviye Büyücü`.
+
+### Yüz tanıma sağlık kontrolü
+
+Uygulama açılırken ve kayıt sonrasında LBPH model dosyası, `data/face_labels.json`, `data/local_profiles.json` ve demo profilleri tutarlılık açısından kontrol edilir. Model veya label dosyası eksikse uygulama çökmez; Sistem Durumu ve Debug ekranlarında uyarı gösterilir.
+
+Kayıt/eğitim tamamlandıktan sonra yüz tanıma modeli ve etiketler yeniden yüklenir. Bu yüzden yeni kaydedilen kullanıcıyı denemek için uygulamayı kapatıp açmak gerekmez. Yüz tanıma kararı tek kareye göre verilmez; kısa bir geçmiş içinde aynı kullanıcı tutarlı görünürse stabil tanıma kabul edilir.

@@ -322,8 +322,13 @@ class Effects:
                     f"face_box: {debug_info.get('face_box', '-')}",
                     f"face_identity_label: {debug_info.get('face_identity_label', '-')}",
                     f"face_identity_score: {debug_info.get('face_identity_score', '-')}",
+                    f"face_identity_threshold: {debug_info.get('face_identity_threshold', '-')}",
+                    f"face_identity_match: {debug_info.get('face_identity_match_status', '-')}",
+                    f"stable_label: {debug_info.get('face_identity_stable_label', '-')}",
+                    f"stability_count: {debug_info.get('face_identity_stability_count', '-')}",
                     f"face_identity_variant: {debug_info.get('face_identity_variant', '-')}",
                     f"face_quality_message: {debug_info.get('face_quality_message', '-')}",
+                    f"identity_health: {debug_info.get('identity_health_warnings', '-')}",
                     f"QR durumu: {debug_info.get('qr_status', '-')}",
                     f"verification_status: {debug_info.get('verification_status', '-')}",
                 ],
@@ -407,7 +412,7 @@ class Effects:
 
         frame_height, frame_width = frame.shape[:2]
         panel_width = min(440, max(330, frame_width // 3))
-        panel_height = 230
+        panel_height = min(frame_height - 36, max(230, 60 + len(status_items) * 27))
         panel_x = max(16, frame_width - panel_width - 18)
         panel_y = max(18, frame_height - panel_height - 18)
 

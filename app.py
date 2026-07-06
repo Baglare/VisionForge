@@ -12,7 +12,7 @@ from detectors.guild_seal_detector import GuildSealDetector
 from detectors.hand_detector import HandData, HandDetectionResult, HandDetector, HandDetectorError
 from effects import Effects
 from enrollment.enrollment_manager import EnrollmentManager
-from guild_profile import find_profile_by_face_label, guest_profile
+from guild_profile import find_profile_by_face_label, guest_profile, repair_local_profiles
 from settings_manager import load_ui_settings, save_ui_settings
 from spell_engine import SpellEngine
 from system_status import get_system_status, has_registered_wizard
@@ -96,9 +96,11 @@ def main() -> None:
             if enrollment_manager.is_active:
                 enrollment_status = enrollment_manager.update(processing_frame, face_result)
                 if enrollment_status.is_complete and not enrollment_reload_done:
+                    repair_local_profiles()
                     face_identity_detector.reload()
                     if face_identity_detector.warning_message:
                         print(face_identity_detector.warning_message)
+                    verified_face_label = None
                     enrollment_reload_done = True
 
                 if (
@@ -248,8 +250,13 @@ def main() -> None:
                 "identity_status": auth_state["identity_status"],
                 "face_identity_label": auth_state.get("face_identity_label", "-"),
                 "face_identity_score": auth_state.get("face_identity_score", "-"),
+                "face_identity_threshold": auth_state.get("face_identity_threshold", "-"),
+                "face_identity_match_status": auth_state.get("face_identity_match_status", "-"),
+                "face_identity_stable_label": auth_state.get("face_identity_stable_label", "-"),
+                "face_identity_stability_count": auth_state.get("face_identity_stability_count", "-"),
                 "face_identity_variant": auth_state.get("face_identity_variant", "-"),
                 "face_quality_message": auth_state.get("face_quality_message", "-"),
+                "identity_health_warnings": auth_state.get("identity_health_warnings", "-"),
                 "recognized_user": auth_state.get("recognized_user", "-"),
                 "active_profile": f"{active_profile.username} / {active_profile.rank}",
                 "allowed_spells": ", ".join(allowed_spells) if allowed_spells else "-",
@@ -530,7 +537,9 @@ def _handle_key(
         if enrollment_status.message:
             print(enrollment_status.message)
         if enrollment_status.is_complete:
+            repair_local_profiles()
             face_identity_detector.reload()
+            verified_face_label = None
             if face_identity_detector.warning_message:
                 print(face_identity_detector.warning_message)
 
@@ -599,14 +608,25 @@ def _resolve_auth_state(
         "face_score": "-",
         "face_identity_label": "-",
         "face_identity_score": "-",
+        "face_identity_threshold": _score_debug(getattr(face_identity_detector, "threshold", None)),
+        "face_identity_match_status": "bekleniyor",
+        "face_identity_stable_label": "-",
+        "face_identity_stability_count": "0",
         "face_identity_variant": "-",
         "face_quality_message": "-",
+        "identity_health_warnings": (
+            "; ".join(getattr(face_identity_detector, "health_warnings", []))
+            if getattr(face_identity_detector, "health_warnings", [])
+            else "-"
+        ),
     }
 
     if not face_result.detected or face_result.box is None:
+        face_identity_detector.reset_stability()
         return base
 
     if not face_identity_detector.is_available:
+        face_identity_detector.reset_stability()
         base.update(
             {
                 "allowed_spells": guest.unlocked_spells,
@@ -702,11 +722,11 @@ def _resolve_auth_state(
 
 def _identity_debug_status(identity_result) -> str:
     """Debug paneli için yüz tanıma etiketini ve skorunu özetler."""
-    label = identity_result.face_label or "etiket yok"
+    label = identity_result.raw_face_label or identity_result.face_label or "etiket yok"
     score = "skor yok"
     if identity_result.confidence is not None:
         score = f"{identity_result.confidence:.1f}"
-    match_status = "eşleşti" if identity_result.matched else "eşleşmedi"
+    match_status = identity_result.match_status or ("eşleşti" if identity_result.matched else "eşleşmedi")
     return f"{label} / {score} / {match_status}"
 
 
@@ -719,11 +739,17 @@ def _face_score_debug(identity_result) -> str:
 
 def _identity_debug_fields(identity_result) -> dict:
     """Debug paneli için yüz tanıma ayrıntılarını döndürür."""
+    health_warnings = getattr(identity_result, "health_warnings", None) or []
     return {
-        "face_identity_label": identity_result.face_label or "-",
+        "face_identity_label": identity_result.raw_face_label or identity_result.face_label or "-",
         "face_identity_score": _face_score_debug(identity_result),
+        "face_identity_threshold": _score_debug(getattr(identity_result, "threshold", None)),
+        "face_identity_match_status": identity_result.match_status or "-",
+        "face_identity_stable_label": identity_result.stable_face_label or "-",
+        "face_identity_stability_count": str(getattr(identity_result, "stability_count", 0)),
         "face_identity_variant": identity_result.selected_variant or "-",
         "face_quality_message": identity_result.quality_message or "-",
+        "identity_health_warnings": "; ".join(health_warnings) if health_warnings else "-",
     }
 
 

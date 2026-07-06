@@ -198,3 +198,15 @@ Beklenen sonuç:
 3. Kitap sayfalarında `Şimşek`, `Alan Mührü` ve `Zaman Kırığı` metinlerinin bozulmadan göründüğünü doğrula.
 4. Kafa üstü etikette `S-Seviye Büyücü` metninin düzgün göründüğünü kontrol et.
 5. Q menüsü, Debug paneli, Sistem Durumu ve Trial panelindeki Türkçe karakterlerin `?` karakterlerine dönüşmediğini doğrula.
+
+## Yüz Tanıma Sağlık ve Reload Testi
+
+1. Uygulamayı başlat.
+2. Q menüsünden `8` ile Sistem Durumu panelini aç.
+3. `Yüz tanıma modeli`, `Yüz etiketleri`, `Yerel profiller` ve `Label/Profile eşleşmesi` satırlarını kontrol et.
+4. Model veya label eksikse uygulamanın çökmeden Misafir/demo akışıyla devam ettiğini doğrula.
+5. `E` ile yeni kayıt/eğitim tamamla.
+6. Uygulamayı kapatmadan kameraya dön ve yeni kullanıcının tanınabildiğini kontrol et.
+7. Debug panelini açıp `D` ile Yüz / Doğrulama sayfasına geç.
+8. `face_identity_score`, `face_identity_threshold`, `face_identity_match`, `stable_label`, `stability_count` ve `identity_health` alanlarının göründüğünü doğrula.
+9. Yüz kadrajdan çıkınca tanıma durumunun sıfırlandığını, tekrar girince birkaç kare sonra stabil hale geldiğini kontrol et.

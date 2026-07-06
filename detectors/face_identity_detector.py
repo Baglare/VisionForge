@@ -1,6 +1,7 @@
 # Kırpılmış yüz örnekleriyle LBPH tabanlı yerel yüz kimliği algılar.
 
 from dataclasses import dataclass
+from collections import Counter, deque
 import json
 from pathlib import Path
 
@@ -8,6 +9,7 @@ import cv2
 import numpy as np
 
 from face_preprocessing import FACE_SIZE, preprocess_face
+from identity_health import check_identity_health
 
 
 @dataclass
@@ -21,6 +23,12 @@ class FaceIdentityResult:
     message: str = ""
     selected_variant: str = ""
     quality_message: str = ""
+    raw_face_label: str | None = None
+    stable_face_label: str | None = None
+    threshold: float = 75.0
+    match_status: str = ""
+    stability_count: int = 0
+    health_warnings: list[str] | None = None
 
 
 class FaceIdentityDetector:
@@ -41,6 +49,9 @@ class FaceIdentityDetector:
         self.warning_message = ""
         self._recognizer = None
         self._labels: dict[int, str] = {}
+        self._match_history = deque(maxlen=8)
+        self._stability_required = 5
+        self.health_warnings: list[str] = []
         self.is_available = False
         self.reload()
 
@@ -48,8 +59,11 @@ class FaceIdentityDetector:
         """Model ve etiketleri diskten yeniden yükler."""
         self._recognizer = None
         self._labels = {}
+        self._match_history.clear()
         self.is_available = False
         self.warning_message = ""
+        health = check_identity_health()
+        self.health_warnings = health.warnings
 
         if not _has_lbph():
             self.warning_message = self.MODULE_MISSING_MESSAGE
@@ -57,6 +71,8 @@ class FaceIdentityDetector:
 
         if not self.model_path.exists() or not self.labels_path.exists():
             self.warning_message = "Yüz tanıma modeli bulunamadı, E ile kayıt başlatılabilir."
+            if self.health_warnings:
+                self.warning_message = f"{self.warning_message} {'; '.join(self.health_warnings)}"
             return
 
         try:
@@ -73,11 +89,23 @@ class FaceIdentityDetector:
 
         self._recognizer = recognizer
         self.is_available = True
+        if self.health_warnings:
+            self.warning_message = "; ".join(self.health_warnings)
+
+    def reset_stability(self) -> None:
+        """Yüz kaybolduğunda stabil tanıma geçmişini sıfırlar."""
+        self._match_history.clear()
 
     def predict(self, frame, face_box) -> FaceIdentityResult:
         """Yüz kutusundan normal ve aynalı kırpımla kimlik tahmini yapar."""
         if not self.is_available or self._recognizer is None:
-            return FaceIdentityResult(is_active=False, message=self.warning_message)
+            return FaceIdentityResult(
+                is_active=False,
+                message=self.warning_message,
+                threshold=self.threshold,
+                match_status="pasif",
+                health_warnings=self.health_warnings,
+            )
 
         face_image = extract_face_image(frame, face_box)
         if face_image is None:
@@ -85,6 +113,10 @@ class FaceIdentityDetector:
                 is_active=True,
                 matched=False,
                 quality_message="Yüz kırpımı hazırlanamadı",
+                threshold=self.threshold,
+                match_status="kalite yetersiz",
+                stability_count=0,
+                health_warnings=self.health_warnings,
             )
 
         candidates = [("normal", face_image), ("mirrored", cv2.flip(face_image, 1))]
@@ -104,22 +136,70 @@ class FaceIdentityDetector:
                 is_active=False,
                 matched=False,
                 message=f"Yüz tanıma çalışırken hata verdi: {error}",
+                threshold=self.threshold,
+                match_status="hata",
+                health_warnings=self.health_warnings,
             )
 
-        face_label = self._labels.get(int(best_label_id)) if best_label_id is not None else None
-        matched = face_label is not None and best_confidence is not None and best_confidence <= self.threshold
+        raw_face_label = self._labels.get(int(best_label_id)) if best_label_id is not None else None
+        single_frame_match = (
+            raw_face_label is not None
+            and best_confidence is not None
+            and best_confidence <= self.threshold
+        )
+        self._match_history.append(raw_face_label if single_frame_match else None)
+        stable_label, stability_count = self._stable_label()
+        matched = stable_label is not None
+        match_status = self._match_status(raw_face_label, best_confidence, single_frame_match, matched)
         return FaceIdentityResult(
             is_active=True,
             matched=matched,
-            face_label=face_label,
+            face_label=stable_label or raw_face_label,
             confidence=best_confidence,
             selected_variant=selected_variant,
             quality_message="Kalite uygun",
+            raw_face_label=raw_face_label,
+            stable_face_label=stable_label,
+            threshold=self.threshold,
+            match_status=match_status,
+            stability_count=stability_count,
+            health_warnings=self.health_warnings,
         )
 
     def has_registered_model(self) -> bool:
         """Kullanılabilir kayıtlı yüz modeli olup olmadığını döndürür."""
         return self.model_path.exists() and self.labels_path.exists()
+
+    def _stable_label(self) -> tuple[str | None, int]:
+        """Son tahminlerden stabil kullanıcı etiketini döndürür."""
+        labels = [label for label in self._match_history if label]
+        if not labels:
+            return None, 0
+
+        label, count = Counter(labels).most_common(1)[0]
+        if count >= self._stability_required:
+            return label, count
+        return None, count
+
+    def _match_status(
+        self,
+        raw_face_label: str | None,
+        confidence: float | None,
+        single_frame_match: bool,
+        stable_match: bool,
+    ) -> str:
+        """Debug paneli için LBPH eşleşme durumunu üretir."""
+        if raw_face_label is None:
+            return "etiket yok"
+        if confidence is None:
+            return "skor yok"
+        if stable_match:
+            return "stabil eşleşti"
+        if abs(float(confidence) - self.threshold) <= 5.0:
+            return "Yüz skoru eşik sınırında"
+        if single_frame_match:
+            return "stabilite bekleniyor"
+        return "eşik dışında"
 
 
 def extract_face_image(frame, face_box, output_size: tuple[int, int] = FACE_SIZE):

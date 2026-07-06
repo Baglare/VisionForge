@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from identity_health import check_identity_health
+
 
 @dataclass
 class SystemStatusItem:
@@ -12,11 +14,13 @@ class SystemStatusItem:
     exists: bool
     required: bool
     hint: str = ""
+    ok_text: str = "Var"
+    missing_text: str = "Eksik"
 
     @property
     def status_text(self) -> str:
         """Kullanıcıya gösterilecek kısa durum metnini döndürür."""
-        return "Var" if self.exists else "Eksik"
+        return self.ok_text if self.exists else self.missing_text
 
     @property
     def importance_text(self) -> str:
@@ -34,6 +38,8 @@ def get_system_status() -> list[SystemStatusItem]:
     root = project_root()
     guild_seal_root = root / "assets" / "guild_seals"
     has_qr_png = guild_seal_root.exists() and any(guild_seal_root.glob("*.png"))
+    identity_health = check_identity_health()
+    identity_hint = "; ".join(identity_health.warnings[:2]) if identity_health.warnings else "label/profil uyumlu"
 
     return [
         SystemStatusItem(
@@ -71,6 +77,14 @@ def get_system_status() -> list[SystemStatusItem]:
             has_qr_png,
             False,
             "kayıt sonrası oluşur",
+        ),
+        SystemStatusItem(
+            "Label/Profile eşleşmesi",
+            identity_health.labels_match_profiles,
+            False,
+            identity_hint,
+            ok_text="Uyumlu",
+            missing_text="Uyarı",
         ),
     ]
 
