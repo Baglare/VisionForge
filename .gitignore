@@ -30,6 +30,7 @@ models/*.tflite
 !models/.gitkeep
 
 # Yerel kullanıcı yüz eğitimi ve doğrulama verileri
+data/settings.json
 data/face_gallery/
 data/import_faces/
 models/face_recognizer_lbph.yml

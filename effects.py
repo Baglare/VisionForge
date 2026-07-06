@@ -226,7 +226,7 @@ class Effects:
         panel_x = 24
         panel_y = 24
         panel_width = 455
-        panel_height = 276
+        panel_height = 306
         overlay = frame.copy()
         cv2.rectangle(
             overlay,
@@ -254,6 +254,7 @@ class Effects:
             f"5 - Debug Sayfası: {self._on_off(settings.get('show_debug_page', False))}",
             f"6 - Büyü efektleri: {self._on_off(settings.get('spell_effects_enabled', True))}",
             f"7 - Kamera aynalama: {self._on_off(settings.get('mirror_camera', False))}",
+            f"8 - Sistem Durumu: {self._on_off(settings.get('show_system_status', False))}",
             "0 - Doğrulama oturumunu sıfırla",
         ]
 
@@ -330,6 +331,99 @@ class Effects:
                 font_scale=0.50 if index else 0.58,
             )
 
+        return frame
+
+    def draw_system_status_panel(self, frame, status_items):
+        """Model, profil ve QR dosya durumlarını sade bir panelde gösterir."""
+        if not status_items:
+            return frame
+
+        frame_height, frame_width = frame.shape[:2]
+        panel_width = min(440, max(330, frame_width // 3))
+        panel_height = 230
+        panel_x = max(16, frame_width - panel_width - 18)
+        panel_y = max(18, frame_height - panel_height - 18)
+
+        overlay = frame.copy()
+        cv2.rectangle(
+            overlay,
+            (panel_x, panel_y),
+            (panel_x + panel_width, panel_y + panel_height),
+            (16, 20, 30),
+            -1,
+        )
+        cv2.addWeighted(overlay, 0.58, frame, 0.42, 0, frame)
+        cv2.rectangle(
+            frame,
+            (panel_x, panel_y),
+            (panel_x + panel_width, panel_y + panel_height),
+            (150, 170, 220),
+            1,
+        )
+
+        self._draw_text_fit(
+            frame,
+            "Sistem Durumu",
+            (panel_x + 14, panel_y + 16),
+            panel_width - 28,
+            (255, 220, 120),
+            font_scale=0.58,
+        )
+
+        for index, item in enumerate(status_items):
+            status = item.status_text
+            line = f"{item.label}: {status}"
+            if not item.exists and item.hint:
+                line = f"{line} - {item.hint}"
+            color = (235, 235, 235) if item.exists else (120, 190, 255)
+            if item.required and not item.exists:
+                color = (80, 140, 255)
+            self._draw_text_fit(
+                frame,
+                line,
+                (panel_x + 14, panel_y + 48 + index * 27),
+                panel_width - 28,
+                color,
+                font_scale=0.43,
+            )
+
+        return frame
+
+    def draw_registration_hint(self, frame, message: str):
+        """Kayıt yoksa kullanıcıya küçük bir E ile kayıt yönlendirmesi gösterir."""
+        if not message:
+            return frame
+
+        frame_height, frame_width = frame.shape[:2]
+        panel_width = min(360, frame_width - 48)
+        panel_height = 38
+        panel_x = 24
+        panel_y = max(24, frame_height - panel_height - 24)
+
+        overlay = frame.copy()
+        cv2.rectangle(
+            overlay,
+            (panel_x, panel_y),
+            (panel_x + panel_width, panel_y + panel_height),
+            (18, 22, 32),
+            -1,
+        )
+        cv2.addWeighted(overlay, 0.42, frame, 0.58, 0, frame)
+        cv2.rectangle(
+            frame,
+            (panel_x, panel_y),
+            (panel_x + panel_width, panel_y + panel_height),
+            (150, 170, 220),
+            1,
+        )
+        self._draw_text_fit(
+            frame,
+            message,
+            (panel_x + 12, panel_y + 9),
+            panel_width - 24,
+            (235, 235, 235),
+            font_scale=0.44,
+        )
         return frame
 
     def draw_spell_status_panel(self, frame, spell_result):

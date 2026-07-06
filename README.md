@@ -176,6 +176,7 @@ Ayar menüsündeki seçenekler:
 - `5`: Debug Sayfası'nı açar/kapatır.
 - `6`: Büyü efektlerini açar/kapatır.
 - `7`: Kamera aynalamayı açar/kapatır.
+- `8`: Sistem Durumu panelini açar/kapatır.
 - `0`: Doğrulama oturumunu sıfırlar.
 
 Varsayılan doğrulama modu `QR + Yüz` şeklindedir. Bu modda tam yetki için hem kayıtlı yüzün tanınması hem de doğru lonca mührünün kamerada okunması gerekir. Menüden `3` ile `Yalnızca Yüz` moduna geçildiğinde kayıtlı yüz tanınırsa QR göstermeden tam profil açılır.
@@ -193,6 +194,29 @@ Büyü Kitabı paneli kapak ve iki sayfalı kitap görünümüyle çalışır. S
 Kamera aynalama ayarı yalnızca ekranda gösterilen görüntüye uygulanır. Yüz algılama, yüz tanıma, QR okuma ve el algılama ham kamera karesiyle çalışır; çizimler ekrandaki aynalama durumuna göre dönüştürülür.
 
 Yüz tanıma modeli, eğitim sırasında yüz örneklerinin aynalanmış kopyalarını da kullanır. Doğrulama sırasında normal ve aynalı yüz kırpımı ayrı ayrı denenir; daha iyi LBPH skoru veren tahmin kullanılır.
+
+## Kalıcı Ayarlar ve Sistem Durumu
+
+Uygulama arayüz ayarlarını yerel olarak şu dosyada saklar:
+
+```text
+data/settings.json
+```
+
+Dosya yoksa uygulama varsayılan ayarlarla oluşturur. Q menüsünden el/yüz debug çizimi, doğrulama modu, Büyü Kitabı, Debug Sayfası, büyü efektleri ve kamera aynalama ayarları değiştirildiğinde bu dosya güncellenir. Uygulama tekrar açıldığında son ayarlar korunur.
+
+Sistem Durumu paneli Q menüsünde `8` ile açılıp kapatılır. Panel şu kaynakları kontrol eder:
+
+- `models/face_detector.tflite`
+- `models/hand_landmarker.task`
+- `models/face_recognizer_lbph.yml`
+- `data/face_labels.json`
+- `data/local_profiles.json`
+- `assets/guild_seals/`
+
+Yüz tanıma modeli, yüz etiketleri, yerel profiller veya QR/lonca mühürleri eksikse bu normal olabilir; `E` ile kayıt oluşturulduktan sonra yerel dosyalar üretilir. Kayıtlı büyücü yoksa ekranda `Kayıtlı büyücü yok. E ile kayıt başlat.` yönlendirmesi görünür.
+
+`data/settings.json` yerel kullanıcı ayarıdır ve Git'e eklenmez. Kayıtlı kullanıcı verileri, yüz örnekleri ve QR/lonca mührü dosyaları da yerel tutulur.
 
 ## Trial Mode: Mühürlü Kapı
 

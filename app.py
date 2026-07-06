@@ -13,7 +13,9 @@ from detectors.hand_detector import HandData, HandDetectionResult, HandDetector,
 from effects import Effects
 from enrollment.enrollment_manager import EnrollmentManager
 from guild_profile import find_profile_by_face_label, guest_profile
+from settings_manager import load_ui_settings, save_ui_settings
 from spell_engine import SpellEngine
+from system_status import get_system_status, has_registered_wizard
 from trial_engine import TrialEngine
 
 
@@ -33,16 +35,7 @@ def main() -> None:
     face_identity_detector = FaceIdentityDetector()
     guild_seal_detector = GuildSealDetector()
 
-    ui_settings = {
-        "show_settings_menu": False,
-        "show_hand_debug": False,
-        "show_face_debug": False,
-        "verification_requires_qr": True,
-        "show_spellbook": True,
-        "show_debug_page": False,
-        "spell_effects_enabled": True,
-        "mirror_camera": False,
-    }
+    ui_settings = load_ui_settings()
 
     face_history = deque(maxlen=8)
     face_confirmed = False
@@ -193,6 +186,11 @@ def main() -> None:
             )
             display_frame = effects.draw_spell_status_panel(display_frame, spell_result)
             display_frame = effects.draw_trial_panel(display_frame, trial_status)
+            if not has_registered_wizard():
+                display_frame = effects.draw_registration_hint(
+                    display_frame,
+                    "Kayıtlı büyücü yok. E ile kayıt başlat.",
+                )
 
             if ui_settings["show_spellbook"]:
                 display_frame = effects.draw_spellbook_panel(display_frame, active_profile, page=spellbook_page)
@@ -219,6 +217,8 @@ def main() -> None:
                 "last_trial_message": trial_status.message,
             }
             display_frame = effects.draw_debug_panel(display_frame, debug_info)
+            if ui_settings.get("show_system_status", False):
+                display_frame = effects.draw_system_status_panel(display_frame, get_system_status())
             display_frame = effects.draw_settings_menu(display_frame, ui_settings)
 
             camera.show_frame(display_frame)
@@ -346,6 +346,8 @@ def _handle_key(
     if key < 0:
         return verified_face_label, spellbook_page
 
+    settings_changed = False
+
     if key in (ord("q"), ord("Q")):
         ui_settings["show_settings_menu"] = not ui_settings["show_settings_menu"]
         return verified_face_label, spellbook_page
@@ -358,8 +360,10 @@ def _handle_key(
 
     if key in (ord("b"), ord("B")):
         ui_settings["show_spellbook"] = not ui_settings["show_spellbook"]
+        settings_changed = True
     elif key in (ord("h"), ord("H")):
         ui_settings["show_hand_debug"] = not ui_settings["show_hand_debug"]
+        settings_changed = True
     elif key in (ord("r"), ord("R")):
         verified_face_label = None
         print("Doğrulama oturumu sıfırlandı.")
@@ -378,24 +382,36 @@ def _handle_key(
     if ui_settings["show_settings_menu"]:
         if key == ord("1"):
             ui_settings["show_hand_debug"] = not ui_settings["show_hand_debug"]
+            settings_changed = True
         elif key == ord("2"):
             ui_settings["show_face_debug"] = not ui_settings["show_face_debug"]
+            settings_changed = True
         elif key == ord("3"):
             ui_settings["verification_requires_qr"] = not ui_settings["verification_requires_qr"]
             verified_face_label = None
+            settings_changed = True
         elif key == ord("4"):
             ui_settings["show_spellbook"] = not ui_settings["show_spellbook"]
+            settings_changed = True
         elif key == ord("5"):
             ui_settings["show_debug_page"] = not ui_settings["show_debug_page"]
+            settings_changed = True
         elif key == ord("6"):
             ui_settings["spell_effects_enabled"] = not ui_settings["spell_effects_enabled"]
+            settings_changed = True
         elif key == ord("7"):
             ui_settings["mirror_camera"] = not ui_settings["mirror_camera"]
             verified_face_label = None
+            settings_changed = True
+        elif key == ord("8"):
+            ui_settings["show_system_status"] = not ui_settings.get("show_system_status", False)
         elif key == ord("0"):
             verified_face_label = None
             face_identity_detector.reload()
             print("Doğrulama oturumu sıfırlandı.")
+
+    if settings_changed:
+        save_ui_settings(ui_settings)
 
     return verified_face_label, spellbook_page
 
