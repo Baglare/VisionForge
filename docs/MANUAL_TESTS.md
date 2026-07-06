@@ -262,13 +262,12 @@ Beklenen sonuç:
    - `docs/DEMO_ASSETS.md`
    - `docs/TROUBLESHOOTING.md`
    - `docs/ROADMAP.md`
-   - `docs/PORTFOLIO_NOTES.md`
    - `docs/MANUAL_TESTS.md`
 3. `docs/DEMO_SCRIPT.md` dosyasındaki demo sırasının uygulamadaki mevcut kısayollarla uyumlu olduğunu kontrol et.
 4. `docs/TROUBLESHOOTING.md` içinde kamera, model, QR, yüz tanıma, el algılama, OpenCV çakışması ve `settings.json` sorunlarının yer aldığını kontrol et.
 5. `docs/ARCHITECTURE.md` içinde kamera, yüz, el, HandStateTracker, SpellEngine, TrialEngine, DemoGuide ve UI/effects akışlarının ayrı anlatıldığını kontrol et.
 6. `docs/ROADMAP.md` dosyasında gelecek fikirlerin mevcut özellik gibi sunulmadığını kontrol et.
-7. `docs/PORTFOLIO_NOTES.md` dosyasında CV/GitHub/LinkedIn anlatımı ve profesyonel güvenlik iddiası yapılmaması notlarının bulunduğunu kontrol et.
+7. Public docs klasöründe kişisel portfolyo/CV notu kalmadığını kontrol et.
 
 Beklenen sonuç:
 - README portfolyo sunumu için tek giriş noktası olur.

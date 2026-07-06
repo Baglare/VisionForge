@@ -38,3 +38,7 @@ data/face_labels.json
 data/local_profiles.json
 assets/guild_seals/*.png
 !assets/guild_seals/.gitkeep
+
+# Public repoda tutulmayacak kişisel notlar
+private/
+docs/PORTFOLIO_NOTES.md

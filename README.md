@@ -198,7 +198,6 @@ Kısa roadmap için [docs/ROADMAP.md](docs/ROADMAP.md) dosyasına bak. Özet hed
 - [Demo görsel rehberi](docs/DEMO_ASSETS.md)
 - [Sorun giderme](docs/TROUBLESHOOTING.md)
 - [Roadmap](docs/ROADMAP.md)
-- [Portfolyo notları](docs/PORTFOLIO_NOTES.md)
 - [Manuel test listesi](docs/MANUAL_TESTS.md)
 
 Demo görselleri eklenecekse [docs/DEMO_ASSETS.md](docs/DEMO_ASSETS.md) rehberini takip et.
