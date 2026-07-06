@@ -215,6 +215,10 @@ def main() -> None:
                 "hand_detector_active": str(bool(hand_result.is_active)),
                 "qr_status": auth_state["qr_status"],
                 "identity_status": auth_state["identity_status"],
+                "face_identity_label": auth_state.get("face_identity_label", "-"),
+                "face_identity_score": auth_state.get("face_identity_score", "-"),
+                "face_identity_variant": auth_state.get("face_identity_variant", "-"),
+                "face_quality_message": auth_state.get("face_quality_message", "-"),
                 "recognized_user": auth_state.get("recognized_user", "-"),
                 "active_profile": f"{active_profile.username} / {active_profile.rank}",
                 "allowed_spells": ", ".join(allowed_spells) if allowed_spells else "-",
@@ -530,6 +534,10 @@ def _resolve_auth_state(
         "qr_status": "okunmadı",
         "recognized_user": "-",
         "face_score": "-",
+        "face_identity_label": "-",
+        "face_identity_score": "-",
+        "face_identity_variant": "-",
+        "face_quality_message": "-",
     }
 
     if not face_result.detected or face_result.box is None:
@@ -552,12 +560,14 @@ def _resolve_auth_state(
                 "allowed_spells": guest.unlocked_spells,
                 "verification_status": "Yüz tanıma pasif",
                 "identity_status": identity_result.message or "pasif",
+                "face_quality_message": identity_result.message or "pasif",
             }
         )
         return base
 
     identity_status = _identity_debug_status(identity_result)
     face_score = _face_score_debug(identity_result)
+    identity_debug = _identity_debug_fields(identity_result)
     candidate_profile = find_profile_by_face_label(identity_result.face_label)
     if not identity_result.matched or candidate_profile is None:
         seal_result = guild_seal_detector.detect(frame, None) if verification_requires_qr else None
@@ -569,6 +579,7 @@ def _resolve_auth_state(
                 "qr_status": _qr_debug_status(seal_result),
                 "recognized_user": identity_result.face_label or "-",
                 "face_score": face_score,
+                **identity_debug,
             }
         )
         return base
@@ -583,6 +594,7 @@ def _resolve_auth_state(
             "qr_status": "devre dışı",
             "recognized_user": candidate_profile.username,
             "face_score": face_score,
+            **identity_debug,
         }
 
     seal_result = guild_seal_detector.detect(frame, candidate_profile)
@@ -596,6 +608,7 @@ def _resolve_auth_state(
             "qr_status": _qr_debug_status(seal_result),
             "recognized_user": candidate_profile.username,
             "face_score": face_score,
+            **identity_debug,
         }
 
     if seal_result.matched or verified_face_label == candidate_profile.face_label:
@@ -608,6 +621,7 @@ def _resolve_auth_state(
             "qr_status": _qr_debug_status(seal_result) if seal_result.detected else "oturum onaylı",
             "recognized_user": candidate_profile.username,
             "face_score": face_score,
+            **identity_debug,
         }
 
     return {
@@ -619,6 +633,7 @@ def _resolve_auth_state(
         "qr_status": _qr_debug_status(seal_result),
         "recognized_user": candidate_profile.username,
         "face_score": face_score,
+        **identity_debug,
     }
 
 
@@ -637,6 +652,16 @@ def _face_score_debug(identity_result) -> str:
     if identity_result.confidence is None:
         return "-"
     return f"{identity_result.confidence:.1f}"
+
+
+def _identity_debug_fields(identity_result) -> dict:
+    """Debug paneli için yüz tanıma ayrıntılarını döndürür."""
+    return {
+        "face_identity_label": identity_result.face_label or "-",
+        "face_identity_score": _face_score_debug(identity_result),
+        "face_identity_variant": identity_result.selected_variant or "-",
+        "face_quality_message": identity_result.quality_message or "-",
+    }
 
 
 def _attempted_locked_spell_debug(spell_result) -> str:

@@ -150,6 +150,22 @@ Kaliteli kayıt için:
 - Her aşamada kısa süre sabit bekle.
 - Ani hareket ve bulanık görüntüden kaçın.
 
+Fotoğraf import kullanacaksan görselleri şu klasöre koyabilir veya dosya seçiciyle klasör seçebilirsin:
+
+```text
+data/import_faces/<username>/
+```
+
+Import için iyi fotoğraf önerileri:
+
+- Yüz net olmalı.
+- Işık yeterli olmalı.
+- Farklı açılardan birkaç fotoğraf kullanılmalı.
+- Çok kalabalık fotoğraflar tercih edilmemeli.
+- Yüz fotoğrafta çok küçük olmamalı.
+
+Import sırasında kötü fotoğraflar eğitim verisine alınmaz; kabul/red sayısı ve red sebepleri kısa rapor olarak gösterilir. Canlı kayıt, fotoğraf import ve yüz tanıma tahmini aynı yüz ön işleme mantığını kullanır.
+
 Doğrulama davranışı:
 
 - Yüz yoksa profil beklemede kalır.

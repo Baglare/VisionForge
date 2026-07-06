@@ -7,8 +7,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-
-FACE_SIZE = (160, 160)
+from face_preprocessing import FACE_SIZE, preprocess_face
 
 
 @dataclass
@@ -20,6 +19,8 @@ class FaceIdentityResult:
     face_label: str | None = None
     confidence: float | None = None
     message: str = ""
+    selected_variant: str = ""
+    quality_message: str = ""
 
 
 class FaceIdentityDetector:
@@ -80,18 +81,24 @@ class FaceIdentityDetector:
 
         face_image = extract_face_image(frame, face_box)
         if face_image is None:
-            return FaceIdentityResult(is_active=True, matched=False)
+            return FaceIdentityResult(
+                is_active=True,
+                matched=False,
+                quality_message="Yüz kırpımı hazırlanamadı",
+            )
 
-        candidates = [face_image, cv2.flip(face_image, 1)]
+        candidates = [("normal", face_image), ("mirrored", cv2.flip(face_image, 1))]
         best_label_id = None
         best_confidence = None
+        selected_variant = ""
 
         try:
-            for candidate in candidates:
+            for variant, candidate in candidates:
                 label_id, confidence = self._recognizer.predict(candidate)
                 if best_confidence is None or float(confidence) < best_confidence:
                     best_label_id = int(label_id)
                     best_confidence = float(confidence)
+                    selected_variant = variant
         except Exception as error:
             return FaceIdentityResult(
                 is_active=False,
@@ -106,6 +113,8 @@ class FaceIdentityDetector:
             matched=matched,
             face_label=face_label,
             confidence=best_confidence,
+            selected_variant=selected_variant,
+            quality_message="Kalite uygun",
         )
 
     def has_registered_model(self) -> bool:
@@ -115,32 +124,7 @@ class FaceIdentityDetector:
 
 def extract_face_image(frame, face_box, output_size: tuple[int, int] = FACE_SIZE):
     """Yüz kutusunu gri ve sabit boyutlu LBPH girdisine çevirir."""
-    if frame is None or face_box is None:
-        return None
-
-    frame_height, frame_width = frame.shape[:2]
-    x, y, width, height = [int(value) for value in face_box]
-
-    if width < 50 or height < 50:
-        return None
-
-    padding_x = int(width * 0.16)
-    padding_y = int(height * 0.22)
-    x1 = max(0, x - padding_x)
-    y1 = max(0, y - padding_y)
-    x2 = min(frame_width, x + width + padding_x)
-    y2 = min(frame_height, y + height + padding_y)
-
-    if x2 <= x1 or y2 <= y1:
-        return None
-
-    crop = frame[y1:y2, x1:x2]
-    if crop.size == 0:
-        return None
-
-    gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
-    gray = cv2.equalizeHist(gray)
-    return cv2.resize(gray, output_size, interpolation=cv2.INTER_AREA)
+    return preprocess_face(frame, face_box, output_size=output_size)
 
 
 def train_lbph_from_gallery(

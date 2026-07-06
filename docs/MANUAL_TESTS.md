@@ -55,6 +55,7 @@ Beklenen sonuç:
 - Kaliteli örnek alınmadan aşama ilerlemez.
 - Yüz örnekleri `data/face_gallery/` altında oluşur.
 - Örnek dosya adları aşama bilgisini içerir.
+- Görsel import seçilirse kötü fotoğraflar reddedilir ve kabul/red raporu görünür.
 - LBPH modeli `models/face_recognizer_lbph.yml` olarak kaydedilir.
 - Etiketler `data/face_labels.json` içine yazılır.
 - Yerel profil `data/local_profiles.json` içine eklenir.

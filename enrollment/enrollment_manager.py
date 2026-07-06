@@ -9,6 +9,7 @@ import cv2
 import qrcode
 
 from detectors.face_identity_detector import extract_face_image, train_lbph_from_gallery
+from face_preprocessing import assess_face_quality
 from guild_profile import build_local_profile, project_root, sanitize_username, save_local_profile
 
 
@@ -29,6 +30,7 @@ class EnrollmentStatus:
     stage_target_count: int = 6
     rejected_count: int = 0
     quality_status: str = ""
+    import_report: str = ""
 
 
 class EnrollmentManager:
@@ -59,6 +61,7 @@ class EnrollmentManager:
         self.rejected_count = 0
         self.message = ""
         self.quality_status = ""
+        self.import_report = ""
         self.qr_path: Path | None = None
         self._last_sample_at = 0.0
         self.completed_at = 0.0
@@ -100,7 +103,7 @@ class EnrollmentManager:
         self.model_path.parent.mkdir(parents=True, exist_ok=True)
         self.labels_path.parent.mkdir(parents=True, exist_ok=True)
 
-        for old_sample in self.sample_dir.glob("sample_*.png"):
+        for old_sample in self.sample_dir.glob("*.png"):
             old_sample.unlink()
 
     def _start_camera_capture(self) -> EnrollmentStatus:
@@ -148,9 +151,9 @@ class EnrollmentManager:
             self.rejected_count += 1
             return self.status()
 
-        self.sample_count += 1
         stage_key = self._current_stage_key()
-        stage_sample_count = self._stage_sample_count()
+        stage_sample_count = self._stage_sample_count() + 1
+        self.sample_count += 1
         sample_path = self.sample_dir / f"{stage_key}_{stage_sample_count:03d}.png"
         cv2.imwrite(str(sample_path), face_image)
         self._last_sample_at = now
@@ -187,6 +190,7 @@ class EnrollmentManager:
             stage_target_count=self.stage_sample_target,
             rejected_count=self.rejected_count,
             quality_status=self.quality_status,
+            import_report=self.import_report,
         )
 
     def _finish_enrollment(self) -> None:
@@ -236,40 +240,15 @@ class EnrollmentManager:
         if self.is_complete:
             return self.stage_sample_target
 
-        remainder = self.sample_count % self.stage_sample_target
-        if remainder == 0 and self.sample_count > 0:
-            return self.stage_sample_target
-        return min(self.stage_sample_target, remainder)
+        return min(self.stage_sample_target, self.sample_count % self.stage_sample_target)
 
     def _validate_face_sample(self, frame, face_result) -> tuple[bool, str]:
         """Kaydetmeden önce yüz örneğinin temel kalitesini kontrol eder."""
         if face_result is None or not face_result.detected or face_result.box is None:
             return False, "Yüz bulunamadı"
 
-        confidence = face_result.confidence
-        if confidence is not None and confidence < 0.58:
-            return False, "Biraz daha ışık gerekli"
-
-        frame_height, frame_width = frame.shape[:2]
-        x, y, width, height = [int(value) for value in face_result.box]
-
-        min_face_size = int(min(frame_width, frame_height) * 0.16)
-        if width < min_face_size or height < min_face_size:
-            return False, "Yüz çok küçük"
-
-        margin = int(min(frame_width, frame_height) * 0.06)
-        if x < margin or y < margin or x + width > frame_width - margin or y + height > frame_height - margin:
-            return False, "Kamera ortasına gel"
-
-        face_image = extract_face_image(frame, face_result.box)
-        if face_image is None:
-            return False, "Yüz çok küçük"
-
-        blur_score = cv2.Laplacian(face_image, cv2.CV_64F).var()
-        if blur_score < 45.0:
-            return False, "Görüntü bulanık"
-
-        return True, "Kalite uygun"
+        quality = assess_face_quality(frame, face_result.box, confidence=face_result.confidence)
+        return quality.is_acceptable, quality.message
 
     def _ask_username(self) -> str | None:
         """Tkinter ile kullanıcı adı alır; olmazsa terminal input kullanır."""
@@ -361,25 +340,31 @@ class EnrollmentManager:
             self.message = f"Görsel bulunamadı. Fotoğrafları şu klasöre koy: {source_dir}"
             return self.status(message=self.message)
 
+        rejected_reasons: dict[str, int] = {}
         for image_path in image_paths:
             image = cv2.imread(str(image_path))
             if image is None:
+                rejected_reasons["Görsel okunamadı"] = rejected_reasons.get("Görsel okunamadı", 0) + 1
                 continue
 
             face_result = face_detector.detect(image)
             if not face_result.detected or face_result.box is None:
+                rejected_reasons["Yüz bulunamadı"] = rejected_reasons.get("Yüz bulunamadı", 0) + 1
                 continue
 
-            face_image = extract_face_image(image, face_result.box)
-            if face_image is None:
+            quality = assess_face_quality(image, face_result.box, confidence=face_result.confidence)
+            if not quality.is_acceptable or quality.face_image is None:
+                rejected_reasons[quality.message] = rejected_reasons.get(quality.message, 0) + 1
                 continue
 
             self.sample_count += 1
             sample_path = self.sample_dir / f"sample_import_{self.sample_count:03d}.png"
-            cv2.imwrite(str(sample_path), face_image)
+            cv2.imwrite(str(sample_path), quality.face_image)
 
+        self.rejected_count = sum(rejected_reasons.values())
         if self.sample_count <= 0:
-            self.message = "Import edilen görsellerde geçerli yüz örneği bulunamadı."
+            self.import_report = self._format_import_report(0, self.rejected_count, rejected_reasons)
+            self.message = f"Import edilen görsellerde geçerli yüz örneği bulunamadı. {self.import_report}"
             return self.status(message=self.message)
 
         try:
@@ -389,7 +374,8 @@ class EnrollmentManager:
             return self.status(message=self.message)
 
         self.is_active = False
-        return self.status(message=f"Görsel import tamamlandı. {self.sample_count} örnek işlendi.")
+        self.import_report = self._format_import_report(self.sample_count, self.rejected_count, rejected_reasons)
+        return self.status(message=f"Görsel import tamamlandı. {self.import_report}")
 
     def _iter_image_paths(self, source_dir: Path):
         """Desteklenen görsel dosyalarını klasörden okur."""
@@ -400,3 +386,14 @@ class EnrollmentManager:
         for path in sorted(source_dir.iterdir()):
             if path.is_file() and path.suffix.lower() in extensions:
                 yield path
+
+    def _format_import_report(self, accepted_count: int, rejected_count: int, rejected_reasons: dict[str, int]) -> str:
+        """Import sonrası kabul/red özetini kısa metne çevirir."""
+        reason_text = "yok"
+        if rejected_reasons:
+            reason_text = ", ".join(f"{reason}: {count}" for reason, count in sorted(rejected_reasons.items()))
+
+        return (
+            f"Kabul: {accepted_count}, Red: {rejected_count}, "
+            f"Red sebepleri: {reason_text}, Eğitim örneği: {accepted_count}"
+        )
