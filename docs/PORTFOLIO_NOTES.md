@@ -52,20 +52,6 @@ Proje küçük başlamasına rağmen modüllere ayrılmıştır:
 
 Bu yapı sayesinde yeni ekranlar ve dokümantasyon eklenirken büyü, doğrulama ve kayıt mantığı birbirinden ayrılabilmiştir.
 
-## Yapay Zeka / Codex ile Geliştirme Süreci Nasıl Anlatılmalı?
-
-Doğru anlatım:
-- Proje iteratif olarak geliştirildi.
-- Her aşamada küçük hedefler belirlendi.
-- Codex kod iskeleti, refactor ve dokümantasyon süreçlerinde yardımcı oldu.
-- Kararlar ve kapsam geliştirici tarafından yönlendirildi.
-- Test, hata ayıklama ve davranış doğrulama gerçek çalışma çıktılarıyla yapıldı.
-
-Kaçınılması gereken anlatım:
-- Sistemi yapay zeka kendi başına tasarladı gibi göstermek.
-- Profesyonel güvenlik ürünü iddiası vermek.
-- Kamera ve yüz tanıma doğruluğunu abartmak.
-
 ## Neden Sıradan Webcam Demosundan Daha Güçlü?
 
 VisionForge yalnızca kameradan görüntü göstermez. Birden fazla katmanı birleştirir:

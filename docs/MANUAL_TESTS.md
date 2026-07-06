@@ -7,11 +7,27 @@ Bu doküman demo öncesi elde çalıştırılacak kısa kontrol listesidir. Test
 Adımlar:
 1. Proje klasöründe sanal ortamı etkinleştir.
 2. `pip install -r requirements.txt` komutunu çalıştır.
-3. `python -m py_compile app.py camera.py effects.py guild_profile.py spell_engine.py trial_engine.py settings_manager.py system_status.py` komutunu çalıştır.
+3. `python tools/download_models.py` komutunu çalıştır.
+4. `python -m py_compile app.py camera.py effects.py guild_profile.py spell_engine.py trial_engine.py settings_manager.py system_status.py tools/download_models.py` komutunu çalıştır.
 
 Beklenen sonuç:
 - Bağımlılıklar yüklenir.
+- `models/face_detector.tflite` ve `models/hand_landmarker.task` dosyaları oluşur veya zaten varsa script bunu bildirir.
 - Python sözdizimi hatası alınmaz.
+
+## Model indirme testi
+
+Adımlar:
+1. `python tools/download_models.py` komutunu çalıştır.
+2. `models/face_detector.tflite` dosyasının var olduğunu kontrol et.
+3. `models/hand_landmarker.task` dosyasının var olduğunu kontrol et.
+4. Uygulamayı açıp `Q > 8` ile Sistem Durumu panelini göster.
+
+Beklenen sonuç:
+- Script eksik modelleri indirir.
+- Model zaten varsa terminalde anlaşılır şekilde `zaten var` mesajı görünür.
+- İndirme başarısız olursa terminalde net hata mesajı ve manuel hedef konum görünür.
+- Sistem Durumu paneli Face Detector ve Hand Landmarker modellerini `Var` olarak gösterir.
 
 ## Kamera testi
 
@@ -243,6 +259,7 @@ Beklenen sonuç:
 2. README içinde şu belgelerin linklendiğini kontrol et:
    - `docs/ARCHITECTURE.md`
    - `docs/DEMO_SCRIPT.md`
+   - `docs/DEMO_ASSETS.md`
    - `docs/TROUBLESHOOTING.md`
    - `docs/ROADMAP.md`
    - `docs/PORTFOLIO_NOTES.md`

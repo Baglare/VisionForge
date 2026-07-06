@@ -52,17 +52,32 @@ Python 3.12 veya 3.13 önerilir. OpenCV tarafında contrib paketi gerekir; `open
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+python tools/download_models.py
 python app.py
 ```
 
+Kurulum sırası:
+1. Sanal ortam oluştur ve etkinleştir.
+2. `requirements.txt` bağımlılıklarını kur.
+3. `python tools/download_models.py` ile gerekli MediaPipe modellerini indir.
+4. `python app.py` ile uygulamayı başlat.
+
 ## Gerekli Model Dosyaları
 
-Model dosyaları Git'e dahil edilmez. Aşağıdaki dosyalar elle ilgili konuma yerleştirilmelidir:
+Model dosyaları Git'e dahil edilmez. Önerilen kolay yol:
+
+```powershell
+python tools/download_models.py
+```
+
+Bu komut şu dosyaları indirip doğru konuma koyar:
 
 ```text
 models/face_detector.tflite
 models/hand_landmarker.task
 ```
+
+İstersen dosyaları manuel olarak aynı konumlara da yerleştirebilirsin. Script mevcut dosyayı tekrar indirmez; eksik veya indirilemeyen model için terminalde anlaşılır mesaj verir.
 
 Kayıt/eğitim sonrasında uygulama yerel olarak şu dosyaları üretir:
 
@@ -180,7 +195,10 @@ Kısa roadmap için [docs/ROADMAP.md](docs/ROADMAP.md) dosyasına bak. Özet hed
 
 - [Mimari notları](docs/ARCHITECTURE.md)
 - [Demo video senaryosu](docs/DEMO_SCRIPT.md)
+- [Demo görsel rehberi](docs/DEMO_ASSETS.md)
 - [Sorun giderme](docs/TROUBLESHOOTING.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Portfolyo notları](docs/PORTFOLIO_NOTES.md)
 - [Manuel test listesi](docs/MANUAL_TESTS.md)
+
+Demo görselleri eklenecekse [docs/DEMO_ASSETS.md](docs/DEMO_ASSETS.md) rehberini takip et.

@@ -27,9 +27,15 @@ Yerel eğitimden sonra oluşan dosyalar:
 - `data/local_profiles.json`
 
 Çözüm:
-- Sistem Durumu panelini `Q > 8` ile aç.
-- Eksik yüz veya el modelini ilgili `models/` konumuna koy.
-- Yüz tanıma modeli eksikse `E` ile kayıt oluştur.
+1. Sistem Durumu panelini `Q > 8` ile aç.
+2. Gerekli MediaPipe modellerini otomatik indirmek için şu komutu çalıştır:
+
+```powershell
+python tools/download_models.py
+```
+
+3. Script başarısız olursa dosyaları manuel olarak ilgili `models/` konumuna koy.
+4. Yüz tanıma modeli eksikse `E` ile kayıt oluştur.
 
 ## Türkçe karakterler bozuk görünürse
 
