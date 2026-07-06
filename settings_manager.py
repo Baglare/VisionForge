@@ -44,7 +44,8 @@ def save_settings(settings: dict) -> None:
     """Ayarları JSON dosyasına yazar."""
     path = settings_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {key: settings.get(key, value) for key, value in DEFAULT_SETTINGS.items()}
+    sanitized_settings = _sanitize_settings(settings)
+    payload = {key: sanitized_settings.get(key, value) for key, value in DEFAULT_SETTINGS.items()}
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
@@ -84,7 +85,7 @@ def _sanitize_settings(data: dict) -> dict:
     for key, default_value in DEFAULT_SETTINGS.items():
         value = data.get(key, default_value)
         if isinstance(default_value, bool):
-            sanitized[key] = bool(value)
+            sanitized[key] = value if isinstance(value, bool) else default_value
         elif key == "verification_mode":
             sanitized[key] = value if value in {"QR + Yüz", "Yalnızca Yüz"} else default_value
         else:

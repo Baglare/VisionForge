@@ -232,6 +232,34 @@ Doğru sıradaki büyü yapıldığında mühür ilerlemesi artar. Yanlış büy
 
 Trial Mode mevcut yetki sistemine uyar. Misafir kullanıcı yalnızca `Donma` kullanabildiği için ilk adımı geçebilir, ancak `Ateş` aşamasında daha yüksek yetki gerektiği gösterilir. Tam görev için `Donma`, `Ateş` ve `Kalkan` büyülerine erişimi olan doğrulanmış kullanıcı gerekir.
 
+## Demo Hazırlığı
+
+Güncel kısayollar:
+
+- `Q`: Ayar menüsünü açar/kapatır.
+- `Esc`: Uygulamayı kapatır.
+- `E`: Kayıt/eğitim akışını başlatır.
+- `B`: Büyü Kitabı'nı açar/kapatır.
+- `H`: El debug çizimini açar/kapatır.
+- `R`: Doğrulama oturumunu sıfırlar.
+- `T`: Mühürlü Kapı Trial görevini başlatır veya yeniden başlatır.
+- `1-8` ve `0`: Q menüsü açıkken ayarları değiştirir.
+- `Sağ/Sol ok`: Büyü Kitabı sayfalarını değiştirir.
+
+Model ve yerel kullanıcı dosyaları Git'e dahil edilmez. MediaPipe modelleri `models/face_detector.tflite` ve `models/hand_landmarker.task` konumuna elle yerleştirilmelidir. Kayıt/eğitim sonrası oluşan yüz galerisi, LBPH modeli, yerel profil, ayarlar ve QR/lonca mühürleri yerel dosyalardır.
+
+Kısa demo senaryosu:
+
+1. `python app.py` ile uygulamayı aç.
+2. Gerekirse `E` ile kayıt oluştur.
+3. `Q` menüsünden `QR + Yüz` veya `Yalnızca Yüz` doğrulama modunu seç.
+4. Büyü Kitabı'nı göster.
+5. Donma, Ateş ve Kalkan büyülerini tetikle.
+6. `T` ile Mühürlü Kapı Trial görevini başlat.
+7. Donma -> Ateş -> Kalkan sırasıyla kapıyı aç.
+
+Manuel demo kontrol listesi için `docs/MANUAL_TESTS.md` dosyasını kullan.
+
 ## Kurulum
 
 Python 3.12 veya 3.13 kullanılması önerilir. Python 3.14 ile gelen OpenCV 5 paketinde bu aşamada kullanılan bazı klasik OpenCV yüz algılama API'leri bulunmayabilir.
