@@ -8,6 +8,7 @@ DEFAULT_SETTINGS = {
     "hand_debug_visible": False,
     "face_debug_visible": False,
     "verification_mode": "QR + Yüz",
+    "detection_profile": "Dengeli",
     "spellbook_visible": True,
     "debug_panel_visible": False,
     "spell_effects_enabled": True,
@@ -57,6 +58,7 @@ def load_ui_settings() -> dict:
         "show_hand_debug": settings["hand_debug_visible"],
         "show_face_debug": settings["face_debug_visible"],
         "verification_requires_qr": settings["verification_mode"] == "QR + Yüz",
+        "detection_profile": settings["detection_profile"],
         "show_spellbook": settings["spellbook_visible"],
         "show_debug_page": settings["debug_panel_visible"],
         "spell_effects_enabled": settings["spell_effects_enabled"],
@@ -71,6 +73,7 @@ def save_ui_settings(ui_settings: dict) -> None:
         "hand_debug_visible": bool(ui_settings.get("show_hand_debug", False)),
         "face_debug_visible": bool(ui_settings.get("show_face_debug", False)),
         "verification_mode": "QR + Yüz" if ui_settings.get("verification_requires_qr", True) else "Yalnızca Yüz",
+        "detection_profile": ui_settings.get("detection_profile", "Dengeli"),
         "spellbook_visible": bool(ui_settings.get("show_spellbook", True)),
         "debug_panel_visible": bool(ui_settings.get("show_debug_page", False)),
         "spell_effects_enabled": bool(ui_settings.get("spell_effects_enabled", True)),
@@ -88,6 +91,8 @@ def _sanitize_settings(data: dict) -> dict:
             sanitized[key] = value if isinstance(value, bool) else default_value
         elif key == "verification_mode":
             sanitized[key] = value if value in {"QR + Yüz", "Yalnızca Yüz"} else default_value
+        elif key == "detection_profile":
+            sanitized[key] = value if value in {"Hassas", "Dengeli", "Kararlı"} else default_value
         else:
             sanitized[key] = value
     return sanitized

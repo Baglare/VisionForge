@@ -205,6 +205,8 @@ data/settings.json
 
 Dosya yoksa uygulama varsayılan ayarlarla oluşturur. Q menüsünden el/yüz debug çizimi, doğrulama modu, Büyü Kitabı, Debug Sayfası, büyü efektleri ve kamera aynalama ayarları değiştirildiğinde bu dosya güncellenir. Uygulama tekrar açıldığında son ayarlar korunur.
 
+Algılama profili `9` tuşuyla `Hassas`, `Dengeli` ve `Kararlı` arasında değiştirilir. Varsayılan profil `Dengeli` değeridir. `Hassas` daha kolay algılama, `Kararlı` daha seçici algılama hedefler.
+
 Sistem Durumu paneli Q menüsünde `8` ile açılıp kapatılır. Panel şu kaynakları kontrol eder:
 
 - `models/face_detector.tflite`
@@ -243,7 +245,7 @@ Güncel kısayollar:
 - `H`: El debug çizimini açar/kapatır.
 - `R`: Doğrulama oturumunu sıfırlar.
 - `T`: Mühürlü Kapı Trial görevini başlatır veya yeniden başlatır.
-- `1-8` ve `0`: Q menüsü açıkken ayarları değiştirir.
+- `1-9` ve `0`: Q menüsü açıkken ayarları değiştirir.
 - `Sağ/Sol ok`: Büyü Kitabı sayfalarını değiştirir.
 
 Model ve yerel kullanıcı dosyaları Git'e dahil edilmez. MediaPipe modelleri `models/face_detector.tflite` ve `models/hand_landmarker.task` konumuna elle yerleştirilmelidir. Kayıt/eğitim sonrası oluşan yüz galerisi, LBPH modeli, yerel profil, ayarlar ve QR/lonca mühürleri yerel dosyalardır.

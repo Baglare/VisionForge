@@ -132,12 +132,15 @@ Beklenen sonuç:
 
 Adımlar:
 1. `Q` ile ayar menüsünü aç.
-2. `1-8` seçeneklerini sırayla değiştir.
+2. `1-9` seçeneklerini sırayla değiştir.
 3. Uygulamayı kapatıp yeniden aç.
 4. `8` ile Sistem Durumu panelini aç.
+5. `9` ile Algılama Profilini `Hassas`, `Dengeli`, `Kararlı` arasında değiştir.
+6. Debug Sayfasını açıp yüz/el algılama skorlarını kontrol et.
 
 Beklenen sonuç:
 - Kalıcı ayarlar `data/settings.json` içine yazılır.
 - Uygulama yeniden açıldığında son ayarlar korunur.
 - Sistem Durumu paneli model, profil ve QR dosya durumlarını anlaşılır şekilde gösterir.
+- Debug panelinde algılama profili, yüz skoru, yüz kutusu, el sayısı ve sağ/sol el bilgisi görünür.
 - `0` doğrulama oturumunu sıfırlar.

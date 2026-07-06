@@ -50,11 +50,11 @@ def main() -> None:
         print(face_identity_detector.warning_message)
 
     try:
-        face_detector = FaceDetector()
+        face_detector = FaceDetector(**_face_detector_options(ui_settings["detection_profile"]))
         if face_detector.warning_message:
             print(face_detector.warning_message)
 
-        hand_detector = HandDetector()
+        hand_detector = HandDetector(**_hand_detector_options(ui_settings["detection_profile"]))
         if hand_detector.warning_message:
             print(hand_detector.warning_message)
 
@@ -117,6 +117,7 @@ def main() -> None:
                     enrollment_manager,
                     face_identity_detector,
                     face_detector,
+                    hand_detector,
                     trial_engine,
                     allow_enrollment_start=False,
                 )
@@ -197,8 +198,17 @@ def main() -> None:
 
             debug_info = {
                 "show_debug_page": ui_settings["show_debug_page"],
+                "detection_profile": ui_settings.get("detection_profile", "Dengeli"),
                 "face_status": "var" if face_result.detected else "yok",
+                "face_detected": str(bool(face_result.detected)),
+                "face_detection_score": _score_debug(face_result.confidence),
+                "face_box": _box_debug(face_result.box),
+                "face_detector_active": str(bool(face_result.is_active)),
                 "hand_status": hand_status_text,
+                "hand_detected": str(bool(hand_result.detected)),
+                "hand_count": str(hand_result.hand_count),
+                "handedness": _handedness_debug(hand_result),
+                "hand_detector_active": str(bool(hand_result.is_active)),
                 "qr_status": auth_state["qr_status"],
                 "identity_status": auth_state["identity_status"],
                 "recognized_user": auth_state.get("recognized_user", "-"),
@@ -232,6 +242,7 @@ def main() -> None:
                 enrollment_manager,
                 face_identity_detector,
                 face_detector,
+                hand_detector,
                 trial_engine,
                 allow_enrollment_start=True,
             )
@@ -272,6 +283,71 @@ def _update_face_confirmation(face_result, face_history, face_confirmed: bool, m
         face_history.clear()
 
     return face_confirmed, missing_face_frames
+
+
+def _face_detector_options(detection_profile: str) -> dict:
+    """Algılama profiline göre FaceDetector seçeneklerini döndürür."""
+    confidence_by_profile = {
+        "Hassas": 0.45,
+        "Dengeli": 0.60,
+        "Kararlı": 0.75,
+    }
+    return {
+        "min_detection_confidence": confidence_by_profile.get(detection_profile, 0.60),
+    }
+
+
+def _hand_detector_options(detection_profile: str) -> dict:
+    """Algılama profiline göre HandDetector seçeneklerini döndürür."""
+    profile_options = {
+        "Hassas": {
+            "min_hand_detection_confidence": 0.35,
+            "min_hand_presence_confidence": 0.35,
+            "min_tracking_confidence": 0.35,
+        },
+        "Dengeli": {
+            "min_hand_detection_confidence": 0.50,
+            "min_hand_presence_confidence": 0.50,
+            "min_tracking_confidence": 0.50,
+        },
+        "Kararlı": {
+            "min_hand_detection_confidence": 0.65,
+            "min_hand_presence_confidence": 0.65,
+            "min_tracking_confidence": 0.65,
+        },
+    }
+    return profile_options.get(detection_profile, profile_options["Dengeli"])
+
+
+def _apply_detection_profile(face_detector, hand_detector, detection_profile: str) -> None:
+    """Algılama profilini mevcut detector örneklerine uygular."""
+    if face_detector is not None:
+        face_options = _face_detector_options(detection_profile)
+        face_detector.min_detection_confidence = face_options["min_detection_confidence"]
+        face_detector.close()
+        face_detector.initialize()
+        if face_detector.warning_message:
+            print(face_detector.warning_message)
+
+    if hand_detector is not None:
+        hand_options = _hand_detector_options(detection_profile)
+        hand_detector.min_hand_detection_confidence = hand_options["min_hand_detection_confidence"]
+        hand_detector.min_hand_presence_confidence = hand_options["min_hand_presence_confidence"]
+        hand_detector.min_tracking_confidence = hand_options["min_tracking_confidence"]
+        hand_detector.close()
+        hand_detector.initialize()
+        if hand_detector.warning_message:
+            print(hand_detector.warning_message)
+
+
+def _next_detection_profile(current_profile: str) -> str:
+    """Q menüsü için algılama profilini sıradaki değere taşır."""
+    profiles = ["Hassas", "Dengeli", "Kararlı"]
+    try:
+        current_index = profiles.index(current_profile)
+    except ValueError:
+        return "Hassas"
+    return profiles[(current_index + 1) % len(profiles)]
 
 
 def _to_display_face_result(face_result, frame_width: int, mirror_camera: bool):
@@ -339,6 +415,7 @@ def _handle_key(
     enrollment_manager: EnrollmentManager,
     face_identity_detector: FaceIdentityDetector,
     face_detector: FaceDetector | None,
+    hand_detector: HandDetector | None,
     trial_engine: TrialEngine,
     allow_enrollment_start: bool,
 ) -> tuple[str | None, int]:
@@ -405,6 +482,12 @@ def _handle_key(
             settings_changed = True
         elif key == ord("8"):
             ui_settings["show_system_status"] = not ui_settings.get("show_system_status", False)
+        elif key == ord("9"):
+            ui_settings["detection_profile"] = _next_detection_profile(
+                ui_settings.get("detection_profile", "Dengeli")
+            )
+            _apply_detection_profile(face_detector, hand_detector, ui_settings["detection_profile"])
+            settings_changed = True
         elif key == ord("0"):
             verified_face_label = None
             face_identity_detector.reload()
@@ -562,6 +645,29 @@ def _attempted_locked_spell_debug(spell_result) -> str:
     if "kilit" in str(message).lower():
         return str(message)
     return "-"
+
+
+def _score_debug(score) -> str:
+    """Debug paneli için skor değerini kısa metne çevirir."""
+    if score is None:
+        return "-"
+    return f"{float(score):.2f}"
+
+
+def _box_debug(box) -> str:
+    """Debug paneli için yüz kutusu koordinatını kısa metne çevirir."""
+    if box is None:
+        return "-"
+    x, y, width, height = box
+    return f"{x},{y},{width},{height}"
+
+
+def _handedness_debug(hand_result) -> str:
+    """Debug paneli için algılanan el yönlerini listeler."""
+    if not hand_result or not hand_result.hands:
+        return "-"
+    labels = [hand.handedness for hand in hand_result.hands if hand.handedness]
+    return ", ".join(labels) if labels else "-"
 
 
 def _qr_debug_status(seal_result) -> str:

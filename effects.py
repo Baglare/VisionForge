@@ -226,7 +226,7 @@ class Effects:
         panel_x = 24
         panel_y = 24
         panel_width = 455
-        panel_height = 306
+        panel_height = 334
         overlay = frame.copy()
         cv2.rectangle(
             overlay,
@@ -255,6 +255,7 @@ class Effects:
             f"6 - Büyü efektleri: {self._on_off(settings.get('spell_effects_enabled', True))}",
             f"7 - Kamera aynalama: {self._on_off(settings.get('mirror_camera', False))}",
             f"8 - Sistem Durumu: {self._on_off(settings.get('show_system_status', False))}",
+            f"9 - Algılama Profili: {settings.get('detection_profile', 'Dengeli')}",
             "0 - Doğrulama oturumunu sıfırla",
         ]
 
@@ -278,7 +279,7 @@ class Effects:
 
         frame_height, frame_width = frame.shape[:2]
         panel_width = min(430, max(320, frame_width // 3))
-        panel_height = 420
+        panel_height = min(frame_height - 36, 520)
         panel_x = max(16, frame_width - panel_width - 18)
         panel_y = max(18, frame_height - panel_height - 18)
 
@@ -301,8 +302,17 @@ class Effects:
 
         lines = [
             "Debug",
+            f"Algılama profili: {debug_info.get('detection_profile', '-')}",
             f"Yüz: {debug_info.get('face_status', '-')}",
+            f"Face detected: {debug_info.get('face_detected', '-')}",
+            f"Face score: {debug_info.get('face_detection_score', '-')}",
+            f"Face box: {debug_info.get('face_box', '-')}",
+            f"Face detector aktif: {debug_info.get('face_detector_active', '-')}",
             f"El: {debug_info.get('hand_status', '-')}",
+            f"Hand detected: {debug_info.get('hand_detected', '-')}",
+            f"Hand count: {debug_info.get('hand_count', '-')}",
+            f"Handedness: {debug_info.get('handedness', '-')}",
+            f"Hand detector aktif: {debug_info.get('hand_detector_active', '-')}",
             f"QR: {debug_info.get('qr_status', '-')}",
             f"Yüz tanıma: {debug_info.get('identity_status', '-')}",
             f"Tanınan kullanıcı: {debug_info.get('recognized_user', '-')}",
@@ -320,15 +330,16 @@ class Effects:
             f"Trial mühürler: {debug_info.get('trial_completed_steps', '-')}",
             f"Trial mesaj: {debug_info.get('last_trial_message', '-')}",
         ]
+        text_step = max(14, min(20, (panel_height - 34) // max(1, len(lines) - 1)))
         for index, line in enumerate(lines):
             color = (120, 220, 255) if index == 0 else (235, 235, 235)
             self._draw_text_fit(
                 frame,
                 line,
-                (panel_x + 14, panel_y + 18 + index * 24),
+                (panel_x + 14, panel_y + 18 + index * text_step),
                 panel_width - 28,
                 color,
-                font_scale=0.50 if index else 0.58,
+                font_scale=0.36 if index else 0.50,
             )
 
         return frame
