@@ -132,6 +132,24 @@ Normal kullanıcı akışı:
 7. Oluşturulan QR/lonca mührünü sakla.
 8. Sonraki girişte yüz + kendi lonca mührün ile tam doğrulan.
 
+Canlı kamera kaydı rehberli aşamalarla ilerler:
+
+- Düz bak
+- Hafif sağa dön
+- Hafif sola dön
+- Biraz yaklaş
+- Biraz uzaklaş
+
+Her aşamada yeterli sayıda kaliteli yüz örneği alınmadan sonraki aşamaya geçilmez. Kayıt sırasında yüz çok küçükse, yüz kadraj kenarına yakınsa, algılama skoru düşükse veya görüntü bulanıksa örnek kaydedilmez.
+
+Kaliteli kayıt için:
+
+- İyi ışık kullan.
+- Yüzünü kameraya yakın ama kadrajı taşırmadan tut.
+- Yüzünü mümkün olduğunca merkezde tut.
+- Her aşamada kısa süre sabit bekle.
+- Ani hareket ve bulanık görüntüden kaçın.
+
 Doğrulama davranışı:
 
 - Yüz yoksa profil beklemede kalır.

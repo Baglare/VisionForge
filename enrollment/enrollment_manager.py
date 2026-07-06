@@ -24,17 +24,22 @@ class EnrollmentStatus:
     instruction: str = ""
     message: str = ""
     qr_path: str | None = None
+    stage_name: str = ""
+    stage_sample_count: int = 0
+    stage_target_count: int = 6
+    rejected_count: int = 0
+    quality_status: str = ""
 
 
 class EnrollmentManager:
     """Kamera karesinden yüz örneği toplayıp yerel tanıma modeli eğitir."""
 
-    INSTRUCTIONS = [
-        "Kameraya düz bak",
-        "Hafif sağa dön",
-        "Hafif sola dön",
-        "Biraz yaklaş",
-        "Biraz uzaklaş",
+    STAGES = [
+        ("front", "Düz bak", "Kameraya düz bak ve kısa süre sabit kal"),
+        ("right", "Hafif sağa dön", "Başını hafif sağa çevir"),
+        ("left", "Hafif sola dön", "Başını hafif sola çevir"),
+        ("close", "Biraz yaklaş", "Kameraya biraz yaklaş"),
+        ("far", "Biraz uzaklaş", "Kameradan biraz uzaklaş"),
     ]
 
     def __init__(self, samples_per_user: int = 30) -> None:
@@ -51,10 +56,13 @@ class EnrollmentManager:
         self.face_label = ""
         self.sample_dir: Path | None = None
         self.sample_count = 0
+        self.rejected_count = 0
         self.message = ""
+        self.quality_status = ""
         self.qr_path: Path | None = None
         self._last_sample_at = 0.0
         self.completed_at = 0.0
+        self.stage_sample_target = max(1, self.samples_per_user // len(self.STAGES))
 
     def start(self, face_detector=None) -> EnrollmentStatus:
         """Yeni kullanıcı adını ve kayıt kaynağını alır."""
@@ -100,7 +108,9 @@ class EnrollmentManager:
         self.is_active = True
         self.is_complete = False
         self.sample_count = 0
+        self.rejected_count = 0
         self.message = "Yüz örnekleri toplanıyor."
+        self.quality_status = "Hazır"
         self.qr_path = None
         self._last_sample_at = 0.0
         self.completed_at = 0.0
@@ -115,23 +125,37 @@ class EnrollmentManager:
             return self.status()
 
         if face_result is None or not face_result.detected or face_result.box is None:
-            self.message = "Yüz bulunamadı, kameraya bak."
+            self.message = "Yüz bulunamadı"
+            self.quality_status = "Yüz bulunamadı"
+            self.rejected_count += 1
             return self.status()
 
         now = time.monotonic()
-        if now - self._last_sample_at < 0.08:
+        if now - self._last_sample_at < 0.32:
+            return self.status()
+
+        quality_ok, quality_message = self._validate_face_sample(frame, face_result)
+        if not quality_ok:
+            self.message = quality_message
+            self.quality_status = quality_message
+            self.rejected_count += 1
             return self.status()
 
         face_image = extract_face_image(frame, face_result.box)
         if face_image is None:
-            self.message = "Yüz kutusu küçük veya bozuk, biraz daha net dur."
+            self.message = "Yüz çok küçük"
+            self.quality_status = "Yüz çok küçük"
+            self.rejected_count += 1
             return self.status()
 
         self.sample_count += 1
-        sample_path = self.sample_dir / f"sample_{self.sample_count:03d}.png"
+        stage_key = self._current_stage_key()
+        stage_sample_count = self._stage_sample_count()
+        sample_path = self.sample_dir / f"{stage_key}_{stage_sample_count:03d}.png"
         cv2.imwrite(str(sample_path), face_image)
         self._last_sample_at = now
         self.message = "Yüz örneği alındı."
+        self.quality_status = "Kalite uygun"
 
         if self.sample_count >= self.samples_per_user:
             try:
@@ -158,6 +182,11 @@ class EnrollmentManager:
             instruction=self._current_instruction(),
             message=message if message is not None else self.message,
             qr_path=str(self.qr_path) if self.qr_path else None,
+            stage_name=self._current_stage_name(),
+            stage_sample_count=self._stage_sample_count(),
+            stage_target_count=self.stage_sample_target,
+            rejected_count=self.rejected_count,
+            quality_status=self.quality_status,
         )
 
     def _finish_enrollment(self) -> None:
@@ -174,7 +203,10 @@ class EnrollmentManager:
 
         self.is_complete = True
         self.completed_at = time.monotonic()
-        self.message = f"Kayıt tamamlandı. {trained_count} örnek ile model eğitildi."
+        self.message = (
+            f"Kayıt tamamlandı. {trained_count} eğitim örneği kullanıldı. "
+            f"Reddedilen örnek: {self.rejected_count}."
+        )
 
     def _current_instruction(self) -> str:
         """Örnek sayısına göre kullanıcı yönlendirmesi döndürür."""
@@ -183,9 +215,61 @@ class EnrollmentManager:
         if not self.is_active:
             return "E ile yeni büyücü kaydı başlat"
 
-        segment_size = max(1, self.samples_per_user // len(self.INSTRUCTIONS))
-        index = min(len(self.INSTRUCTIONS) - 1, self.sample_count // segment_size)
-        return self.INSTRUCTIONS[index]
+        return self.STAGES[self._current_stage_index()][2]
+
+    def _current_stage_index(self) -> int:
+        """Toplam örneğe göre aktif kayıt aşaması indeksini döndürür."""
+        if self.is_complete:
+            return len(self.STAGES) - 1
+        return min(len(self.STAGES) - 1, self.sample_count // self.stage_sample_target)
+
+    def _current_stage_key(self) -> str:
+        """Dosya adı için aktif aşama anahtarını döndürür."""
+        return self.STAGES[self._current_stage_index()][0]
+
+    def _current_stage_name(self) -> str:
+        """Ekranda gösterilecek aktif aşama adını döndürür."""
+        return self.STAGES[self._current_stage_index()][1]
+
+    def _stage_sample_count(self) -> int:
+        """Aktif aşamadaki kabul edilen örnek sayısını döndürür."""
+        if self.is_complete:
+            return self.stage_sample_target
+
+        remainder = self.sample_count % self.stage_sample_target
+        if remainder == 0 and self.sample_count > 0:
+            return self.stage_sample_target
+        return min(self.stage_sample_target, remainder)
+
+    def _validate_face_sample(self, frame, face_result) -> tuple[bool, str]:
+        """Kaydetmeden önce yüz örneğinin temel kalitesini kontrol eder."""
+        if face_result is None or not face_result.detected or face_result.box is None:
+            return False, "Yüz bulunamadı"
+
+        confidence = face_result.confidence
+        if confidence is not None and confidence < 0.58:
+            return False, "Biraz daha ışık gerekli"
+
+        frame_height, frame_width = frame.shape[:2]
+        x, y, width, height = [int(value) for value in face_result.box]
+
+        min_face_size = int(min(frame_width, frame_height) * 0.16)
+        if width < min_face_size or height < min_face_size:
+            return False, "Yüz çok küçük"
+
+        margin = int(min(frame_width, frame_height) * 0.06)
+        if x < margin or y < margin or x + width > frame_width - margin or y + height > frame_height - margin:
+            return False, "Kamera ortasına gel"
+
+        face_image = extract_face_image(frame, face_result.box)
+        if face_image is None:
+            return False, "Yüz çok küçük"
+
+        blur_score = cv2.Laplacian(face_image, cv2.CV_64F).var()
+        if blur_score < 45.0:
+            return False, "Görüntü bulanık"
+
+        return True, "Kalite uygun"
 
     def _ask_username(self) -> str | None:
         """Tkinter ile kullanıcı adı alır; olmazsa terminal input kullanır."""

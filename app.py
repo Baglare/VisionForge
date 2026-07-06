@@ -153,7 +153,11 @@ def main() -> None:
             else:
                 hand_status_text = "El algılandı" if hand_result.detected else "El bekleniyor"
 
-            spell_result = spell_engine.update(hand_result, allowed_spells=allowed_spells)
+            spell_result = spell_engine.update(
+                hand_result,
+                allowed_spells=allowed_spells,
+                detection_profile=ui_settings.get("detection_profile", "Dengeli"),
+            )
             active_trial_spell = spell_result.active_spell_name if spell_result.has_active_spell else None
             trial_status = trial_engine.update(
                 active_spell_name=active_trial_spell,
@@ -218,6 +222,13 @@ def main() -> None:
                 "face_score": auth_state.get("face_score", "-"),
                 "fps": f"{fps:.1f}",
                 "cooldown": f"{spell_result.cooldown_remaining:.1f} sn" if spell_result.cooldown_remaining > 0 else "hazır",
+                "palm_open_score": _score_debug(spell_result.palm_open_score),
+                "freeze_stability_score": _score_debug(spell_result.freeze_stability_score),
+                "fire_horizontal_distance": _score_debug(spell_result.fire_horizontal_distance),
+                "fire_swing_detected": str(bool(spell_result.fire_swing_detected)),
+                "shield_two_hand_score": _score_debug(spell_result.shield_two_hand_score),
+                "spell_prepare_progress": _score_debug(spell_result.spell_prepare_progress),
+                "locked_spell_attempt": spell_result.locked_spell_attempt or "-",
                 "verification_status": verification_status,
                 "verification_mode": "QR + Yüz" if ui_settings["verification_requires_qr"] else "Yalnızca Yüz",
                 "trial_state": trial_status.state,

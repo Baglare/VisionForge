@@ -17,6 +17,13 @@ class SpellResult:
     progress: float
     cooldown_remaining: float = 0.0
     message: str = ""
+    palm_open_score: float = 0.0
+    freeze_stability_score: float = 0.0
+    fire_horizontal_distance: float = 0.0
+    fire_swing_detected: bool = False
+    shield_two_hand_score: float = 0.0
+    spell_prepare_progress: float = 0.0
+    locked_spell_attempt: str = ""
 
 
 class SpellEngine:
@@ -51,15 +58,23 @@ class SpellEngine:
         self._active_until = 0.0
         self._active_spell_name: str | None = None
         self._locked_message_until = 0.0
+        self._locked_spell_attempt = ""
+        self._palm_open_history: deque[bool] = deque(maxlen=10)
+        self._two_hand_history: deque[bool] = deque(maxlen=10)
+        self._two_open_hand_history: deque[bool] = deque(maxlen=10)
+        self._freeze_missing_frames = 0
+        self._debug_scores = self._empty_debug_scores()
 
     def update(
         self,
         hand_result,
         allowed_spells: list[str] | None = None,
+        detection_profile: str = "Dengeli",
         now: float | None = None,
     ) -> SpellResult:
         """El algılama sonucuna göre büyü durumunu günceller."""
         current_time = now if now is not None else time.monotonic()
+        profile = self._profile_config(detection_profile)
         allowed_spells = allowed_spells or [
             self.FREEZE_SPELL_NAME,
             self.FIRE_SPELL_NAME,
@@ -111,7 +126,9 @@ class SpellEngine:
             )
 
         hand_center = self._hand_center(hand_result)
-        open_palm_center = self._open_palm_center(hand_result)
+        raw_open_palm_centers = self._open_palm_centers(hand_result)
+        open_palm_center = raw_open_palm_centers[0] if raw_open_palm_centers else None
+        self._update_smoothing_scores(hand_result, raw_open_palm_centers, profile)
         if hand_center is None:
             self._reset_gesture_state(keep_history=False)
             return self._result(
@@ -124,21 +141,21 @@ class SpellEngine:
 
         self._remember_hand_center(current_time, hand_center)
 
-        open_palm_centers = self._open_palm_centers(hand_result)
         shield_result = self._update_shield_spell(
             current_time,
             hand_result,
-            open_palm_centers,
+            raw_open_palm_centers,
             allowed_spells,
+            profile,
         )
         if shield_result is not None:
             return shield_result
 
-        fire_result = self._update_fire_spell(current_time, open_palm_center, allowed_spells)
+        fire_result = self._update_fire_spell(current_time, open_palm_center, allowed_spells, profile)
         if fire_result is not None:
             return fire_result
 
-        return self._update_freeze_spell(current_time, open_palm_center, allowed_spells)
+        return self._update_freeze_spell(current_time, open_palm_center, allowed_spells, profile)
 
     def list_available_spells(self, profile) -> list[str]:
         """Profilde açık olan büyüleri döndürür."""
@@ -150,10 +167,12 @@ class SpellEngine:
         hand_result,
         open_palm_centers: list[tuple[float, float, float]],
         allowed_spells: list[str],
+        profile: dict,
     ) -> SpellResult | None:
         """İki açık el pozundan Kalkan büyüsünü üretir."""
         two_hands_visible = bool(hand_result and hand_result.hand_count >= 2)
         two_open_hands = len(open_palm_centers) >= 2
+        shield_score = self._debug_scores["shield_two_hand_score"]
 
         if not two_hands_visible:
             self._shield_started_at = None
@@ -162,21 +181,21 @@ class SpellEngine:
         self._freeze_started_at = None
         self._last_palm_center = None
 
-        if not two_open_hands:
+        if not two_open_hands or shield_score < profile["shield_score_threshold"]:
             self._shield_started_at = None
             return self._result(
                 has_active_spell=False,
                 active_spell_name=None,
                 status="Kalkan mührü bekleniyor",
                 is_on_cooldown=False,
-                progress=0.0,
+                progress=min(0.5, shield_score),
             )
 
         if self._shield_started_at is None:
             self._shield_started_at = current_time
 
         held_seconds = current_time - self._shield_started_at
-        progress = min(1.0, held_seconds / self.shield_hold_seconds)
+        progress = min(1.0, held_seconds / profile["shield_hold_seconds"])
 
         if progress >= 1.0:
             return self._activate_spell(self.SHIELD_SPELL_NAME, current_time, allowed_spells)
@@ -194,14 +213,15 @@ class SpellEngine:
         current_time: float,
         open_palm_center: tuple[float, float, float] | None,
         allowed_spells: list[str],
+        profile: dict,
     ) -> SpellResult | None:
         """Yatay savurma + açık avuç zincirinden Ateş büyüsünü üretir."""
         if self._fire_seal_until >= current_time:
-            progress = 1.0 - max(0.0, self._fire_seal_until - current_time) / self.fire_seal_window_seconds
+            progress = 1.0 - max(0.0, self._fire_seal_until - current_time) / profile["fire_seal_window_seconds"]
             self._freeze_started_at = None
             self._last_palm_center = None
 
-            if open_palm_center is not None:
+            if open_palm_center is not None and self._debug_scores["palm_open_score"] >= profile["palm_score_threshold"]:
                 return self._activate_spell(self.FIRE_SPELL_NAME, current_time, allowed_spells)
 
             return self._result(
@@ -213,8 +233,9 @@ class SpellEngine:
             )
 
         self._fire_seal_until = 0.0
-        if self._has_horizontal_swipe():
-            self._fire_seal_until = current_time + self.fire_seal_window_seconds
+        if self._has_horizontal_swipe(profile):
+            self._debug_scores["fire_swing_detected"] = True
+            self._fire_seal_until = current_time + profile["fire_seal_window_seconds"]
             self._freeze_started_at = None
             self._last_palm_center = None
             return self._result(
@@ -232,32 +253,42 @@ class SpellEngine:
         current_time: float,
         open_palm_center: tuple[float, float, float] | None,
         allowed_spells: list[str],
+        profile: dict,
     ) -> SpellResult:
         """Açık ve kısa süre sabit avuçtan Donma büyüsünü üretir."""
-        if open_palm_center is None:
-            self._freeze_started_at = None
+        palm_score = self._debug_scores["palm_open_score"]
+        if open_palm_center is None or palm_score < profile["palm_score_threshold"]:
+            self._freeze_missing_frames += 1
+            if self._freeze_missing_frames > profile["freeze_missing_tolerance"]:
+                self._freeze_started_at = None
+                self._last_palm_center = None
             self._last_palm_center = None
             return self._result(
                 has_active_spell=False,
                 active_spell_name=None,
                 status="Ateş savurması bekleniyor",
                 is_on_cooldown=False,
-                progress=0.0,
+                progress=0.0 if self._freeze_started_at is None else palm_score * 0.35,
             )
 
+        self._freeze_missing_frames = 0
+        stability_score = 1.0
         if (
             self._last_palm_center is not None
-            and self._distance(open_palm_center, self._last_palm_center) > 0.08
+            and self._distance(open_palm_center, self._last_palm_center) > profile["freeze_stability_distance"]
         ):
+            stability_score = 0.0
             self._freeze_started_at = current_time
 
+        self._debug_scores["freeze_stability_score"] = stability_score
         self._last_palm_center = open_palm_center
 
         if self._freeze_started_at is None:
             self._freeze_started_at = current_time
 
         held_seconds = current_time - self._freeze_started_at
-        progress = min(1.0, held_seconds / self.freeze_hold_seconds)
+        progress = min(1.0, held_seconds / profile["freeze_hold_seconds"])
+        progress = min(progress, (palm_score + stability_score) / 2)
 
         if progress >= 1.0:
             return self._activate_spell(self.FREEZE_SPELL_NAME, current_time, allowed_spells)
@@ -280,6 +311,7 @@ class SpellEngine:
         self._reset_gesture_state()
         if spell_name not in allowed_spells:
             self._locked_message_until = current_time + 1.2
+            self._locked_spell_attempt = spell_name
             return self._result(
                 has_active_spell=False,
                 active_spell_name=None,
@@ -290,6 +322,7 @@ class SpellEngine:
             )
 
         self._active_spell_name = spell_name
+        self._locked_spell_attempt = ""
         self._active_until = current_time + self.effect_seconds
         self._cooldown_until = current_time + self.cooldown_seconds
         return self._result(
@@ -321,6 +354,13 @@ class SpellEngine:
             progress=max(0.0, min(1.0, progress)),
             cooldown_remaining=max(0.0, cooldown_remaining),
             message=message,
+            palm_open_score=self._debug_scores["palm_open_score"],
+            freeze_stability_score=self._debug_scores["freeze_stability_score"],
+            fire_horizontal_distance=self._debug_scores["fire_horizontal_distance"],
+            fire_swing_detected=self._debug_scores["fire_swing_detected"],
+            shield_two_hand_score=self._debug_scores["shield_two_hand_score"],
+            spell_prepare_progress=max(0.0, min(1.0, progress)),
+            locked_spell_attempt=self._locked_spell_attempt,
         )
 
     def _remember_hand_center(
@@ -334,27 +374,36 @@ class SpellEngine:
         while self._hand_center_history and self._hand_center_history[0][0] < min_time:
             self._hand_center_history.popleft()
 
-    def _has_horizontal_swipe(self) -> bool:
+    def _has_horizontal_swipe(self, profile: dict) -> bool:
         """Küçük titreşimleri dışlayarak belirgin yatay savurma arar."""
+        self._debug_scores["fire_horizontal_distance"] = self._horizontal_swipe_distance()
+        self._debug_scores["fire_swing_detected"] = False
         if len(self._hand_center_history) < 5:
             return False
 
         first_time, first_center = self._hand_center_history[0]
         last_time, last_center = self._hand_center_history[-1]
         elapsed = last_time - first_time
-        if elapsed < 0.18:
+        if elapsed < profile["fire_min_elapsed"]:
             return False
 
         horizontal_delta = abs(last_center[0] - first_center[0])
         vertical_delta = abs(last_center[1] - first_center[1])
+        self._debug_scores["fire_horizontal_distance"] = horizontal_delta
 
-        if horizontal_delta < 0.22:
+        if horizontal_delta < profile["fire_min_horizontal_distance"]:
             return False
 
-        if vertical_delta > 0.18:
+        if vertical_delta > profile["fire_max_vertical_distance"]:
             return False
 
-        return horizontal_delta > vertical_delta * 1.8
+        return horizontal_delta > vertical_delta * profile["fire_direction_ratio"]
+
+    def _horizontal_swipe_distance(self) -> float:
+        """Debug için mevcut el geçmişindeki yatay mesafeyi döndürür."""
+        if len(self._hand_center_history) < 2:
+            return 0.0
+        return abs(self._hand_center_history[-1][1][0] - self._hand_center_history[0][1][0])
 
     def _hand_center(self, hand_result) -> tuple[float, float, float] | None:
         """Algılanan ilk elin yaklaşık merkez noktasını döndürür."""
@@ -409,14 +458,96 @@ class SpellEngine:
 
         return extended_fingers >= 4
 
+    def _update_smoothing_scores(self, hand_result, open_palm_centers, profile: dict) -> None:
+        """Tek karelik el kararlarını kısa geçmiş skorlarına dönüştürür."""
+        hand_detected = bool(hand_result and hand_result.detected and hand_result.hands)
+        two_hands_visible = bool(hand_result and hand_result.hand_count >= 2)
+        palm_open = hand_detected and len(open_palm_centers) >= 1
+        two_open_hands = two_hands_visible and len(open_palm_centers) >= 2
+
+        self._palm_open_history.append(palm_open)
+        self._two_hand_history.append(two_hands_visible)
+        self._two_open_hand_history.append(two_open_hands)
+
+        self._debug_scores["palm_open_score"] = self._history_score(self._palm_open_history)
+        two_hand_score = self._history_score(self._two_hand_history)
+        two_open_score = self._history_score(self._two_open_hand_history)
+        self._debug_scores["shield_two_hand_score"] = min(two_hand_score, two_open_score)
+
+    def _history_score(self, history: deque[bool]) -> float:
+        """Boolean geçmişten 0-1 arası oran döndürür."""
+        if not history:
+            return 0.0
+        return sum(1 for item in history if item) / len(history)
+
+    def _profile_config(self, detection_profile: str) -> dict:
+        """Algılama profiline göre büyü karar eşiklerini döndürür."""
+        configs = {
+            "Hassas": {
+                "palm_score_threshold": 0.45,
+                "shield_score_threshold": 0.45,
+                "freeze_hold_seconds": 0.65,
+                "shield_hold_seconds": 0.65,
+                "freeze_stability_distance": 0.10,
+                "freeze_missing_tolerance": 4,
+                "fire_min_elapsed": 0.16,
+                "fire_min_horizontal_distance": 0.18,
+                "fire_max_vertical_distance": 0.22,
+                "fire_direction_ratio": 1.45,
+                "fire_seal_window_seconds": 0.95,
+            },
+            "Dengeli": {
+                "palm_score_threshold": 0.58,
+                "shield_score_threshold": 0.58,
+                "freeze_hold_seconds": self.freeze_hold_seconds,
+                "shield_hold_seconds": self.shield_hold_seconds,
+                "freeze_stability_distance": 0.08,
+                "freeze_missing_tolerance": 3,
+                "fire_min_elapsed": 0.18,
+                "fire_min_horizontal_distance": 0.22,
+                "fire_max_vertical_distance": 0.18,
+                "fire_direction_ratio": 1.8,
+                "fire_seal_window_seconds": self.fire_seal_window_seconds,
+            },
+            "Kararlı": {
+                "palm_score_threshold": 0.72,
+                "shield_score_threshold": 0.72,
+                "freeze_hold_seconds": 0.95,
+                "shield_hold_seconds": 0.95,
+                "freeze_stability_distance": 0.055,
+                "freeze_missing_tolerance": 2,
+                "fire_min_elapsed": 0.22,
+                "fire_min_horizontal_distance": 0.28,
+                "fire_max_vertical_distance": 0.14,
+                "fire_direction_ratio": 2.2,
+                "fire_seal_window_seconds": 0.65,
+            },
+        }
+        return configs.get(detection_profile, configs["Dengeli"])
+
+    def _empty_debug_scores(self) -> dict:
+        """Büyü karar debug skorlarının varsayılanlarını döndürür."""
+        return {
+            "palm_open_score": 0.0,
+            "freeze_stability_score": 0.0,
+            "fire_horizontal_distance": 0.0,
+            "fire_swing_detected": False,
+            "shield_two_hand_score": 0.0,
+        }
+
     def _reset_gesture_state(self, keep_history: bool = True) -> None:
         """Devam eden büyü hazırlık durumlarını temizler."""
         self._freeze_started_at = None
         self._shield_started_at = None
         self._last_palm_center = None
         self._fire_seal_until = 0.0
+        self._freeze_missing_frames = 0
         if not keep_history:
             self._hand_center_history.clear()
+            self._palm_open_history.clear()
+            self._two_hand_history.clear()
+            self._two_open_hand_history.clear()
+            self._debug_scores = self._empty_debug_scores()
 
     def _average_point(self, points: list[tuple[float, float, float]]) -> tuple[float, float, float]:
         """Verilen noktaların ortalamasını döndürür."""

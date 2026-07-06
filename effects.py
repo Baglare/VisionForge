@@ -154,7 +154,7 @@ class Effects:
 
         frame_height, frame_width = frame.shape[:2]
         panel_width = min(520, max(340, frame_width - 48))
-        panel_height = 190
+        panel_height = 245
         panel_x = max(24, (frame_width - panel_width) // 2)
         panel_y = max(24, (frame_height - panel_height) // 2)
         padding = 18
@@ -183,7 +183,15 @@ class Effects:
         lines = [
             "Büyücü Kaydı",
             f"Kullanıcı: {enrollment_status.username}",
-            f"Örnek: {enrollment_status.sample_count}/{enrollment_status.target_count}",
+            f"Aşama: {getattr(enrollment_status, 'stage_name', '-')}",
+            (
+                "Aşama Örneği: "
+                f"{getattr(enrollment_status, 'stage_sample_count', 0)}/"
+                f"{getattr(enrollment_status, 'stage_target_count', 0)}"
+            ),
+            f"Toplam Örnek: {enrollment_status.sample_count}/{enrollment_status.target_count}",
+            f"Reddedilen: {getattr(enrollment_status, 'rejected_count', 0)}",
+            f"Kalite: {getattr(enrollment_status, 'quality_status', '-')}",
             f"Yönlendirme: {enrollment_status.instruction}",
             enrollment_status.message,
         ]
@@ -324,6 +332,13 @@ class Effects:
             f"Yüz skoru: {debug_info.get('face_score', '-')}",
             f"FPS: {debug_info.get('fps', '-')}",
             f"Cooldown: {debug_info.get('cooldown', '-')}",
+            f"Palm open score: {debug_info.get('palm_open_score', '-')}",
+            f"Freeze stability: {debug_info.get('freeze_stability_score', '-')}",
+            f"Fire yatay mesafe: {debug_info.get('fire_horizontal_distance', '-')}",
+            f"Fire swing: {debug_info.get('fire_swing_detected', '-')}",
+            f"Shield two hand: {debug_info.get('shield_two_hand_score', '-')}",
+            f"Hazırlık skoru: {debug_info.get('spell_prepare_progress', '-')}",
+            f"Kilitli büyü: {debug_info.get('locked_spell_attempt', '-')}",
             f"Trial state: {debug_info.get('trial_state', '-')}",
             f"Trial step: {debug_info.get('trial_current_step', '-')}",
             f"Trial required: {debug_info.get('trial_required_spell', '-')}",

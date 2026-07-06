@@ -46,10 +46,15 @@ Adımlar:
 2. `E` ile kayıt akışını başlat.
 3. Kullanıcı adını gir.
 4. Canlı kamera veya görsel import seçeneğini kullan.
-5. Eğitim tamamlanana kadar yönlendirmeleri takip et.
+5. Canlı kayıt seçildiyse aşamaları sırayla takip et: düz bak, hafif sağa dön, hafif sola dön, biraz yaklaş, biraz uzaklaş.
+6. Kayıt ekranında aşama adı, aşama içi örnek sayısı, toplam örnek sayısı ve kalite durumunu kontrol et.
+7. Eğitim tamamlanana kadar yönlendirmeleri takip et.
 
 Beklenen sonuç:
+- Kötü örneklerde yüz bulunamadı, yüz çok küçük, kamera ortasına gel veya görüntü bulanık gibi kısa mesajlar görünür.
+- Kaliteli örnek alınmadan aşama ilerlemez.
 - Yüz örnekleri `data/face_gallery/` altında oluşur.
+- Örnek dosya adları aşama bilgisini içerir.
 - LBPH modeli `models/face_recognizer_lbph.yml` olarak kaydedilir.
 - Etiketler `data/face_labels.json` içine yazılır.
 - Yerel profil `data/local_profiles.json` içine eklenir.
