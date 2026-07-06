@@ -41,6 +41,7 @@ class EnrollmentManager:
         self.root = project_root()
         self.samples_per_user = samples_per_user
         self.gallery_root = self.root / "data" / "face_gallery"
+        self.import_root = self.root / "data" / "import_faces"
         self.model_path = self.root / "models" / "face_recognizer_lbph.yml"
         self.labels_path = self.root / "data" / "face_labels.json"
         self.seal_root = self.root / "assets" / "guild_seals"
@@ -55,8 +56,8 @@ class EnrollmentManager:
         self._last_sample_at = 0.0
         self.completed_at = 0.0
 
-    def start(self) -> EnrollmentStatus:
-        """Yeni kullanıcı adını alır ve kayıt modunu başlatır."""
+    def start(self, face_detector=None) -> EnrollmentStatus:
+        """Yeni kullanıcı adını ve kayıt kaynağını alır."""
         username = self._ask_username()
         if not username:
             return self.status(message="Kayıt iptal edildi.")
@@ -69,7 +70,24 @@ class EnrollmentManager:
         self.username = username.strip()
         self.face_label = face_label
         self.sample_dir = self.gallery_root / face_label
+        mode = self._ask_enrollment_mode()
+        if not mode:
+            return self.status(message="Kayıt iptal edildi.")
+
+        self._prepare_user_workspace()
+
+        if mode == "import":
+            return self._import_images(face_detector)
+
+        return self._start_camera_capture()
+
+    def _prepare_user_workspace(self) -> None:
+        """Kullanıcının yerel kayıt klasörlerini hazırlar."""
+        if self.sample_dir is None:
+            self.sample_dir = self.gallery_root / self.face_label
+
         self.sample_dir.mkdir(parents=True, exist_ok=True)
+        self.import_root.mkdir(parents=True, exist_ok=True)
         self.seal_root.mkdir(parents=True, exist_ok=True)
         self.model_path.parent.mkdir(parents=True, exist_ok=True)
         self.labels_path.parent.mkdir(parents=True, exist_ok=True)
@@ -77,6 +95,8 @@ class EnrollmentManager:
         for old_sample in self.sample_dir.glob("sample_*.png"):
             old_sample.unlink()
 
+    def _start_camera_capture(self) -> EnrollmentStatus:
+        """Canlı kamera üzerinden örnek toplama modunu başlatır."""
         self.is_active = True
         self.is_complete = False
         self.sample_count = 0
@@ -183,3 +203,116 @@ class EnrollmentManager:
                 return input("Büyücü adını gir: ")
             except EOFError:
                 return None
+
+    def _ask_enrollment_mode(self) -> str:
+        """Kayıt kaynağı seçimini alır."""
+        try:
+            import tkinter as tk
+            from tkinter import messagebox
+
+            root = tk.Tk()
+            root.withdraw()
+            choice = messagebox.askyesnocancel(
+                "VisionForge",
+                "Kayıt kaynağı seç:\n\nEvet: Canlı kamera kaydı\nHayır: Görsel import",
+            )
+            root.destroy()
+            if choice is None:
+                return ""
+            return "camera" if choice else "import"
+        except Exception:
+            try:
+                choice = input("Kayıt kaynağı seç (1: Canlı kamera, 2: Görsel import): ").strip()
+            except EOFError:
+                return "camera"
+
+            if choice == "2":
+                return "import"
+            if choice in {"", "1"}:
+                return "camera"
+            return ""
+
+    def _ask_import_directory(self) -> Path:
+        """Görsel import klasörünü seçtirir; olmazsa varsayılan klasörü kullanır."""
+        default_dir = self.import_root / self.face_label
+        try:
+            import tkinter as tk
+            from tkinter import filedialog
+
+            root = tk.Tk()
+            root.withdraw()
+            selected = filedialog.askdirectory(
+                title="Yüz fotoğrafları klasörünü seç",
+                initialdir=str(default_dir.parent),
+            )
+            root.destroy()
+            if selected:
+                return Path(selected)
+        except Exception:
+            try:
+                typed_path = input(f"Görsel klasörü [{default_dir}]: ").strip()
+                if typed_path:
+                    return Path(typed_path)
+            except EOFError:
+                pass
+
+        default_dir.mkdir(parents=True, exist_ok=True)
+        return default_dir
+
+    def _import_images(self, face_detector) -> EnrollmentStatus:
+        """Klasördeki fotoğraflardan yüz örneği çıkarıp eğitimi tamamlar."""
+        self.is_active = False
+        self.is_complete = False
+        self.sample_count = 0
+        self.qr_path = None
+        self.completed_at = 0.0
+
+        if face_detector is None or not getattr(face_detector, "is_available", False):
+            self.message = "Görsel import için yüz algılama modeli aktif olmalı."
+            return self.status(message=self.message)
+
+        source_dir = self._ask_import_directory()
+        image_paths = list(self._iter_image_paths(source_dir))
+        if not image_paths:
+            self.message = f"Görsel bulunamadı. Fotoğrafları şu klasöre koy: {source_dir}"
+            return self.status(message=self.message)
+
+        for image_path in image_paths:
+            image = cv2.imread(str(image_path))
+            if image is None:
+                continue
+
+            face_result = face_detector.detect(image)
+            if not face_result.detected or face_result.box is None:
+                continue
+
+            face_image = extract_face_image(image, face_result.box)
+            if face_image is None:
+                continue
+
+            self.sample_count += 1
+            sample_path = self.sample_dir / f"sample_import_{self.sample_count:03d}.png"
+            cv2.imwrite(str(sample_path), face_image)
+
+        if self.sample_count <= 0:
+            self.message = "Import edilen görsellerde geçerli yüz örneği bulunamadı."
+            return self.status(message=self.message)
+
+        try:
+            self._finish_enrollment()
+        except Exception as error:
+            self.message = f"Import eğitimi tamamlanamadı: {error}"
+            return self.status(message=self.message)
+
+        self.is_active = False
+        return self.status(message=f"Görsel import tamamlandı. {self.sample_count} örnek işlendi.")
+
+    def _iter_image_paths(self, source_dir: Path):
+        """Desteklenen görsel dosyalarını klasörden okur."""
+        extensions = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+        if not source_dir.exists() or not source_dir.is_dir():
+            return
+
+        for path in sorted(source_dir.iterdir()):
+            if path.is_file() and path.suffix.lower() in extensions:
+                yield path

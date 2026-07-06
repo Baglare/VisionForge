@@ -6,10 +6,10 @@ import time
 import cv2
 
 from camera import Camera, CameraError
-from detectors.face_detector import FaceDetector, FaceDetectorError
+from detectors.face_detector import FaceDetectionResult, FaceDetector, FaceDetectorError
 from detectors.face_identity_detector import FaceIdentityDetector
 from detectors.guild_seal_detector import GuildSealDetector
-from detectors.hand_detector import HandDetector, HandDetectorError
+from detectors.hand_detector import HandData, HandDetectionResult, HandDetector, HandDetectorError
 from effects import Effects
 from enrollment.enrollment_manager import EnrollmentManager
 from guild_profile import find_profile_by_face_label, guest_profile
@@ -67,19 +67,27 @@ def main() -> None:
         camera.start()
 
         print("VisionForge kamera modu aktif.")
-        print("Q: ayar menüsü, E: kayıt, R: sıfırla, B: büyü kitabı, H: el çizimi, Esc: çıkış.")
+        print("Q: ayar menüsü, E: kayıt/import, R: sıfırla, B: büyü kitabı, H: el çizimi, Esc: çıkış.")
 
         while True:
-            frame = camera.read_frame()
-            if ui_settings["mirror_camera"]:
-                frame = cv2.flip(frame, 1)
+            processing_frame = camera.read_frame()
+            display_frame = (
+                cv2.flip(processing_frame, 1)
+                if ui_settings["mirror_camera"]
+                else processing_frame.copy()
+            )
 
             now = time.monotonic()
             elapsed = max(0.001, now - last_frame_time)
             fps = 0.9 * fps + 0.1 * (1.0 / elapsed) if fps else (1.0 / elapsed)
             last_frame_time = now
 
-            face_result = face_detector.detect(frame)
+            face_result = face_detector.detect(processing_frame)
+            display_face_result = _to_display_face_result(
+                face_result,
+                display_frame.shape[1],
+                ui_settings["mirror_camera"],
+            )
             face_confirmed, missing_face_frames = _update_face_confirmation(
                 face_result,
                 face_history,
@@ -88,19 +96,23 @@ def main() -> None:
             )
 
             if enrollment_manager.is_active:
-                enrollment_status = enrollment_manager.update(frame, face_result)
+                enrollment_status = enrollment_manager.update(processing_frame, face_result)
                 if enrollment_status.is_complete and not enrollment_reload_done:
                     face_identity_detector.reload()
                     if face_identity_detector.warning_message:
                         print(face_identity_detector.warning_message)
                     enrollment_reload_done = True
 
-                if ui_settings["show_face_debug"] and face_result.detected and face_result.box is not None:
-                    frame = effects.draw_face_box(frame, face_result.box)
+                if (
+                    ui_settings["show_face_debug"]
+                    and display_face_result.detected
+                    and display_face_result.box is not None
+                ):
+                    display_frame = effects.draw_face_box(display_frame, display_face_result.box)
 
-                frame = effects.draw_enrollment_panel(frame, enrollment_status)
-                frame = effects.draw_settings_menu(frame, ui_settings)
-                camera.show_frame(frame)
+                display_frame = effects.draw_enrollment_panel(display_frame, enrollment_status)
+                display_frame = effects.draw_settings_menu(display_frame, ui_settings)
+                camera.show_frame(display_frame)
                 key = camera.read_key()
                 verified_face_label, spellbook_page = _handle_key(
                     key,
@@ -109,6 +121,7 @@ def main() -> None:
                     spellbook_page,
                     enrollment_manager,
                     face_identity_detector,
+                    face_detector,
                     allow_enrollment_start=False,
                 )
                 if camera.is_close_key(key):
@@ -119,9 +132,13 @@ def main() -> None:
                         enrollment_manager.is_active = False
                 continue
 
-            hand_result = hand_detector.detect(frame)
+            hand_result = hand_detector.detect(processing_frame)
+            display_hand_result = _to_display_hand_result(
+                hand_result,
+                ui_settings["mirror_camera"],
+            )
             auth_state = _resolve_auth_state(
-                frame=frame,
+                frame=processing_frame,
                 face_result=face_result,
                 face_identity_detector=face_identity_detector,
                 guild_seal_detector=guild_seal_detector,
@@ -141,25 +158,35 @@ def main() -> None:
 
             spell_result = spell_engine.update(hand_result, allowed_spells=allowed_spells)
 
-            if ui_settings["show_hand_debug"] and hand_result.detected:
-                frame = effects.draw_hand_landmarks(frame, hand_result)
+            if ui_settings["show_hand_debug"] and display_hand_result.detected:
+                display_frame = effects.draw_hand_landmarks(display_frame, display_hand_result)
 
-            if ui_settings["show_face_debug"] and face_confirmed and face_result.detected and face_result.box is not None:
-                frame = effects.draw_face_box(frame, face_result.box)
+            if (
+                ui_settings["show_face_debug"]
+                and face_confirmed
+                and display_face_result.detected
+                and display_face_result.box is not None
+            ):
+                display_frame = effects.draw_face_box(display_frame, display_face_result.box)
 
             if ui_settings["spell_effects_enabled"]:
-                frame = effects.draw_spell_effect(frame, spell_result, hand_result, face_result)
+                display_frame = effects.draw_spell_effect(
+                    display_frame,
+                    spell_result,
+                    display_hand_result,
+                    display_face_result,
+                )
 
-            frame = effects.draw_head_profile_tag(
-                frame,
+            display_frame = effects.draw_head_profile_tag(
+                display_frame,
                 active_profile,
-                face_result=face_result if face_result.detected else None,
+                face_result=display_face_result if display_face_result.detected else None,
                 verification_status=verification_status,
             )
-            frame = effects.draw_spell_status_panel(frame, spell_result)
+            display_frame = effects.draw_spell_status_panel(display_frame, spell_result)
 
             if ui_settings["show_spellbook"]:
-                frame = effects.draw_spellbook_panel(frame, active_profile, page=spellbook_page)
+                display_frame = effects.draw_spellbook_panel(display_frame, active_profile, page=spellbook_page)
 
             debug_info = {
                 "show_debug_page": ui_settings["show_debug_page"],
@@ -171,11 +198,12 @@ def main() -> None:
                 "fps": f"{fps:.1f}",
                 "cooldown": f"{spell_result.cooldown_remaining:.1f} sn" if spell_result.cooldown_remaining > 0 else "hazır",
                 "verification_status": verification_status,
+                "verification_mode": "QR + Yüz" if ui_settings["verification_requires_qr"] else "Yalnızca Yüz",
             }
-            frame = effects.draw_debug_panel(frame, debug_info)
-            frame = effects.draw_settings_menu(frame, ui_settings)
+            display_frame = effects.draw_debug_panel(display_frame, debug_info)
+            display_frame = effects.draw_settings_menu(display_frame, ui_settings)
 
-            camera.show_frame(frame)
+            camera.show_frame(display_frame)
 
             key = camera.read_key()
             verified_face_label, spellbook_page = _handle_key(
@@ -185,6 +213,7 @@ def main() -> None:
                 spellbook_page,
                 enrollment_manager,
                 face_identity_detector,
+                face_detector,
                 allow_enrollment_start=True,
             )
 
@@ -226,6 +255,63 @@ def _update_face_confirmation(face_result, face_history, face_confirmed: bool, m
     return face_confirmed, missing_face_frames
 
 
+def _to_display_face_result(face_result, frame_width: int, mirror_camera: bool):
+    """Yüz sonucunu ekrandaki aynalama durumuna göre çizim koordinatına çevirir."""
+    if not mirror_camera or face_result is None or face_result.box is None:
+        return face_result
+
+    return FaceDetectionResult(
+        detected=face_result.detected,
+        confidence=face_result.confidence,
+        box=_mirror_box(face_result.box, frame_width),
+        is_active=face_result.is_active,
+        message=face_result.message,
+    )
+
+
+def _to_display_hand_result(hand_result, mirror_camera: bool):
+    """El landmark sonucunu ekrandaki aynalama durumuna göre çevirir."""
+    if not mirror_camera or hand_result is None or not hand_result.hands:
+        return hand_result
+
+    mirrored_hands = []
+    for hand in hand_result.hands:
+        mirrored_hands.append(
+            HandData(
+                handedness=_mirror_handedness(hand.handedness),
+                confidence=hand.confidence,
+                landmarks=[
+                    (max(0.0, min(1.0, 1.0 - x)), y, z)
+                    for x, y, z in hand.landmarks
+                ],
+            )
+        )
+
+    return HandDetectionResult(
+        detected=hand_result.detected,
+        hand_count=hand_result.hand_count,
+        hands=mirrored_hands,
+        is_active=hand_result.is_active,
+        message=hand_result.message,
+    )
+
+
+def _mirror_box(box: tuple[int, int, int, int], frame_width: int) -> tuple[int, int, int, int]:
+    """OpenCV kutusunu yatay aynalama sonrası ekrandaki yerine taşır."""
+    x, y, width, height = box
+    mirrored_x = max(0, frame_width - x - width)
+    return mirrored_x, y, width, height
+
+
+def _mirror_handedness(label: str) -> str:
+    """Aynalı ekranda sağ/sol el etiketini tersler."""
+    if label == "Left":
+        return "Right"
+    if label == "Right":
+        return "Left"
+    return label
+
+
 def _handle_key(
     key: int,
     ui_settings: dict,
@@ -233,6 +319,7 @@ def _handle_key(
     spellbook_page: int,
     enrollment_manager: EnrollmentManager,
     face_identity_detector: FaceIdentityDetector,
+    face_detector: FaceDetector | None,
     allow_enrollment_start: bool,
 ) -> tuple[str | None, int]:
     """Klavye kısayollarını tek merkezden işler."""
@@ -257,9 +344,13 @@ def _handle_key(
         verified_face_label = None
         print("Doğrulama oturumu sıfırlandı.")
     elif key in (ord("e"), ord("E")) and allow_enrollment_start:
-        enrollment_status = enrollment_manager.start()
+        enrollment_status = enrollment_manager.start(face_detector=face_detector)
         if enrollment_status.message:
             print(enrollment_status.message)
+        if enrollment_status.is_complete:
+            face_identity_detector.reload()
+            if face_identity_detector.warning_message:
+                print(face_identity_detector.warning_message)
 
     if ui_settings["show_settings_menu"]:
         if key == ord("1"):
@@ -330,6 +421,7 @@ def _resolve_auth_state(
         )
         return base
 
+    identity_status = _identity_debug_status(identity_result)
     candidate_profile = find_profile_by_face_label(identity_result.face_label)
     if not identity_result.matched or candidate_profile is None:
         seal_result = guild_seal_detector.detect(frame, None) if verification_requires_qr else None
@@ -337,7 +429,7 @@ def _resolve_auth_state(
             {
                 "allowed_spells": guest.unlocked_spells,
                 "verification_status": "Mühür kullanıcıyla eşleşmedi" if seal_result and seal_result.mismatch else "Misafir",
-                "identity_status": "eşleşme yok",
+                "identity_status": identity_status,
                 "qr_status": _qr_debug_status(seal_result),
             }
         )
@@ -349,7 +441,7 @@ def _resolve_auth_state(
             "allowed_spells": candidate_profile.unlocked_spells,
             "verification_status": "Yüz tanındı",
             "verified_face_label": candidate_profile.face_label,
-            "identity_status": f"tanındı: {candidate_profile.face_label}",
+            "identity_status": identity_status,
             "qr_status": "devre dışı",
         }
 
@@ -360,7 +452,7 @@ def _resolve_auth_state(
             "allowed_spells": guest.unlocked_spells,
             "verification_status": "Mühür kullanıcıyla eşleşmedi",
             "verified_face_label": None,
-            "identity_status": f"tanındı: {candidate_profile.face_label}",
+            "identity_status": identity_status,
             "qr_status": _qr_debug_status(seal_result),
         }
 
@@ -370,7 +462,7 @@ def _resolve_auth_state(
             "allowed_spells": candidate_profile.unlocked_spells,
             "verification_status": "Yüz + lonca mührü onaylandı",
             "verified_face_label": candidate_profile.face_label,
-            "identity_status": f"tanındı: {candidate_profile.face_label}",
+            "identity_status": identity_status,
             "qr_status": _qr_debug_status(seal_result) if seal_result.detected else "oturum onaylı",
         }
 
@@ -379,9 +471,19 @@ def _resolve_auth_state(
         "allowed_spells": guest.unlocked_spells,
         "verification_status": "Yüz tanındı, mühür bekleniyor",
         "verified_face_label": None,
-        "identity_status": f"tanındı: {candidate_profile.face_label}",
+        "identity_status": identity_status,
         "qr_status": _qr_debug_status(seal_result),
     }
+
+
+def _identity_debug_status(identity_result) -> str:
+    """Debug paneli için yüz tanıma etiketini ve skorunu özetler."""
+    label = identity_result.face_label or "etiket yok"
+    score = "skor yok"
+    if identity_result.confidence is not None:
+        score = f"{identity_result.confidence:.1f}"
+    match_status = "eşleşti" if identity_result.matched else "eşleşmedi"
+    return f"{label} / {score} / {match_status}"
 
 
 def _qr_debug_status(seal_result) -> str:

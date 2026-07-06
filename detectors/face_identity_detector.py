@@ -74,7 +74,7 @@ class FaceIdentityDetector:
         self.is_available = True
 
     def predict(self, frame, face_box) -> FaceIdentityResult:
-        """Yüz kutusundan kimlik tahmini yapar."""
+        """Yüz kutusundan normal ve aynalı kırpımla kimlik tahmini yapar."""
         if not self.is_available or self._recognizer is None:
             return FaceIdentityResult(is_active=False, message=self.warning_message)
 
@@ -82,8 +82,16 @@ class FaceIdentityDetector:
         if face_image is None:
             return FaceIdentityResult(is_active=True, matched=False)
 
+        candidates = [face_image, cv2.flip(face_image, 1)]
+        best_label_id = None
+        best_confidence = None
+
         try:
-            label_id, confidence = self._recognizer.predict(face_image)
+            for candidate in candidates:
+                label_id, confidence = self._recognizer.predict(candidate)
+                if best_confidence is None or float(confidence) < best_confidence:
+                    best_label_id = int(label_id)
+                    best_confidence = float(confidence)
         except Exception as error:
             return FaceIdentityResult(
                 is_active=False,
@@ -91,13 +99,13 @@ class FaceIdentityDetector:
                 message=f"Yüz tanıma çalışırken hata verdi: {error}",
             )
 
-        face_label = self._labels.get(int(label_id))
-        matched = face_label is not None and float(confidence) <= self.threshold
+        face_label = self._labels.get(int(best_label_id)) if best_label_id is not None else None
+        matched = face_label is not None and best_confidence is not None and best_confidence <= self.threshold
         return FaceIdentityResult(
             is_active=True,
             matched=matched,
-            face_label=face_label if matched else None,
-            confidence=float(confidence),
+            face_label=face_label,
+            confidence=best_confidence,
         )
 
     def has_registered_model(self) -> bool:
@@ -164,6 +172,8 @@ def train_lbph_from_gallery(
                 continue
             image = cv2.resize(image, FACE_SIZE, interpolation=cv2.INTER_AREA)
             images.append(image)
+            labels.append(label_id)
+            images.append(cv2.flip(image, 1))
             labels.append(label_id)
 
         label_id += 1

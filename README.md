@@ -38,7 +38,7 @@ VisionForge/
 
 Bu aşamada uygulama varsayılan kamerayı OpenCV ile açar ve canlı görüntünün üzerine basit bir lonca profil paneli çizer.
 
-Panelde örnek `baglare` profili, rütbe, açık büyüler ve kamera modu durumu gösterilir. Çıkış için kamera penceresindeyken `q` veya `Esc` tuşuna basın.
+Panelde örnek `baglare` profili, rütbe, açık büyüler ve kamera modu durumu gösterilir. Güncel sürümde `Q` ayar menüsünü açar, çıkış yalnızca `Esc` ile yapılır.
 
 ## Üçüncü Aşama: Yüz Algılama
 
@@ -112,7 +112,8 @@ Klavye kısayolları:
 
 - `B`: Büyü Defteri panelini açar/kapatır.
 - `H`: El landmark/debug çizimini açar/kapatır.
-- `q` veya `Esc`: Uygulamayı kapatır.
+- `Q`: Ayar menüsünü açar/kapatır.
+- `Esc`: Uygulamayı kapatır.
 
 ## Dokuzuncu Aşama: Büyücü Kaydı ve Lonca Mührü
 
@@ -125,9 +126,11 @@ Normal kullanıcı akışı:
 1. `python app.py` ile uygulamayı aç.
 2. `E` ile yeni büyücü kaydını başlat.
 3. Kullanıcı adını gir.
-4. Kameraya bakarak yüz örneklerinin alınmasını bekle.
-5. Oluşturulan QR/lonca mührünü sakla.
-6. Sonraki girişte yüz + kendi lonca mührün ile tam doğrulan.
+4. Kayıt kaynağı olarak canlı kamera kaydını veya görsel import seçeneğini seç.
+5. Canlı kamera seçildiyse kameraya bakarak yüz örneklerinin alınmasını bekle.
+6. Görsel import seçildiyse fotoğrafları seçilen klasörden işlettir; fallback klasör `data/import_faces/<username>/` konumudur.
+7. Oluşturulan QR/lonca mührünü sakla.
+8. Sonraki girişte yüz + kendi lonca mührün ile tam doğrulan.
 
 Doğrulama davranışı:
 
@@ -150,13 +153,14 @@ Yerel yüz verileri ve kullanıcı QR dosyaları şu konumlarda saklanır:
 
 ```text
 data/face_gallery/
+data/import_faces/
 models/face_recognizer_lbph.yml
 data/face_labels.json
 data/local_profiles.json
 assets/guild_seals/
 ```
 
-Bu verileri silerek yerel yüz eğitimini ve kullanıcı kayıtlarını temizleyebilirsin. Otomatik üretilen kullanıcı QR dosyaları ve yüz eğitim verileri Git dışında tutulur.
+Bu verileri silerek yerel yüz eğitimini ve kullanıcı kayıtlarını temizleyebilirsin. `data/import_faces/` klasörü görsel import için kişisel fotoğraf kaynağı olarak kullanılabilir. Otomatik üretilen kullanıcı QR dosyaları, import fotoğrafları ve yüz eğitim verileri Git dışında tutulur.
 
 ## Arayüz ve Kontrol Sistemi
 
@@ -181,9 +185,13 @@ Kayıt tamamlandığında QR/lonca mührü şu konuma üretilir:
 assets/guild_seals/<username>_seal.png
 ```
 
-Kullanıcı bu QR dosyasını telefonda açıp kameraya gösterebilir. Otomatik üretilen QR dosyaları Git'e eklenmez.
+Kullanıcı bu QR dosyasını telefonda açıp kameraya gösterebilir. Varsayılan doğrulama modu `QR + Yüz` olduğu için tam yetki almak isteyen kullanıcı kayıtlı yüzüyle birlikte kendi QR/lonca mührünü kameraya göstermelidir. Menüden `3` ile `Yalnızca Yüz` moduna geçilirse QR gerekmeden kayıtlı yüzle tam profil açılabilir. Otomatik üretilen QR dosyaları Git'e eklenmez.
 
-Büyü Kitabı paneli kapak ve iki sayfalı kitap görünümüyle çalışır. Sağ/sol ok tuşları sayfa çiftlerini değiştirir.
+Büyü Kitabı paneli kapak ve iki sayfalı kitap görünümüyle çalışır. Sağ/sol ok tuşları sayfa çiftlerini değiştirir. Her sayfada bir büyü anlatılır; açık büyülerde tür, tetikleme ve etki bilgisi, kilitli büyülerde kilit durumu gösterilir.
+
+Kamera aynalama ayarı yalnızca ekranda gösterilen görüntüye uygulanır. Yüz algılama, yüz tanıma, QR okuma ve el algılama ham kamera karesiyle çalışır; çizimler ekrandaki aynalama durumuna göre dönüştürülür.
+
+Yüz tanıma modeli, eğitim sırasında yüz örneklerinin aynalanmış kopyalarını da kullanır. Doğrulama sırasında normal ve aynalı yüz kırpımı ayrı ayrı denenir; daha iyi LBPH skoru veren tahmin kullanılır.
 
 ## Kurulum
 

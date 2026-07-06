@@ -31,6 +31,7 @@ models/*.tflite
 
 # Yerel kullanıcı yüz eğitimi ve doğrulama verileri
 data/face_gallery/
+data/import_faces/
 models/face_recognizer_lbph.yml
 data/face_labels.json
 data/local_profiles.json

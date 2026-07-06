@@ -43,15 +43,15 @@ class Effects:
         if face_result and face_result.box is not None:
             x, y, width, height = face_result.box
             center_x = x + width // 2
-            tag_y = max(16, y - 82)
-            tag_width = min(280, max(190, width + 90))
+            tag_y = max(10, y - 66)
+            tag_width = min(240, max(160, width + 60))
         else:
             center_x = frame_width // 2
             tag_y = 24
-            tag_width = 250
+            tag_width = 210
 
         tag_x = max(12, min(frame_width - tag_width - 12, center_x - tag_width // 2))
-        tag_height = 72
+        tag_height = 58
         overlay = frame.copy()
         cv2.rectangle(
             overlay,
@@ -60,12 +60,12 @@ class Effects:
             (18, 22, 32),
             -1,
         )
-        cv2.addWeighted(overlay, 0.68, frame, 0.32, 0, frame)
+        cv2.addWeighted(overlay, 0.52, frame, 0.48, 0, frame)
         cv2.rectangle(
             frame,
             (tag_x, tag_y),
             (tag_x + tag_width, tag_y + tag_height),
-            (120, 220, 255),
+            (110, 180, 210),
             1,
         )
 
@@ -73,13 +73,13 @@ class Effects:
         lines = [profile.username, profile.rank, short_status]
         for index, line in enumerate(lines):
             color = (255, 220, 120) if index == 0 else (245, 245, 245)
-            self._draw_text_fit(
+            self._draw_centered_text_fit(
                 frame,
                 line,
-                (tag_x + 10, tag_y + 9 + index * 21),
+                (tag_x, tag_y + 6 + index * 17),
                 tag_width - 20,
                 color,
-                font_scale=0.48,
+                font_scale=0.38,
             )
 
         return frame
@@ -167,13 +167,13 @@ class Effects:
             (18, 24, 38),
             -1,
         )
-        cv2.addWeighted(overlay, 0.78, frame, 0.22, 0, frame)
+        cv2.addWeighted(overlay, 0.62, frame, 0.38, 0, frame)
         cv2.rectangle(
             frame,
             (panel_x, panel_y),
             (panel_x + panel_width, panel_y + panel_height),
-            (255, 220, 120),
-            2,
+            (210, 180, 110),
+            1,
         )
 
         progress = 0.0
@@ -289,7 +289,7 @@ class Effects:
             (16, 20, 30),
             -1,
         )
-        cv2.addWeighted(overlay, 0.74, frame, 0.26, 0, frame)
+        cv2.addWeighted(overlay, 0.58, frame, 0.42, 0, frame)
         cv2.rectangle(
             frame,
             (panel_x, panel_y),
@@ -305,6 +305,7 @@ class Effects:
             f"QR: {debug_info.get('qr_status', '-')}",
             f"Yüz tanıma: {debug_info.get('identity_status', '-')}",
             f"Aktif profil: {debug_info.get('active_profile', '-')}",
+            f"Doğrulama modu: {debug_info.get('verification_mode', '-')}",
             f"FPS: {debug_info.get('fps', '-')}",
             f"Cooldown: {debug_info.get('cooldown', '-')}",
             f"Doğrulama: {debug_info.get('verification_status', '-')}",
@@ -348,13 +349,13 @@ class Effects:
             (22, 28, 42),
             -1,
         )
-        cv2.addWeighted(overlay, 0.72, frame, 0.28, 0, frame)
+        cv2.addWeighted(overlay, 0.50, frame, 0.50, 0, frame)
         cv2.rectangle(
             frame,
             (panel_x, panel_y),
             (panel_x + panel_width, panel_y + panel_height),
-            (170, 190, 255),
-            2,
+            (150, 170, 220),
+            1,
         )
 
         active_spell = "Yok"
@@ -411,14 +412,14 @@ class Effects:
 
         overlay = frame.copy()
         cv2.rectangle(overlay, (book_x, book_y), (book_x + book_width, book_y + book_height), (30, 26, 20), -1)
-        cv2.addWeighted(overlay, 0.55, frame, 0.45, 0, frame)
+        cv2.addWeighted(overlay, 0.42, frame, 0.58, 0, frame)
         self._draw_book_page(frame, left_rect, f"Sayfa {page * 2 - 1}")
         self._draw_book_page(frame, right_rect, f"Sayfa {page * 2}")
 
         spells = self._spellbook_entries(profile)
-        start_index = (page - 1) * 4
-        left_entries = spells[start_index:start_index + 2]
-        right_entries = spells[start_index + 2:start_index + 4]
+        start_index = (page - 1) * 2
+        left_entries = spells[start_index:start_index + 1]
+        right_entries = spells[start_index + 1:start_index + 2]
         self._draw_spell_entries(frame, left_rect, left_entries)
         self._draw_spell_entries(frame, right_rect, right_entries)
 
@@ -673,8 +674,8 @@ class Effects:
         """Büyü kitabı kapak sayfasını çizer."""
         overlay = frame.copy()
         cv2.rectangle(overlay, (x, y), (x + width, y + height), (24, 20, 34), -1)
-        cv2.addWeighted(overlay, 0.76, frame, 0.24, 0, frame)
-        cv2.rectangle(frame, (x, y), (x + width, y + height), (255, 220, 120), 3)
+        cv2.addWeighted(overlay, 0.60, frame, 0.40, 0, frame)
+        cv2.rectangle(frame, (x, y), (x + width, y + height), (220, 190, 120), 2)
         cv2.rectangle(frame, (x + 16, y + 16), (x + width - 16, y + height - 16), (120, 220, 255), 1)
         self._draw_text_fit(
             frame,
@@ -699,38 +700,76 @@ class Effects:
         x, y, width, height = rect
         overlay = frame.copy()
         cv2.rectangle(overlay, (x, y), (x + width, y + height), (45, 38, 28), -1)
-        cv2.addWeighted(overlay, 0.72, frame, 0.28, 0, frame)
-        cv2.rectangle(frame, (x, y), (x + width, y + height), (210, 180, 110), 2)
+        cv2.addWeighted(overlay, 0.56, frame, 0.44, 0, frame)
+        cv2.rectangle(frame, (x, y), (x + width, y + height), (190, 165, 105), 1)
         self._draw_text_fit(frame, title, (x + 12, y + 16), width - 24, (255, 220, 120), font_scale=0.48)
 
     def _draw_spell_entries(self, frame, rect: tuple[int, int, int, int], entries: list[dict]) -> None:
         """Kitap sayfasındaki büyü girişlerini çizer."""
         x, y, width, _ = rect
-        text_y = y + 50
+        text_y = y + 54
+        if not entries:
+            self._draw_text_fit(frame, "Boş sayfa", (x + 12, text_y), width - 24, (170, 165, 150), font_scale=0.46)
+            return
+
         for entry in entries:
             status_color = (120, 220, 255) if entry["unlocked"] else (150, 145, 150)
             title = entry["name"] if entry["unlocked"] else f"{entry['name']}  Kilitli"
-            self._draw_text_fit(frame, title, (x + 12, text_y), width - 24, status_color, font_scale=0.52)
-            text_y += 24
-            self._draw_text_fit(frame, entry["usage"], (x + 12, text_y), width - 24, (235, 235, 235), font_scale=0.42)
-            text_y += 44
+            self._draw_text_fit(frame, title, (x + 12, text_y), width - 24, status_color, font_scale=0.56)
+            text_y += 32
+
+            if entry["unlocked"]:
+                detail_lines = [
+                    f"Tür: {entry['type']}",
+                    f"Tetikleme: {entry['trigger']}",
+                    f"Etki: {entry['effect']}",
+                ]
+            else:
+                detail_lines = [
+                    f"Tür: {entry['type']}",
+                    "Durum: Kilitli",
+                    "Not: Daha yüksek rütbe gerekli",
+                ]
+
+            for detail in detail_lines:
+                self._draw_text_fit(frame, detail, (x + 12, text_y), width - 24, (235, 235, 235), font_scale=0.40)
+                text_y += 28
 
     def _spellbook_entries(self, profile) -> list[dict]:
         """Profildeki açık/kilitli büyülerden kitap girişleri üretir."""
-        usage_text = {
-            "Donma": "Avucu açık tut",
-            "Ateş": "Yatay savur + avuç göster",
-            "Kalkan": "İki açık el göster",
-            "Şimşek": "Kilitli büyü",
-            "Alan Mührü": "Kilitli büyü",
-            "Zaman Kırığı": "Kilitli büyü",
+        spell_details = {
+            "Donma": {
+                "type": "Sabit mühür",
+                "trigger": "Avucu açık tut",
+                "effect": "Soğuk büyü aktivasyonu",
+            },
+            "Ateş": {
+                "type": "Hareket zinciri",
+                "trigger": "Yatay savur + avuç göster",
+                "effect": "Ateş büyüsü aktivasyonu",
+            },
+            "Kalkan": {
+                "type": "Çift el mührü",
+                "trigger": "İki açık el göster",
+                "effect": "Koruyucu büyü aktivasyonu",
+            },
         }
         entries: list[dict] = []
         for spell_name in profile.unlocked_spells:
+            details = spell_details.get(
+                spell_name,
+                {
+                    "type": "Bilinmeyen",
+                    "trigger": "Kullanım bilgisi yok",
+                    "effect": "Etki bilgisi yok",
+                },
+            )
             entries.append(
                 {
                     "name": spell_name,
-                    "usage": usage_text.get(spell_name, "Kullanım bilgisi yok"),
+                    "type": details["type"],
+                    "trigger": details["trigger"],
+                    "effect": details["effect"],
                     "unlocked": True,
                 }
             )
@@ -738,7 +777,9 @@ class Effects:
             entries.append(
                 {
                     "name": spell_name,
-                    "usage": usage_text.get(spell_name, "Kilitli büyü"),
+                    "type": spell_details.get(spell_name, {}).get("type", "Kilitli büyü"),
+                    "trigger": "",
+                    "effect": "",
                     "unlocked": False,
                 }
             )
@@ -792,6 +833,30 @@ class Effects:
             2,
         )
         return frame
+
+    def _draw_centered_text_fit(
+        self,
+        frame,
+        text: str,
+        origin: tuple[int, int],
+        max_width: int,
+        color,
+        font_scale: float = 0.68,
+    ) -> None:
+        """Türkçe karakter destekli metni verilen alan içinde ortalar."""
+        font_size = max(14, int(font_scale * 32))
+
+        while font_size > 13:
+            font = self._get_font(font_size)
+            text_width = self._text_width(text, font)
+            if text_width <= max_width:
+                break
+            font_size -= 1
+
+        font = self._get_font(font_size)
+        text_width = self._text_width(text, font)
+        text_x = origin[0] + max(0, (max_width - text_width) // 2) + 10
+        self._draw_text(frame, text, (text_x, origin[1]), color, font_size=font_size)
 
     def _draw_text_fit(
         self,
