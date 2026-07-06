@@ -175,10 +175,6 @@ Rehber adımları: Kamera ve profil, Doğrulama, Büyü Kitabı, Donma, Ateş, K
 - Veriler yerelde tutulur; online hesap, bulut veya veritabanı sistemi yoktur.
 - Büyü/rütbe sistemi prototip düzeyindedir; gerçek progression sistemi yoktur.
 
-## Portfolyo Değeri
-
-VisionForge, tek bir kamera penceresi içinde bilgisayarlı görü, kullanıcı doğrulama, el landmark analizi, gerçek zamanlı UI, oyunlaştırılmış görev akışı ve yerel veri yönetimini birleştirir. Proje; yalnızca "webcam açıldı" seviyesinde kalmaz, kullanıcı profili, yetki, spellbook, trial ve demo rehberiyle uçtan uca bir prototip deneyimi sunar.
-
 ## Roadmap
 
 Kısa roadmap için [docs/ROADMAP.md](docs/ROADMAP.md) dosyasına bak. Özet hedefler:
