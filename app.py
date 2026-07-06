@@ -16,6 +16,7 @@ from guild_profile import find_profile_by_face_label, guest_profile
 from settings_manager import load_ui_settings, save_ui_settings
 from spell_engine import SpellEngine
 from system_status import get_system_status, has_registered_wizard
+from tracking.hand_state_tracker import HandStateTracker
 from trial_engine import TrialEngine
 
 
@@ -34,6 +35,7 @@ def main() -> None:
     enrollment_manager = EnrollmentManager()
     face_identity_detector = FaceIdentityDetector()
     guild_seal_detector = GuildSealDetector()
+    hand_state_tracker = HandStateTracker()
 
     ui_settings = load_ui_settings()
 
@@ -130,6 +132,11 @@ def main() -> None:
                 continue
 
             hand_result = hand_detector.detect(processing_frame)
+            hand_state = hand_state_tracker.update(
+                processing_frame,
+                hand_result,
+                detection_profile=ui_settings.get("detection_profile", "Dengeli"),
+            )
             display_hand_result = _to_display_hand_result(
                 hand_result,
                 ui_settings["mirror_camera"],
@@ -214,6 +221,18 @@ def main() -> None:
                 "hand_count": str(hand_result.hand_count),
                 "handedness": _handedness_debug(hand_result),
                 "hand_detector_active": str(bool(hand_result.is_active)),
+                "tracker_source": hand_state.tracking_source,
+                "tracker_active_hand": hand_state.active_hand,
+                "tracker_hand_count": str(hand_state.hand_count),
+                "tracker_handedness": ", ".join(hand_state.handedness) if hand_state.handedness else "-",
+                "tracker_hand_center": _point_debug(hand_state.hand_center),
+                "tracker_smoothed_hand_center": _point_debug(hand_state.smoothed_hand_center),
+                "tracker_hand_velocity": _point_debug(hand_state.hand_velocity),
+                "tracker_palm_open_score": _score_debug(hand_state.palm_open_score),
+                "tracker_two_hand_score": _score_debug(hand_state.two_hand_score),
+                "tracker_quality": _score_debug(hand_state.tracking_quality),
+                "tracker_missing_time": _score_debug(hand_state.missing_time),
+                "tracker_quality_warnings": ", ".join(hand_state.quality_warnings) if hand_state.quality_warnings else "-",
                 "qr_status": auth_state["qr_status"],
                 "identity_status": auth_state["identity_status"],
                 "face_identity_label": auth_state.get("face_identity_label", "-"),
@@ -705,6 +724,13 @@ def _box_debug(box) -> str:
         return "-"
     x, y, width, height = box
     return f"{x},{y},{width},{height}"
+
+
+def _point_debug(point) -> str:
+    """Debug paneli için normalize nokta veya hız değerini kısa metne çevirir."""
+    if point is None:
+        return "-"
+    return ", ".join(f"{float(value):.2f}" for value in point[:2])
 
 
 def _handedness_debug(hand_result) -> str:
