@@ -166,6 +166,7 @@ def main() -> None:
                 allowed_spells=allowed_spells,
                 detection_profile=ui_settings.get("detection_profile", "Dengeli"),
                 frame=processing_frame,
+                hand_state=hand_state,
             )
             active_trial_spell = spell_result.active_spell_name if spell_result.has_active_spell else None
             trial_status = trial_engine.update(
@@ -257,6 +258,8 @@ def main() -> None:
                 "fps": f"{fps:.1f}",
                 "cooldown": f"{spell_result.cooldown_remaining:.1f} sn" if spell_result.cooldown_remaining > 0 else "hazır",
                 "active_spell": spell_result.active_spell_name or "Yok",
+                "spell_uses_tracker": str(bool(spell_result.spell_uses_tracker)),
+                "tracker_source_used": spell_result.tracker_source_used,
                 "palm_open_score": _score_debug(spell_result.palm_open_score),
                 "freeze_stability_score": _score_debug(spell_result.freeze_stability_score),
                 "fire_horizontal_distance": _score_debug(spell_result.fire_horizontal_distance),

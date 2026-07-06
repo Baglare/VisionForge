@@ -114,6 +114,9 @@ Beklenen sonuç:
 - Cooldown büyü spamlenmesini engeller.
 - Yetki yoksa kilitli büyü efekti başlamaz.
 - Ateş için çok hızlı savurma gerekmez; küçük titreşimler tetikleme sayılmaz.
+- Ateş sırasında el çok kısa kaybolursa hazırlık hemen sıfırlanmaz; final tetikleme için yine gerçek açık avuç görülmelidir.
+- Büyü / Trial debug sayfasında `spell_uses_tracker`, `tracker_source_used`, `fire_travel_distance`, `fire_required_distance` ve `fire_seal_window_active` alanları görünür.
+- `tracker_source_used` kısa süre `optical_flow` olsa bile Donma veya Kalkan tek başına tetiklenmemelidir.
 - Loş ışıkta veya bulanık görüntüde debug panelinde el takip kalite uyarısı görünebilir.
 - Kalkan için iki el görünürken `raw_hand_count` 2 olmalı ve `shield_two_hand_score` yükselmelidir.
 - Tek el görünürken Kalkan tetiklenmemelidir.

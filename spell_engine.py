@@ -34,6 +34,8 @@ class SpellResult:
     fire_missing_time: float = 0.0
     fire_seal_window_active: bool = False
     hand_tracking_quality_message: str = ""
+    spell_uses_tracker: bool = False
+    tracker_source_used: str = "-"
 
 
 class SpellEngine:
@@ -88,11 +90,23 @@ class SpellEngine:
         detection_profile: str = "Dengeli",
         now: float | None = None,
         frame=None,
+        hand_state=None,
     ) -> SpellResult:
         """El algılama sonucuna göre büyü durumunu günceller."""
         current_time = now if now is not None else time.monotonic()
         profile = self._profile_config(detection_profile)
         self._update_tracking_quality(frame)
+        tracker_center = self._tracker_center(hand_state)
+        tracker_source = self._tracker_source(hand_state)
+        tracker_quality = float(getattr(hand_state, "tracking_quality", 0.0) or 0.0)
+        tracker_velocity = getattr(hand_state, "hand_velocity", None)
+        tracker_is_motion_usable = (
+            tracker_center is not None
+            and tracker_source in {"mediapipe", "optical_flow"}
+            and tracker_quality >= profile["tracker_min_quality"]
+        )
+        self._debug_scores["spell_uses_tracker"] = bool(tracker_is_motion_usable)
+        self._debug_scores["tracker_source_used"] = tracker_source if tracker_is_motion_usable else "-"
         allowed_spells = allowed_spells or [
             self.FREEZE_SPELL_NAME,
             self.FIRE_SPELL_NAME,
@@ -147,7 +161,21 @@ class SpellEngine:
         raw_open_palm_centers = self._open_palm_centers(hand_result)
         open_palm_center = raw_open_palm_centers[0] if raw_open_palm_centers else None
         self._update_smoothing_scores(hand_result, raw_open_palm_centers, profile)
+        motion_center = tracker_center if tracker_is_motion_usable else hand_center
+        motion_source = tracker_source if tracker_is_motion_usable else "mediapipe"
         if hand_center is None:
+            if motion_center is not None:
+                fire_motion_result = self._update_fire_spell(
+                    current_time,
+                    motion_center,
+                    open_palm_center=None,
+                    allowed_spells=allowed_spells,
+                    profile=profile,
+                    tracker_source=motion_source,
+                )
+                if fire_motion_result is not None:
+                    return fire_motion_result
+
             fire_missing_result = self._update_fire_missing(current_time, profile)
             if fire_missing_result is not None:
                 return fire_missing_result
@@ -160,7 +188,7 @@ class SpellEngine:
                 progress=0.0,
             )
 
-        self._remember_hand_center(current_time, hand_center)
+        self._remember_hand_center(current_time, motion_center)
 
         shield_result = self._update_shield_spell(
             current_time,
@@ -174,15 +202,25 @@ class SpellEngine:
 
         fire_result = self._update_fire_spell(
             current_time,
-            hand_center,
+            motion_center,
             open_palm_center,
             allowed_spells,
             profile,
+            tracker_source=motion_source,
         )
         if fire_result is not None:
             return fire_result
 
-        return self._update_freeze_spell(current_time, open_palm_center, allowed_spells, profile)
+        freeze_center = motion_center if motion_source == "mediapipe" else open_palm_center
+        return self._update_freeze_spell(
+            current_time,
+            open_palm_center,
+            allowed_spells,
+            profile,
+            stability_center=freeze_center,
+            tracker_source=motion_source,
+            tracker_velocity=tracker_velocity if tracker_is_motion_usable else None,
+        )
 
     def list_available_spells(self, profile) -> list[str]:
         """Profilde açık olan büyüleri döndürür."""
@@ -242,12 +280,15 @@ class SpellEngine:
         open_palm_center: tuple[float, float, float] | None,
         allowed_spells: list[str],
         profile: dict,
+        tracker_source: str = "mediapipe",
     ) -> SpellResult | None:
         """Kontrollü yatay süpürme + açık avuç zincirinden Ateş büyüsünü üretir."""
         self._fire_last_seen_at = current_time
         self._debug_scores["fire_missing_time"] = 0.0
 
         if self._fire_state == "idle":
+            if tracker_source != "mediapipe":
+                return None
             self._start_fire_tracking(current_time, hand_center)
 
         if self._fire_state == "fire_seal_window":
@@ -264,7 +305,11 @@ class SpellEngine:
             self._freeze_started_at = None
             self._last_palm_center = None
 
-            if open_palm_center is not None and self._debug_scores["palm_open_score"] >= profile["palm_score_threshold"]:
+            if (
+                tracker_source == "mediapipe"
+                and open_palm_center is not None
+                and self._debug_scores["palm_open_score"] >= profile["palm_score_threshold"]
+            ):
                 self._fire_state = "triggered"
                 self._debug_scores["fire_state"] = "triggered"
                 return self._activate_spell(self.FIRE_SPELL_NAME, current_time, allowed_spells)
@@ -283,6 +328,8 @@ class SpellEngine:
         travel_distance = self._debug_scores["fire_travel_distance"]
 
         if elapsed > profile["fire_tracking_timeout_seconds"] and travel_distance < required_distance:
+            if tracker_source != "mediapipe":
+                return self._update_fire_missing(current_time, profile)
             self._start_fire_tracking(current_time, hand_center)
             return None
 
@@ -351,10 +398,14 @@ class SpellEngine:
         open_palm_center: tuple[float, float, float] | None,
         allowed_spells: list[str],
         profile: dict,
+        stability_center: tuple[float, float, float] | None = None,
+        tracker_source: str = "mediapipe",
+        tracker_velocity=None,
     ) -> SpellResult:
         """Açık ve kısa süre sabit avuçtan Donma büyüsünü üretir."""
         palm_score = self._debug_scores["palm_open_score"]
-        if open_palm_center is None or palm_score < profile["palm_score_threshold"]:
+        raw_palm_ready = open_palm_center is not None and tracker_source == "mediapipe"
+        if not raw_palm_ready or palm_score < profile["palm_score_threshold"]:
             self._freeze_missing_frames += 1
             if self._freeze_missing_frames > profile["freeze_missing_tolerance"]:
                 self._freeze_started_at = None
@@ -369,16 +420,24 @@ class SpellEngine:
             )
 
         self._freeze_missing_frames = 0
+        stability_center = stability_center or open_palm_center
         stability_score = 1.0
         if (
             self._last_palm_center is not None
-            and self._distance(open_palm_center, self._last_palm_center) > profile["freeze_stability_distance"]
+            and self._distance(stability_center, self._last_palm_center) > profile["freeze_stability_distance"]
         ):
             stability_score = 0.0
             self._freeze_started_at = current_time
 
+        tracker_speed = self._tracker_speed(tracker_velocity)
+        if tracker_source == "mediapipe" and tracker_speed is not None:
+            velocity_score = max(0.0, 1.0 - tracker_speed / profile["freeze_velocity_limit"])
+            stability_score = min(stability_score, velocity_score)
+            if tracker_speed > profile["freeze_velocity_limit"]:
+                self._freeze_started_at = current_time
+
         self._debug_scores["freeze_stability_score"] = stability_score
-        self._last_palm_center = open_palm_center
+        self._last_palm_center = stability_center
 
         if self._freeze_started_at is None:
             self._freeze_started_at = current_time
@@ -483,6 +542,8 @@ class SpellEngine:
             fire_missing_time=self._debug_scores["fire_missing_time"],
             fire_seal_window_active=self._debug_scores["fire_seal_window_active"],
             hand_tracking_quality_message=self._debug_scores["hand_tracking_quality_message"],
+            spell_uses_tracker=self._debug_scores["spell_uses_tracker"],
+            tracker_source_used=self._debug_scores["tracker_source_used"],
         )
 
     def _remember_hand_center(
@@ -616,6 +677,23 @@ class SpellEngine:
         center_indices = [0, 5, 9, 13, 17]
         return self._average_point([landmarks[index] for index in center_indices])
 
+    def _tracker_center(self, hand_state) -> tuple[float, float, float] | None:
+        """Tracker merkezini büyü motorunun 3B normalize nokta formatına çevirir."""
+        center = getattr(hand_state, "smoothed_hand_center", None)
+        if center is None:
+            return None
+        return (float(center[0]), float(center[1]), 0.0)
+
+    def _tracker_source(self, hand_state) -> str:
+        """Tracker kaynağını debug ve güvenli kararlar için döndürür."""
+        return str(getattr(hand_state, "tracking_source", "-") or "-")
+
+    def _tracker_speed(self, velocity) -> float | None:
+        """Tracker hız vektörünü normalize 2B hız büyüklüğüne çevirir."""
+        if velocity is None:
+            return None
+        return math.hypot(float(velocity[0]), float(velocity[1]))
+
     def _open_palm_center(self, hand_result) -> tuple[float, float, float] | None:
         """Açık ve kullanılabilir ilk avucun merkez noktasını döndürür."""
         centers = self._open_palm_centers(hand_result)
@@ -716,6 +794,8 @@ class SpellEngine:
                 "fire_visible_progress": 0.12,
                 "fire_missing_tolerance_seconds": 0.35,
                 "fire_tracking_timeout_seconds": 2.2,
+                "tracker_min_quality": 0.12,
+                "freeze_velocity_limit": 0.70,
             },
             "Dengeli": {
                 "palm_score_threshold": 0.58,
@@ -733,6 +813,8 @@ class SpellEngine:
                 "fire_visible_progress": 0.15,
                 "fire_missing_tolerance_seconds": 0.28,
                 "fire_tracking_timeout_seconds": 1.9,
+                "tracker_min_quality": 0.18,
+                "freeze_velocity_limit": 0.50,
             },
             "Kararlı": {
                 "palm_score_threshold": 0.72,
@@ -750,6 +832,8 @@ class SpellEngine:
                 "fire_visible_progress": 0.18,
                 "fire_missing_tolerance_seconds": 0.20,
                 "fire_tracking_timeout_seconds": 1.5,
+                "tracker_min_quality": 0.25,
+                "freeze_velocity_limit": 0.35,
             },
         }
         return configs.get(detection_profile, configs["Dengeli"])
@@ -770,6 +854,8 @@ class SpellEngine:
             "fire_missing_time": 0.0,
             "fire_seal_window_active": False,
             "hand_tracking_quality_message": "",
+            "spell_uses_tracker": False,
+            "tracker_source_used": "-",
         }
 
     def _reset_gesture_state(self, keep_history: bool = True) -> None:

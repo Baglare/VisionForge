@@ -247,6 +247,8 @@ Ateş büyüsü hızlı bir savurma gerektirmez; elin kadraj içinde soldan sağ
 
 Debug paneli `Q` menüsünden `5` ile açılır. Panel açıkken `D` tuşu şu sayfalar arasında geçiş yapar: Genel, Yüz / Doğrulama, El / Tracker, Büyü / Trial. El / Tracker sayfasında `raw_hand_count`, `tracking_source`, `tracking_quality`, `brightness`, `blur_score`, `hand_near_edge` ve `quality_warnings` alanları el takibinin neden zayıfladığını anlamak için kullanılır. Kalkan testinde iki el görünürken `raw_hand_count: 2` ve Büyü / Trial sayfasında `shield_two_hand_score` değerinin yükselmesi beklenir.
 
+HandStateTracker artık SpellEngine'e kontrollü şekilde bağlıdır. Ateş büyüsünde yatay süpürme mesafesi için yumuşatılmış el merkezi ve kısa süreli hareket devamlılığı kullanılır. Optical flow yalnızca kısa el kayıplarında hareket merkezini korumaya yardım eder; tek başına Donma, Ateş final mührü veya Kalkan tetiklemez. Donma ve Ateş final tetikleme için gerçek MediaPipe açık avuç verisi, Kalkan için ise iki gerçek el landmarkı gerekir.
+
 Sistem Durumu paneli Q menüsünde `8` ile açılıp kapatılır. Panel şu kaynakları kontrol eder:
 
 - `models/face_detector.tflite`
