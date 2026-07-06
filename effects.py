@@ -236,7 +236,7 @@ class Effects:
         panel_x = 24
         panel_y = 24
         panel_width = 455
-        panel_height = 334
+        panel_height = 360
         self._draw_panel(
             frame,
             panel_x,
@@ -261,6 +261,7 @@ class Effects:
             f"9 - Algılama Profili: {settings.get('detection_profile', 'Dengeli')}",
             "0 - Doğrulama oturumunu sıfırla",
             "D - Debug sayfasını değiştir",
+            "G - Demo Rehberi, N/P - adım değiştir",
         ]
 
         for index, line in enumerate(lines):
@@ -1837,3 +1838,50 @@ def _vf_draw_notifications(self, frame, notifications):
 
 
 Effects.draw_notifications = _vf_draw_notifications
+
+
+def _vf_draw_demo_guide_panel(self, frame, guide_status):
+    """Aktif Demo Rehberi adımını küçük bir panelde gösterir."""
+    if not guide_status or getattr(guide_status, "state", "inactive") == "inactive":
+        return frame
+
+    height, width = frame.shape[:2]
+    panel_width = min(420, max(300, width - 48))
+    panel_height = 166
+    x = 24
+    y = max(54, height - panel_height - 86)
+
+    border = (120, 225, 245) if guide_status.state == "completed" else (120, 170, 210)
+    _vf_rect(frame, x, y, x + panel_width, y + panel_height, (18, 22, 34), 0.48, border, 1)
+
+    _vf_text(frame, "Demo Rehberi", x + 14, y + 24, scale=0.50, color=(245, 222, 135), thickness=1)
+    _vf_text(
+        frame,
+        f"Adım {guide_status.current_step}/{guide_status.total_steps}",
+        x + panel_width - 118,
+        y + 24,
+        scale=0.34,
+        color=(185, 220, 235),
+        thickness=1,
+    )
+    title_text = guide_status.title
+    if getattr(guide_status, "step_completed", False):
+        title_text = f"{title_text} - Tamamlandı"
+    _vf_text(frame, title_text, x + 14, y + 50, scale=0.42, color=(242, 242, 235), thickness=1)
+
+    text_y = y + 73
+    for line in _vf_wrap(guide_status.message, panel_width - 30, scale=0.34)[:2]:
+        _vf_text(frame, line, x + 14, text_y, scale=0.34, color=(205, 210, 218), thickness=1)
+        text_y += 18
+
+    shortcut_y = y + panel_height - 42
+    for hint in getattr(guide_status, "shortcut_hints", ())[:2]:
+        _vf_text(frame, hint, x + 14, shortcut_y, scale=0.27, color=(165, 205, 215), thickness=1)
+        shortcut_y += 14
+
+    hint = "N: ileri   P: geri   G: kapat"
+    _vf_text(frame, hint, x + 14, y + panel_height - 8, scale=0.30, color=(185, 225, 235), thickness=1)
+    return frame
+
+
+Effects.draw_demo_guide_panel = _vf_draw_demo_guide_panel

@@ -221,3 +221,18 @@ Beklenen sonuç:
 6. T ile Trial başlat; `Mühürlü Kapı başladı` bildirimi görünmeli.
 7. Trial tamamlanınca `Kapı açıldı` bildirimi görünmeli.
 8. Bildirimlerin birkaç saniye sonra kaybolduğunu ve aynı durumun her karede spam yapmadığını kontrol et.
+
+## Demo Rehberi Testi
+
+1. Uygulamayı başlat.
+2. `G` ile Demo Rehberi'ni aç; küçük rehber paneli görünmeli.
+3. Panelin altındaki küçük kısayol alanında `Q: Menü`, `E: Kayıt`, `B: Kitap`, `T: Trial`, `Esc: Çıkış` bilgisini kontrol et.
+4. İlk adımda `E ile büyücü kaydı başlat` bilgisinin göründüğünü doğrula.
+5. `N` ile sonraki adıma geç, `P` ile önceki adıma dön.
+6. Büyü Kitabı adımında `E: Kayıt`, `B: Kitap` ve `Sağ/Sol Ok: Sayfa değiştir` ipuçlarını kontrol et.
+7. `B` ile Büyü Kitabı'nı açıp sağ okla sayfaya geç; rehberin Büyü Kitabı adımını hemen kaybetmeden kısa süre gösterdiğini kontrol et.
+8. Donma, Ateş ve Kalkan büyülerini tetikle; ilgili demo adımlarının en az yaklaşık 1.5 saniye görünür kaldıktan sonra ilerlediğini kontrol et.
+9. `T` ile Mühürlü Kapı görevini başlat; Trial adımı algılanmalı.
+10. Trial tamamlanınca rehberin final/tamamlandı durumuna geçtiğini ve `Demo tamamlandı` bildiriminin geldiğini kontrol et.
+11. `G` ile rehberi kapat.
+12. Q, Esc, E, B, H, R, T, D ve sağ/sol ok kısayollarının bozulmadığını kontrol et.

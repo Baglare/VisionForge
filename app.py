@@ -6,6 +6,7 @@ import time
 import cv2
 
 from camera import Camera, CameraError
+from demo_guide import DemoGuide
 from detectors.face_detector import FaceDetectionResult, FaceDetector, FaceDetectorError
 from detectors.face_identity_detector import FaceIdentityDetector
 from detectors.guild_seal_detector import GuildSealDetector
@@ -33,6 +34,7 @@ def main() -> None:
     effects = Effects()
     spell_engine = SpellEngine()
     trial_engine = TrialEngine()
+    demo_guide = DemoGuide()
     enrollment_manager = EnrollmentManager()
     face_identity_detector = FaceIdentityDetector()
     guild_seal_detector = GuildSealDetector()
@@ -74,7 +76,7 @@ def main() -> None:
         camera.start()
 
         print("VisionForge kamera modu aktif.")
-        print("Q: ayar menüsü, E: kayıt/import, T: Trial, R: sıfırla, B: büyü kitabı, H: el çizimi, Esc: çıkış.")
+        print("Q: ayar menüsü, G/N/P: demo rehberi, E: kayıt/import, T: Trial, R: sıfırla, B: büyü kitabı, H: el çizimi, Esc: çıkış.")
         if any(item.required and not item.exists for item in get_system_status()):
             notification_manager.notify(
                 "Eksik model dosyası",
@@ -137,6 +139,7 @@ def main() -> None:
 
                 display_frame = effects.draw_enrollment_panel(display_frame, enrollment_status)
                 display_frame = effects.draw_settings_menu(display_frame, ui_settings)
+                display_frame = effects.draw_demo_guide_panel(display_frame, demo_guide.status())
                 display_frame = effects.draw_notifications(display_frame, notification_manager.active())
                 camera.show_frame(display_frame)
                 key = camera.read_key()
@@ -150,6 +153,7 @@ def main() -> None:
                     face_detector,
                     hand_detector,
                     trial_engine,
+                    demo_guide,
                     notification_manager,
                     allow_enrollment_start=False,
                 )
@@ -205,6 +209,17 @@ def main() -> None:
             )
             _emit_spell_notifications(notification_manager, spell_result, notification_state)
             _emit_trial_notifications(notification_manager, trial_status, notification_state)
+            demo_event = demo_guide.update(
+                {
+                    "verification_status": verification_status,
+                    "spellbook_open": ui_settings["show_spellbook"],
+                    "spellbook_page": spellbook_page,
+                    "active_spell_name": active_trial_spell,
+                    "trial_state": trial_status.state,
+                }
+            )
+            if demo_event == "completed":
+                notification_manager.notify("Demo tamamlandı", type="success", key="demo-complete", min_interval=9999.0)
 
             if ui_settings["show_hand_debug"] and display_hand_result.detected:
                 display_frame = effects.draw_hand_landmarks(display_frame, display_hand_result)
@@ -337,6 +352,7 @@ def main() -> None:
             if ui_settings.get("show_system_status", False):
                 display_frame = effects.draw_system_status_panel(display_frame, get_system_status())
             display_frame = effects.draw_settings_menu(display_frame, ui_settings)
+            display_frame = effects.draw_demo_guide_panel(display_frame, demo_guide.status())
             display_frame = effects.draw_notifications(display_frame, notification_manager.active())
 
             camera.show_frame(display_frame)
@@ -352,6 +368,7 @@ def main() -> None:
                 face_detector,
                 hand_detector,
                 trial_engine,
+                demo_guide,
                 notification_manager,
                 allow_enrollment_start=True,
             )
@@ -530,6 +547,7 @@ def _handle_key(
     face_detector: FaceDetector | None,
     hand_detector: HandDetector | None,
     trial_engine: TrialEngine,
+    demo_guide: DemoGuide,
     notification_manager: NotificationManager | None,
     allow_enrollment_start: bool,
 ) -> tuple[str | None, int]:
@@ -538,6 +556,22 @@ def _handle_key(
         return verified_face_label, spellbook_page
 
     settings_changed = False
+
+    if key in (ord("g"), ord("G")):
+        demo_action = demo_guide.toggle()
+        if demo_action == "started" and notification_manager is not None:
+            notification_manager.notify("Demo Rehberi başladı", type="info", key="demo-guide-start", min_interval=2.0)
+        return verified_face_label, spellbook_page
+
+    if key in (ord("n"), ord("N")):
+        demo_event = demo_guide.next()
+        if demo_event == "completed" and notification_manager is not None:
+            notification_manager.notify("Demo tamamlandı", type="success", key="demo-complete", min_interval=9999.0)
+        return verified_face_label, spellbook_page
+
+    if key in (ord("p"), ord("P")):
+        demo_guide.previous()
+        return verified_face_label, spellbook_page
 
     if key in (ord("q"), ord("Q")):
         ui_settings["show_settings_menu"] = not ui_settings["show_settings_menu"]
