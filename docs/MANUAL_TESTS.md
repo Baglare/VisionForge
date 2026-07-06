@@ -32,11 +32,16 @@ Adımlar:
 2. Uygulamayı aç.
 3. `Q` menüsünden `2` ile yüz kutusu çizimini aç.
 4. `Q` menüsünden `1` ile el landmark çizimini aç.
-5. Kameraya yüzünü ve elini göster.
+5. `Q` menüsünden `5` ile Debug Sayfası'nı aç.
+6. `D` ile El / Tracker sayfasına geç.
+7. Kameraya yüzünü ve elini göster.
 
 Beklenen sonuç:
 - Yüz algılanırsa yüz kutusu doğru konumda görünür.
 - El algılanırsa landmark çizimi elde görünür.
+- El görünürken `raw_hand_detected` True ve `tracking_source` mediapipe görünür.
+- El kısa süre kaybolursa `tracking_source` kısa süre optical_flow olabilir, uzun kayıpta lost olur.
+- Loş ışık, bulanıklık veya kadraj kenarı sorunları `quality_warnings` içinde görünür.
 - Model eksikse uygulama çökmez, ilgili algılama pasif kalır.
 
 ## Kayıt/eğitim testi
@@ -102,6 +107,7 @@ Adımlar:
 1. Donma için avucu açık ve kısa süre sabit tut.
 2. Ateş için elini kadraj içinde kontrollü şekilde yatay süpür ve ardından açık avuç göster.
 3. Kalkan için iki açık el göster.
+4. Debug panelinde `D` ile El / Tracker ve Büyü / Trial sayfalarını kontrol et.
 
 Beklenen sonuç:
 - Yetki varsa ilgili büyü tetiklenir.
@@ -109,6 +115,8 @@ Beklenen sonuç:
 - Yetki yoksa kilitli büyü efekti başlamaz.
 - Ateş için çok hızlı savurma gerekmez; küçük titreşimler tetikleme sayılmaz.
 - Loş ışıkta veya bulanık görüntüde debug panelinde el takip kalite uyarısı görünebilir.
+- Kalkan için iki el görünürken `raw_hand_count` 2 olmalı ve `shield_two_hand_score` yükselmelidir.
+- Tek el görünürken Kalkan tetiklenmemelidir.
 
 ## Büyü Kitabı testi
 
@@ -144,11 +152,12 @@ Adımlar:
 3. Uygulamayı kapatıp yeniden aç.
 4. `8` ile Sistem Durumu panelini aç.
 5. `9` ile Algılama Profilini `Hassas`, `Dengeli`, `Kararlı` arasında değiştir.
-6. Debug Sayfasını açıp yüz/el algılama skorlarını kontrol et.
+6. Debug Sayfasını açıp `D` ile Genel, Yüz / Doğrulama, El / Tracker ve Büyü / Trial sayfalarını gez.
 
 Beklenen sonuç:
 - Kalıcı ayarlar `data/settings.json` içine yazılır.
 - Uygulama yeniden açıldığında son ayarlar korunur.
 - Sistem Durumu paneli model, profil ve QR dosya durumlarını anlaşılır şekilde gösterir.
-- Debug panelinde algılama profili, yüz skoru, yüz kutusu, el sayısı ve sağ/sol el bilgisi görünür.
+- Debug paneli tek uzun liste yerine sayfalara bölünür.
+- El / Tracker sayfasında raw el sayısı, takip kaynağı, kalite uyarıları, brightness ve blur bilgisi görünür.
 - `0` doğrulama oturumunu sıfırlar.

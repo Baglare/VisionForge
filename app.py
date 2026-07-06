@@ -38,6 +38,7 @@ def main() -> None:
     hand_state_tracker = HandStateTracker()
 
     ui_settings = load_ui_settings()
+    ui_settings["debug_page"] = int(ui_settings.get("debug_page", 0)) % 4
 
     face_history = deque(maxlen=8)
     face_confirmed = False
@@ -210,7 +211,9 @@ def main() -> None:
 
             debug_info = {
                 "show_debug_page": ui_settings["show_debug_page"],
+                "debug_page": ui_settings.get("debug_page", 0),
                 "detection_profile": ui_settings.get("detection_profile", "Dengeli"),
+                "mirror_camera": "Açık" if ui_settings["mirror_camera"] else "Kapalı",
                 "face_status": "var" if face_result.detected else "yok",
                 "face_detected": str(bool(face_result.detected)),
                 "face_detection_score": _score_debug(face_result.confidence),
@@ -220,8 +223,12 @@ def main() -> None:
                 "hand_detected": str(bool(hand_result.detected)),
                 "hand_count": str(hand_result.hand_count),
                 "handedness": _handedness_debug(hand_result),
+                "raw_hand_detected": str(bool(hand_result.detected)),
+                "raw_hand_count": str(hand_result.hand_count),
+                "raw_handedness": _handedness_debug(hand_result),
                 "hand_detector_active": str(bool(hand_result.is_active)),
                 "tracker_source": hand_state.tracking_source,
+                "tracker_hand_detected": str(bool(hand_state.hand_detected)),
                 "tracker_active_hand": hand_state.active_hand,
                 "tracker_hand_count": str(hand_state.hand_count),
                 "tracker_handedness": ", ".join(hand_state.handedness) if hand_state.handedness else "-",
@@ -233,6 +240,9 @@ def main() -> None:
                 "tracker_quality": _score_debug(hand_state.tracking_quality),
                 "tracker_missing_time": _score_debug(hand_state.missing_time),
                 "tracker_quality_warnings": ", ".join(hand_state.quality_warnings) if hand_state.quality_warnings else "-",
+                "tracker_brightness": _score_debug(hand_state.brightness_score),
+                "tracker_blur": _score_debug(hand_state.blur_score),
+                "tracker_hand_near_edge": str(bool(hand_state.hand_near_edge)),
                 "qr_status": auth_state["qr_status"],
                 "identity_status": auth_state["identity_status"],
                 "face_identity_label": auth_state.get("face_identity_label", "-"),
@@ -246,6 +256,7 @@ def main() -> None:
                 "face_score": auth_state.get("face_score", "-"),
                 "fps": f"{fps:.1f}",
                 "cooldown": f"{spell_result.cooldown_remaining:.1f} sn" if spell_result.cooldown_remaining > 0 else "hazır",
+                "active_spell": spell_result.active_spell_name or "Yok",
                 "palm_open_score": _score_debug(spell_result.palm_open_score),
                 "freeze_stability_score": _score_debug(spell_result.freeze_stability_score),
                 "fire_horizontal_distance": _score_debug(spell_result.fire_horizontal_distance),
@@ -344,16 +355,19 @@ def _hand_detector_options(detection_profile: str) -> dict:
     """Algılama profiline göre HandDetector seçeneklerini döndürür."""
     profile_options = {
         "Hassas": {
+            "num_hands": 2,
             "min_hand_detection_confidence": 0.35,
             "min_hand_presence_confidence": 0.35,
             "min_tracking_confidence": 0.35,
         },
         "Dengeli": {
+            "num_hands": 2,
             "min_hand_detection_confidence": 0.50,
             "min_hand_presence_confidence": 0.50,
             "min_tracking_confidence": 0.50,
         },
         "Kararlı": {
+            "num_hands": 2,
             "min_hand_detection_confidence": 0.65,
             "min_hand_presence_confidence": 0.65,
             "min_tracking_confidence": 0.65,
@@ -374,6 +388,7 @@ def _apply_detection_profile(face_detector, hand_detector, detection_profile: st
 
     if hand_detector is not None:
         hand_options = _hand_detector_options(detection_profile)
+        hand_detector.num_hands = max(2, hand_options["num_hands"])
         hand_detector.min_hand_detection_confidence = hand_options["min_hand_detection_confidence"]
         hand_detector.min_hand_presence_confidence = hand_options["min_hand_presence_confidence"]
         hand_detector.min_tracking_confidence = hand_options["min_tracking_confidence"]
@@ -470,6 +485,10 @@ def _handle_key(
 
     if key in (ord("q"), ord("Q")):
         ui_settings["show_settings_menu"] = not ui_settings["show_settings_menu"]
+        return verified_face_label, spellbook_page
+
+    if key in (ord("d"), ord("D")) and ui_settings.get("show_debug_page", False):
+        ui_settings["debug_page"] = (int(ui_settings.get("debug_page", 0)) + 1) % 4
         return verified_face_label, spellbook_page
 
     if key in RIGHT_ARROW_KEYS and ui_settings["show_spellbook"]:

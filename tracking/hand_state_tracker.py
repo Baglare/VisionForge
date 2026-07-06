@@ -27,6 +27,9 @@ class HandState:
     tracking_quality: float = 0.0
     missing_time: float = 0.0
     quality_warnings: list[str] = field(default_factory=list)
+    brightness_score: float = 0.0
+    blur_score: float = 0.0
+    hand_near_edge: bool = False
 
 
 class HandStateTracker:
@@ -54,7 +57,8 @@ class HandStateTracker:
         current_time = now if now is not None else time.monotonic()
         config = self._profile_config(detection_profile)
         gray = self._to_gray(frame)
-        quality_warnings = self._quality_warnings(gray, config)
+        brightness_score, blur_score = self._quality_scores(gray)
+        quality_warnings = self._quality_warnings(brightness_score, blur_score, config)
         dt = self._delta_time(current_time)
 
         if hand_result is not None and hand_result.detected and hand_result.hands:
@@ -63,6 +67,8 @@ class HandStateTracker:
                 frame,
                 gray,
                 quality_warnings,
+                brightness_score,
+                blur_score,
                 config,
                 current_time,
                 dt,
@@ -71,6 +77,8 @@ class HandStateTracker:
             state = self._state_from_flow(
                 gray,
                 quality_warnings,
+                brightness_score,
+                blur_score,
                 config,
                 current_time,
                 dt,
@@ -86,6 +94,8 @@ class HandStateTracker:
         frame,
         gray,
         quality_warnings: list[str],
+        brightness_score: float,
+        blur_score: float,
         config: dict,
         current_time: float,
         dt: float,
@@ -99,8 +109,12 @@ class HandStateTracker:
         self._flow_confidence = 1.0
         self._prev_points = self._tracking_points(hand, frame)
 
-        if center and self._is_near_edge(center):
+        hand_near_edge = bool(center and self._is_near_edge(center))
+        if hand_near_edge:
             quality_warnings.append("El kadraj kenarında")
+
+        if hand and hand.confidence is not None and hand.confidence < 0.45:
+            quality_warnings.append("El takibi kararsız")
 
         tracking_quality = self._tracking_quality(
             base_quality=1.0,
@@ -121,12 +135,17 @@ class HandStateTracker:
             tracking_quality=tracking_quality,
             missing_time=0.0,
             quality_warnings=quality_warnings,
+            brightness_score=brightness_score,
+            blur_score=blur_score,
+            hand_near_edge=hand_near_edge,
         )
 
     def _state_from_flow(
         self,
         gray,
         quality_warnings: list[str],
+        brightness_score: float,
+        blur_score: float,
         config: dict,
         current_time: float,
         dt: float,
@@ -138,31 +157,42 @@ class HandStateTracker:
                 tracking_source="lost",
                 missing_time=max(0.0, missing_time),
                 quality_warnings=quality_warnings,
+                brightness_score=brightness_score,
+                blur_score=blur_score,
             )
 
         predicted_center = self._optical_flow_center(gray)
         if predicted_center is None:
+            quality_warnings.append("El takibi kararsız")
             self._clear_tracking()
             return HandState(
                 tracking_source="lost",
                 missing_time=max(0.0, missing_time),
                 quality_warnings=quality_warnings,
+                brightness_score=brightness_score,
+                blur_score=blur_score,
             )
 
         self._flow_confidence *= config["flow_decay"]
         if self._flow_confidence < config["min_flow_confidence"]:
+            quality_warnings.append("El takibi kararsız")
             self._clear_tracking()
             return HandState(
                 tracking_source="lost",
                 missing_time=max(0.0, missing_time),
                 quality_warnings=quality_warnings,
+                brightness_score=brightness_score,
+                blur_score=blur_score,
             )
 
         smoothed = self._smooth_center(predicted_center, config["ema_alpha"])
         velocity = self._velocity(smoothed, dt)
         self._last_center = predicted_center
-        if predicted_center and self._is_near_edge(predicted_center):
+        hand_near_edge = bool(predicted_center and self._is_near_edge(predicted_center))
+        if hand_near_edge:
             quality_warnings.append("El kadraj kenarında")
+        if self._flow_confidence < 0.45:
+            quality_warnings.append("El takibi kararsız")
 
         return HandState(
             hand_detected=True,
@@ -178,6 +208,9 @@ class HandStateTracker:
             tracking_quality=self._tracking_quality(self._flow_confidence, quality_warnings),
             missing_time=max(0.0, missing_time),
             quality_warnings=quality_warnings,
+            brightness_score=brightness_score,
+            blur_score=blur_score,
+            hand_near_edge=hand_near_edge,
         )
 
     def _optical_flow_center(self, gray) -> tuple[float, float] | None:
@@ -285,13 +318,16 @@ class HandStateTracker:
             return 1.0
         return min(0.5, hand_result.hand_count / 2)
 
-    def _quality_warnings(self, gray, config: dict) -> list[str]:
+    def _quality_scores(self, gray) -> tuple[float, float]:
         if gray is None:
-            return []
+            return 0.0, 0.0
+        return (
+            float(gray.mean()),
+            float(cv2.Laplacian(gray, cv2.CV_64F).var()),
+        )
 
+    def _quality_warnings(self, brightness: float, blur_score: float, config: dict) -> list[str]:
         warnings = []
-        brightness = float(gray.mean())
-        blur_score = float(cv2.Laplacian(gray, cv2.CV_64F).var())
         if brightness < config["min_brightness"]:
             warnings.append("Işık düşük")
         if blur_score < config["min_blur"]:

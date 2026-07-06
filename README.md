@@ -182,6 +182,7 @@ Klavye kısayolları:
 - `Q`: Ayar menüsünü açar/kapatır.
 - `B`: Büyü Kitabı panelini açar/kapatır.
 - `H`: El landmark/debug çizimini açar/kapatır.
+- `D`: Debug paneli açıkken Genel, Yüz / Doğrulama, El / Tracker ve Büyü / Trial sayfaları arasında geçiş yapar.
 - `Esc`: Uygulamayı kapatır.
 
 Yerel yüz verileri ve kullanıcı QR dosyaları şu konumlarda saklanır:
@@ -211,6 +212,7 @@ Ayar menüsündeki seçenekler:
 - `6`: Büyü efektlerini açar/kapatır.
 - `7`: Kamera aynalamayı açar/kapatır.
 - `8`: Sistem Durumu panelini açar/kapatır.
+- `9`: Algılama profilini `Hassas`, `Dengeli`, `Kararlı` arasında değiştirir.
 - `0`: Doğrulama oturumunu sıfırlar.
 
 Varsayılan doğrulama modu `QR + Yüz` şeklindedir. Bu modda tam yetki için hem kayıtlı yüzün tanınması hem de doğru lonca mührünün kamerada okunması gerekir. Menüden `3` ile `Yalnızca Yüz` moduna geçildiğinde kayıtlı yüz tanınırsa QR göstermeden tam profil açılır.
@@ -241,7 +243,9 @@ Dosya yoksa uygulama varsayılan ayarlarla oluşturur. Q menüsünden el/yüz de
 
 Algılama profili `9` tuşuyla `Hassas`, `Dengeli` ve `Kararlı` arasında değiştirilir. Varsayılan profil `Dengeli` değeridir. `Hassas` daha kolay algılama, `Kararlı` daha seçici algılama hedefler.
 
-Ateş büyüsü hızlı bir savurma gerektirmez; elin kadraj içinde soldan sağa veya sağdan sola kontrollü yatay süpürülmesi yeterlidir. Loş ışık veya bulanık görüntü el takibini zayıflatabilir; daha iyi ışık ve daha kontrollü el hareketi önerilir. Debug paneli açıkken Ateş hazırlık durumu ve el takip kalite uyarıları görülebilir.
+Ateş büyüsü hızlı bir savurma gerektirmez; elin kadraj içinde soldan sağa veya sağdan sola kontrollü yatay süpürülmesi yeterlidir. Loş ışık veya bulanık görüntü el takibini zayıflatabilir; daha iyi ışık ve daha kontrollü el hareketi önerilir.
+
+Debug paneli `Q` menüsünden `5` ile açılır. Panel açıkken `D` tuşu şu sayfalar arasında geçiş yapar: Genel, Yüz / Doğrulama, El / Tracker, Büyü / Trial. El / Tracker sayfasında `raw_hand_count`, `tracking_source`, `tracking_quality`, `brightness`, `blur_score`, `hand_near_edge` ve `quality_warnings` alanları el takibinin neden zayıfladığını anlamak için kullanılır. Kalkan testinde iki el görünürken `raw_hand_count: 2` ve Büyü / Trial sayfasında `shield_two_hand_score` değerinin yükselmesi beklenir.
 
 Sistem Durumu paneli Q menüsünde `8` ile açılıp kapatılır. Panel şu kaynakları kontrol eder:
 
@@ -281,6 +285,7 @@ Güncel kısayollar:
 - `H`: El debug çizimini açar/kapatır.
 - `R`: Doğrulama oturumunu sıfırlar.
 - `T`: Mühürlü Kapı Trial görevini başlatır veya yeniden başlatır.
+- `D`: Debug paneli açıkken debug sayfasını değiştirir.
 - `1-9` ve `0`: Q menüsü açıkken ayarları değiştirir.
 - `Sağ/Sol ok`: Büyü Kitabı sayfalarını değiştirir.
 

@@ -265,6 +265,7 @@ class Effects:
             f"8 - Sistem Durumu: {self._on_off(settings.get('show_system_status', False))}",
             f"9 - Algılama Profili: {settings.get('detection_profile', 'Dengeli')}",
             "0 - Doğrulama oturumunu sıfırla",
+            "D - Debug sayfasını değiştir",
         ]
 
         for index, line in enumerate(lines):
@@ -286,8 +287,8 @@ class Effects:
             return frame
 
         frame_height, frame_width = frame.shape[:2]
-        panel_width = min(430, max(320, frame_width // 3))
-        panel_height = min(frame_height - 36, 520)
+        panel_width = min(460, max(330, frame_width // 3))
+        panel_height = min(frame_height - 36, 360)
         panel_x = max(16, frame_width - panel_width - 18)
         panel_y = max(18, frame_height - panel_height - 18)
 
@@ -308,77 +309,87 @@ class Effects:
             1,
         )
 
-        lines = [
-            "Debug",
-            f"Algılama profili: {debug_info.get('detection_profile', '-')}",
-            f"Yüz: {debug_info.get('face_status', '-')}",
-            f"Face detected: {debug_info.get('face_detected', '-')}",
-            f"Face score: {debug_info.get('face_detection_score', '-')}",
-            f"Face box: {debug_info.get('face_box', '-')}",
-            f"Face detector aktif: {debug_info.get('face_detector_active', '-')}",
-            f"El: {debug_info.get('hand_status', '-')}",
-            f"Hand detected: {debug_info.get('hand_detected', '-')}",
-            f"Hand count: {debug_info.get('hand_count', '-')}",
-            f"Handedness: {debug_info.get('handedness', '-')}",
-            f"Hand detector aktif: {debug_info.get('hand_detector_active', '-')}",
-            f"tracking_source: {debug_info.get('tracker_source', '-')}",
-            f"active_hand: {debug_info.get('tracker_active_hand', '-')}",
-            f"tracker hand_count: {debug_info.get('tracker_hand_count', '-')}",
-            f"tracker handedness: {debug_info.get('tracker_handedness', '-')}",
-            f"hand_center: {debug_info.get('tracker_hand_center', '-')}",
-            f"smoothed_hand_center: {debug_info.get('tracker_smoothed_hand_center', '-')}",
-            f"hand_velocity: {debug_info.get('tracker_hand_velocity', '-')}",
-            f"tracker palm_open_score: {debug_info.get('tracker_palm_open_score', '-')}",
-            f"two_hand_score: {debug_info.get('tracker_two_hand_score', '-')}",
-            f"tracking_quality: {debug_info.get('tracker_quality', '-')}",
-            f"missing_time: {debug_info.get('tracker_missing_time', '-')}",
-            f"quality_warnings: {debug_info.get('tracker_quality_warnings', '-')}",
-            f"QR: {debug_info.get('qr_status', '-')}",
-            f"Yüz tanıma: {debug_info.get('identity_status', '-')}",
-            f"Identity label: {debug_info.get('face_identity_label', '-')}",
-            f"Identity score: {debug_info.get('face_identity_score', '-')}",
-            f"Identity variant: {debug_info.get('face_identity_variant', '-')}",
-            f"Face quality: {debug_info.get('face_quality_message', '-')}",
-            f"Tanınan kullanıcı: {debug_info.get('recognized_user', '-')}",
-            f"Aktif profil: {debug_info.get('active_profile', '-')}",
-            f"Doğrulama modu: {debug_info.get('verification_mode', '-')}",
-            f"Doğrulama: {debug_info.get('verification_status', '-')}",
-            f"İzinli büyüler: {debug_info.get('allowed_spells', '-')}",
-            f"Kilit denemesi: {debug_info.get('attempted_locked_spell', '-')}",
-            f"Yüz skoru: {debug_info.get('face_score', '-')}",
-            f"FPS: {debug_info.get('fps', '-')}",
-            f"Cooldown: {debug_info.get('cooldown', '-')}",
-            f"Palm open score: {debug_info.get('palm_open_score', '-')}",
-            f"Freeze stability: {debug_info.get('freeze_stability_score', '-')}",
-            f"El takip kalitesi: {debug_info.get('hand_tracking_quality_message', '-')}",
-            f"Fire state: {debug_info.get('fire_state', '-')}",
-            f"Fire start x: {debug_info.get('fire_start_x', '-')}",
-            f"Fire current x: {debug_info.get('fire_current_x', '-')}",
-            f"Fire gerekli mesafe: {debug_info.get('fire_required_distance', '-')}",
-            f"Fire gidilen mesafe: {debug_info.get('fire_travel_distance', '-')}",
-            f"Fire kayıp süre: {debug_info.get('fire_missing_time', '-')}",
-            f"Fire mühür penceresi: {debug_info.get('fire_seal_window_active', '-')}",
-            f"Fire yatay mesafe: {debug_info.get('fire_horizontal_distance', '-')}",
-            f"Fire swing: {debug_info.get('fire_swing_detected', '-')}",
-            f"Shield two hand: {debug_info.get('shield_two_hand_score', '-')}",
-            f"Hazırlık skoru: {debug_info.get('spell_prepare_progress', '-')}",
-            f"Kilitli büyü: {debug_info.get('locked_spell_attempt', '-')}",
-            f"Trial state: {debug_info.get('trial_state', '-')}",
-            f"Trial step: {debug_info.get('trial_current_step', '-')}",
-            f"Trial required: {debug_info.get('trial_required_spell', '-')}",
-            f"Trial mühürler: {debug_info.get('trial_completed_steps', '-')}",
-            f"Trial mesaj: {debug_info.get('last_trial_message', '-')}",
+        page_index = int(debug_info.get("debug_page", 0)) % 4
+        pages = [
+            (
+                "Genel",
+                [
+                    f"FPS: {debug_info.get('fps', '-')}",
+                    f"Algılama profili: {debug_info.get('detection_profile', '-')}",
+                    f"Doğrulama modu: {debug_info.get('verification_mode', '-')}",
+                    f"Aktif profil: {debug_info.get('active_profile', '-')}",
+                    f"Allowed spells: {debug_info.get('allowed_spells', '-')}",
+                    f"Kamera aynalama: {debug_info.get('mirror_camera', '-')}",
+                ],
+            ),
+            (
+                "Yüz / Doğrulama",
+                [
+                    f"face_detected: {debug_info.get('face_detected', '-')}",
+                    f"face_detection_score: {debug_info.get('face_detection_score', '-')}",
+                    f"face_box: {debug_info.get('face_box', '-')}",
+                    f"face_identity_label: {debug_info.get('face_identity_label', '-')}",
+                    f"face_identity_score: {debug_info.get('face_identity_score', '-')}",
+                    f"face_identity_variant: {debug_info.get('face_identity_variant', '-')}",
+                    f"face_quality_message: {debug_info.get('face_quality_message', '-')}",
+                    f"QR durumu: {debug_info.get('qr_status', '-')}",
+                    f"verification_status: {debug_info.get('verification_status', '-')}",
+                ],
+            ),
+            (
+                "El / Tracker",
+                [
+                    f"raw_hand_detected: {debug_info.get('raw_hand_detected', '-')}",
+                    f"raw_hand_count: {debug_info.get('raw_hand_count', '-')}",
+                    f"raw_handedness: {debug_info.get('raw_handedness', '-')}",
+                    f"hand_detector_active: {debug_info.get('hand_detector_active', '-')}",
+                    f"tracker_source: {debug_info.get('tracker_source', '-')}",
+                    f"tracker_hand_detected: {debug_info.get('tracker_hand_detected', '-')}",
+                    f"tracker_hand_count: {debug_info.get('tracker_hand_count', '-')}",
+                    f"active_hand: {debug_info.get('tracker_active_hand', '-')}",
+                    f"smoothed_hand_center: {debug_info.get('tracker_smoothed_hand_center', '-')}",
+                    f"hand_velocity: {debug_info.get('tracker_hand_velocity', '-')}",
+                    f"tracking_quality: {debug_info.get('tracker_quality', '-')}",
+                    f"missing_time: {debug_info.get('tracker_missing_time', '-')}",
+                    f"quality_warnings: {debug_info.get('tracker_quality_warnings', '-')}",
+                    f"brightness: {debug_info.get('tracker_brightness', '-')}",
+                    f"blur_score: {debug_info.get('tracker_blur', '-')}",
+                    f"hand_near_edge: {debug_info.get('tracker_hand_near_edge', '-')}",
+                ],
+            ),
+            (
+                "Büyü / Trial",
+                [
+                    f"active_spell: {debug_info.get('active_spell', '-')}",
+                    f"cooldown: {debug_info.get('cooldown', '-')}",
+                    f"palm_open_score: {debug_info.get('palm_open_score', '-')}",
+                    f"freeze_stability_score: {debug_info.get('freeze_stability_score', '-')}",
+                    f"fire_state: {debug_info.get('fire_state', '-')}",
+                    f"fire_travel_distance: {debug_info.get('fire_travel_distance', '-')}",
+                    f"fire_required_distance: {debug_info.get('fire_required_distance', '-')}",
+                    f"fire_missing_time: {debug_info.get('fire_missing_time', '-')}",
+                    f"shield_two_hand_score: {debug_info.get('shield_two_hand_score', '-')}",
+                    f"locked_spell_attempt: {debug_info.get('locked_spell_attempt', '-')}",
+                    f"trial_state: {debug_info.get('trial_state', '-')}",
+                    f"trial_required_spell: {debug_info.get('trial_required_spell', '-')}",
+                    f"trial_progress: {debug_info.get('trial_completed_steps', '-')}",
+                ],
+            ),
         ]
-        text_step = max(10, min(18, (panel_height - 34) // max(1, len(lines) - 1)))
+        title, page_lines = pages[page_index]
+        lines = [f"Debug {page_index + 1}/4 - {title}", *page_lines, "D: sonraki sayfa"]
+        text_step = max(15, min(20, (panel_height - 34) // max(1, len(lines) - 1)))
         for index, line in enumerate(lines):
             color = (120, 220, 255) if index == 0 else (235, 235, 235)
+            if len(line) > 62:
+                line = f"{line[:59]}..."
             self._draw_text_fit(
                 frame,
                 line,
                 (panel_x + 14, panel_y + 18 + index * text_step),
                 panel_width - 28,
                 color,
-                font_scale=0.30 if index else 0.46,
+                font_scale=0.36 if index else 0.52,
             )
 
         return frame
