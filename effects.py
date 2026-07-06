@@ -37,6 +37,53 @@ class Effects:
         self.status = "hazır"
         self._font_cache: dict[int, ImageFont.FreeTypeFont | ImageFont.ImageFont] = {}
 
+    def draw_head_profile_tag(self, frame, profile, face_result=None, verification_status: str = ""):
+        """Profil bilgisini yüz/kafa üstünde küçük ve sade bir etiket olarak gösterir."""
+        frame_height, frame_width = frame.shape[:2]
+        if face_result and face_result.box is not None:
+            x, y, width, height = face_result.box
+            center_x = x + width // 2
+            tag_y = max(16, y - 82)
+            tag_width = min(280, max(190, width + 90))
+        else:
+            center_x = frame_width // 2
+            tag_y = 24
+            tag_width = 250
+
+        tag_x = max(12, min(frame_width - tag_width - 12, center_x - tag_width // 2))
+        tag_height = 72
+        overlay = frame.copy()
+        cv2.rectangle(
+            overlay,
+            (tag_x, tag_y),
+            (tag_x + tag_width, tag_y + tag_height),
+            (18, 22, 32),
+            -1,
+        )
+        cv2.addWeighted(overlay, 0.68, frame, 0.32, 0, frame)
+        cv2.rectangle(
+            frame,
+            (tag_x, tag_y),
+            (tag_x + tag_width, tag_y + tag_height),
+            (120, 220, 255),
+            1,
+        )
+
+        short_status = self._short_verification_status(verification_status)
+        lines = [profile.username, profile.rank, short_status]
+        for index, line in enumerate(lines):
+            color = (255, 220, 120) if index == 0 else (245, 245, 245)
+            self._draw_text_fit(
+                frame,
+                line,
+                (tag_x + 10, tag_y + 9 + index * 21),
+                tag_width - 20,
+                color,
+                font_scale=0.48,
+            )
+
+        return frame
+
     def draw_profile_panel(
         self,
         frame,
@@ -171,12 +218,116 @@ class Effects:
 
         return frame
 
+    def draw_settings_menu(self, frame, settings: dict):
+        """Q menüsü açıkken çalışma zamanı ayarlarını gösterir."""
+        if not settings.get("show_settings_menu", False):
+            return frame
+
+        panel_x = 24
+        panel_y = 24
+        panel_width = 455
+        panel_height = 276
+        overlay = frame.copy()
+        cv2.rectangle(
+            overlay,
+            (panel_x, panel_y),
+            (panel_x + panel_width, panel_y + panel_height),
+            (16, 20, 30),
+            -1,
+        )
+        cv2.addWeighted(overlay, 0.78, frame, 0.22, 0, frame)
+        cv2.rectangle(
+            frame,
+            (panel_x, panel_y),
+            (panel_x + panel_width, panel_y + panel_height),
+            (255, 220, 120),
+            2,
+        )
+
+        mode = "QR + Yüz" if settings.get("verification_requires_qr", True) else "Yalnızca Yüz"
+        lines = [
+            "Ayar Menüsü  (Q: kapat, Esc: çıkış)",
+            f"1 - El landmark/debug: {self._on_off(settings.get('show_hand_debug', False))}",
+            f"2 - Yüz kutusu/debug: {self._on_off(settings.get('show_face_debug', False))}",
+            f"3 - Doğrulama modu: {mode}",
+            f"4 - Büyü Defteri: {self._on_off(settings.get('show_spellbook', True))}",
+            f"5 - Debug Sayfası: {self._on_off(settings.get('show_debug_page', False))}",
+            f"6 - Büyü efektleri: {self._on_off(settings.get('spell_effects_enabled', True))}",
+            f"7 - Kamera aynalama: {self._on_off(settings.get('mirror_camera', False))}",
+            "0 - Doğrulama oturumunu sıfırla",
+        ]
+
+        for index, line in enumerate(lines):
+            color = (255, 220, 120) if index == 0 else (245, 245, 245)
+            self._draw_text_fit(
+                frame,
+                line,
+                (panel_x + 16, panel_y + 18 + index * 27),
+                panel_width - 32,
+                color,
+                font_scale=0.56 if index else 0.62,
+            )
+
+        return frame
+
+    def draw_debug_panel(self, frame, debug_info: dict):
+        """Debug sayfası açıkken ham durum bilgilerini gösterir."""
+        if not debug_info.get("show_debug_page", False):
+            return frame
+
+        frame_height, frame_width = frame.shape[:2]
+        panel_width = min(430, max(320, frame_width // 3))
+        panel_height = 245
+        panel_x = max(16, frame_width - panel_width - 18)
+        panel_y = max(18, frame_height - panel_height - 18)
+
+        overlay = frame.copy()
+        cv2.rectangle(
+            overlay,
+            (panel_x, panel_y),
+            (panel_x + panel_width, panel_y + panel_height),
+            (16, 20, 30),
+            -1,
+        )
+        cv2.addWeighted(overlay, 0.74, frame, 0.26, 0, frame)
+        cv2.rectangle(
+            frame,
+            (panel_x, panel_y),
+            (panel_x + panel_width, panel_y + panel_height),
+            (120, 190, 255),
+            1,
+        )
+
+        lines = [
+            "Debug",
+            f"Yüz: {debug_info.get('face_status', '-')}",
+            f"El: {debug_info.get('hand_status', '-')}",
+            f"QR: {debug_info.get('qr_status', '-')}",
+            f"Yüz tanıma: {debug_info.get('identity_status', '-')}",
+            f"Aktif profil: {debug_info.get('active_profile', '-')}",
+            f"FPS: {debug_info.get('fps', '-')}",
+            f"Cooldown: {debug_info.get('cooldown', '-')}",
+            f"Doğrulama: {debug_info.get('verification_status', '-')}",
+        ]
+        for index, line in enumerate(lines):
+            color = (120, 220, 255) if index == 0 else (235, 235, 235)
+            self._draw_text_fit(
+                frame,
+                line,
+                (panel_x + 14, panel_y + 18 + index * 24),
+                panel_width - 28,
+                color,
+                font_scale=0.50 if index else 0.58,
+            )
+
+        return frame
+
     def draw_spell_status_panel(self, frame, spell_result):
         """Aktif büyü, cooldown ve hazırlık bilgisini kompakt panelde gösterir."""
         frame_width = frame.shape[1]
         panel_x = 24
-        panel_y = 168
-        panel_width = min(390, max(300, frame_width - 48))
+        panel_y = 24
+        panel_width = min(315, max(260, frame_width - 48))
         show_spell_message = bool(
             spell_result
             and not spell_result.has_active_spell
@@ -186,7 +337,7 @@ class Effects:
                 or spell_result.status == "Lonca yetkisi yetersiz"
             )
         )
-        panel_height = 118 if show_spell_message else 92
+        panel_height = 104 if show_spell_message else 80
         padding = 14
 
         overlay = frame.copy()
@@ -228,87 +379,58 @@ class Effects:
             lines.append(f"Hazırlık: %{int(progress * 100)}")
 
         text_x = panel_x + padding
-        text_y = panel_y + 30
+        text_y = panel_y + 27
         for index, line in enumerate(lines):
             color = (245, 245, 245) if index != 0 else (255, 220, 120)
             self._draw_text_fit(
                 frame=frame,
                 text=line,
-                origin=(text_x, text_y + index * 26),
+                origin=(text_x, text_y + index * 23),
                 max_width=panel_width - padding * 2,
                 color=color,
-                font_scale=0.62,
+                font_scale=0.54,
             )
 
         return frame
 
-    def draw_spellbook_panel(self, frame, profile):
-        """Açık ve kilitli büyüleri gösteren sağ paneli çizer."""
+    def draw_spellbook_panel(self, frame, profile, page: int = 0):
+        """Açık ve kilitli büyüleri kitap görünümünde gösterir."""
         frame_height, frame_width = frame.shape[:2]
-        panel_width = min(360, max(285, frame_width // 3))
-        panel_height = min(360, frame_height - 48)
-        panel_x = max(24, frame_width - panel_width - 24)
-        panel_y = 24
-        padding = 14
+        book_width = min(520, max(360, frame_width // 2))
+        book_height = min(330, max(240, frame_height - 70))
+        book_x = max(18, frame_width - book_width - 22)
+        book_y = 34
+
+        if page <= 0:
+            return self._draw_spellbook_cover(frame, book_x, book_y, book_width, book_height)
+
+        page_gap = 8
+        page_width = (book_width - page_gap) // 2
+        left_rect = (book_x, book_y, page_width, book_height)
+        right_rect = (book_x + page_width + page_gap, book_y, page_width, book_height)
 
         overlay = frame.copy()
-        cv2.rectangle(
-            overlay,
-            (panel_x, panel_y),
-            (panel_x + panel_width, panel_y + panel_height),
-            (20, 24, 36),
-            -1,
-        )
-        cv2.addWeighted(overlay, 0.76, frame, 0.24, 0, frame)
-        cv2.rectangle(
+        cv2.rectangle(overlay, (book_x, book_y), (book_x + book_width, book_y + book_height), (30, 26, 20), -1)
+        cv2.addWeighted(overlay, 0.55, frame, 0.45, 0, frame)
+        self._draw_book_page(frame, left_rect, f"Sayfa {page * 2 - 1}")
+        self._draw_book_page(frame, right_rect, f"Sayfa {page * 2}")
+
+        spells = self._spellbook_entries(profile)
+        start_index = (page - 1) * 4
+        left_entries = spells[start_index:start_index + 2]
+        right_entries = spells[start_index + 2:start_index + 4]
+        self._draw_spell_entries(frame, left_rect, left_entries)
+        self._draw_spell_entries(frame, right_rect, right_entries)
+
+        footer = "← / → sayfa"
+        self._draw_text_fit(
             frame,
-            (panel_x, panel_y),
-            (panel_x + panel_width, panel_y + panel_height),
-            (255, 220, 120),
-            2,
+            footer,
+            (book_x + 12, book_y + book_height - 24),
+            book_width - 24,
+            (190, 170, 120),
+            font_scale=0.42,
         )
-
-        usage_text = {
-            "Donma": "Avucu açık tut",
-            "Ateş": "Yatay savur + avuç göster",
-            "Kalkan": "İki açık el göster",
-        }
-
-        text_x = panel_x + padding
-        text_y = panel_y + 30
-        max_width = panel_width - padding * 2
-
-        self._draw_text_fit(frame, "Büyü Defteri", (text_x, text_y), max_width, (255, 220, 120), font_scale=0.72)
-        text_y += 32
-        self._draw_text_fit(frame, "Açık Büyüler", (text_x, text_y), max_width, (120, 220, 255), font_scale=0.58)
-        text_y += 26
-
-        for spell_name in profile.unlocked_spells:
-            detail = usage_text.get(spell_name, "Kullanım bilgisi yok")
-            self._draw_text_fit(
-                frame,
-                f"{spell_name}: {detail}",
-                (text_x, text_y),
-                max_width,
-                (245, 245, 245),
-                font_scale=0.50,
-            )
-            text_y += 24
-
-        text_y += 10
-        self._draw_text_fit(frame, "Kilitli Büyüler", (text_x, text_y), max_width, (170, 170, 190), font_scale=0.58)
-        text_y += 26
-
-        for spell_name in profile.locked_spells:
-            self._draw_text_fit(
-                frame,
-                f"- {spell_name}",
-                (text_x, text_y),
-                max_width,
-                (145, 145, 165),
-                font_scale=0.50,
-            )
-            text_y += 23
 
         return frame
 
@@ -546,6 +668,98 @@ class Effects:
             max(0, min(frame_width - 1, int(center_x * frame_width))),
             max(0, min(frame_height - 1, int(center_y * frame_height))),
         )
+
+    def _draw_spellbook_cover(self, frame, x: int, y: int, width: int, height: int):
+        """Büyü kitabı kapak sayfasını çizer."""
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (x, y), (x + width, y + height), (24, 20, 34), -1)
+        cv2.addWeighted(overlay, 0.76, frame, 0.24, 0, frame)
+        cv2.rectangle(frame, (x, y), (x + width, y + height), (255, 220, 120), 3)
+        cv2.rectangle(frame, (x + 16, y + 16), (x + width - 16, y + height - 16), (120, 220, 255), 1)
+        self._draw_text_fit(
+            frame,
+            "Büyü Kitabı",
+            (x + 34, y + height // 2 - 26),
+            width - 68,
+            (255, 220, 120),
+            font_scale=0.92,
+        )
+        self._draw_text_fit(
+            frame,
+            "Sağ ok ile aç",
+            (x + 36, y + height // 2 + 22),
+            width - 72,
+            (235, 235, 235),
+            font_scale=0.52,
+        )
+        return frame
+
+    def _draw_book_page(self, frame, rect: tuple[int, int, int, int], title: str) -> None:
+        """Tek kitap sayfasını çizer."""
+        x, y, width, height = rect
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (x, y), (x + width, y + height), (45, 38, 28), -1)
+        cv2.addWeighted(overlay, 0.72, frame, 0.28, 0, frame)
+        cv2.rectangle(frame, (x, y), (x + width, y + height), (210, 180, 110), 2)
+        self._draw_text_fit(frame, title, (x + 12, y + 16), width - 24, (255, 220, 120), font_scale=0.48)
+
+    def _draw_spell_entries(self, frame, rect: tuple[int, int, int, int], entries: list[dict]) -> None:
+        """Kitap sayfasındaki büyü girişlerini çizer."""
+        x, y, width, _ = rect
+        text_y = y + 50
+        for entry in entries:
+            status_color = (120, 220, 255) if entry["unlocked"] else (150, 145, 150)
+            title = entry["name"] if entry["unlocked"] else f"{entry['name']}  Kilitli"
+            self._draw_text_fit(frame, title, (x + 12, text_y), width - 24, status_color, font_scale=0.52)
+            text_y += 24
+            self._draw_text_fit(frame, entry["usage"], (x + 12, text_y), width - 24, (235, 235, 235), font_scale=0.42)
+            text_y += 44
+
+    def _spellbook_entries(self, profile) -> list[dict]:
+        """Profildeki açık/kilitli büyülerden kitap girişleri üretir."""
+        usage_text = {
+            "Donma": "Avucu açık tut",
+            "Ateş": "Yatay savur + avuç göster",
+            "Kalkan": "İki açık el göster",
+            "Şimşek": "Kilitli büyü",
+            "Alan Mührü": "Kilitli büyü",
+            "Zaman Kırığı": "Kilitli büyü",
+        }
+        entries: list[dict] = []
+        for spell_name in profile.unlocked_spells:
+            entries.append(
+                {
+                    "name": spell_name,
+                    "usage": usage_text.get(spell_name, "Kullanım bilgisi yok"),
+                    "unlocked": True,
+                }
+            )
+        for spell_name in profile.locked_spells:
+            entries.append(
+                {
+                    "name": spell_name,
+                    "usage": usage_text.get(spell_name, "Kilitli büyü"),
+                    "unlocked": False,
+                }
+            )
+        return entries
+
+    def _on_off(self, enabled: bool) -> str:
+        """Ayar menüsü için açık/kapalı metni döndürür."""
+        return "Açık" if enabled else "Kapalı"
+
+    def _short_verification_status(self, status: str) -> str:
+        """Profil etiketi için doğrulama durumunu kısaltır."""
+        mapping = {
+            "Bekleniyor": "Bekleniyor",
+            "Misafir": "Misafir",
+            "Yüz tanındı, mühür bekleniyor": "Mühür bekleniyor",
+            "Yüz tanındı": "Yüz tanındı",
+            "Yüz + lonca mührü onaylandı": "Yüz + mühür onaylandı",
+            "Mühür kullanıcıyla eşleşmedi": "Mühür eşleşmedi",
+            "Yüz tanıma pasif": "Yüz tanıma pasif",
+        }
+        return mapping.get(status, status or "Bekleniyor")
 
     def _shield_geometry(self, frame, face_result) -> tuple[tuple[int, int], tuple[int, int]]:
         """Yüz kutusu varsa kalkanı kullanıcıya, yoksa ekran merkezine yerleştirir."""

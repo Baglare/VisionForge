@@ -47,14 +47,14 @@ class Camera:
 
     def read_key(self, delay: int = 1) -> int:
         """OpenCV penceresinden tek tuş okur."""
-        return cv2.waitKey(delay) & 0xFF
+        return cv2.waitKeyEx(delay)
 
     def is_close_key(self, key: int) -> bool:
-        """q veya Esc tuşunun kapatma isteği olup olmadığını döndürür."""
-        return key == ord("q") or key == 27
+        """Esc tuşunun kapatma isteği olup olmadığını döndürür."""
+        return key == 27
 
     def should_close(self, delay: int = 1) -> bool:
-        """q veya Esc tuşuna basıldığında pencereyi kapatma isteğini döndürür."""
+        """Esc tuşuna basıldığında pencereyi kapatma isteğini döndürür."""
         return self.is_close_key(self.read_key(delay))
 
     def stop(self) -> None:

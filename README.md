@@ -141,9 +141,10 @@ Klavye kısayolları:
 
 - `E`: Yeni büyücü kaydı / yüz eğitimi başlatır.
 - `R`: Doğrulama oturumunu sıfırlar.
-- `B`: Büyü Defteri panelini açar/kapatır.
+- `Q`: Ayar menüsünü açar/kapatır.
+- `B`: Büyü Kitabı panelini açar/kapatır.
 - `H`: El landmark/debug çizimini açar/kapatır.
-- `q` veya `Esc`: Uygulamayı kapatır.
+- `Esc`: Uygulamayı kapatır.
 
 Yerel yüz verileri ve kullanıcı QR dosyaları şu konumlarda saklanır:
 
@@ -156,6 +157,33 @@ assets/guild_seals/
 ```
 
 Bu verileri silerek yerel yüz eğitimini ve kullanıcı kayıtlarını temizleyebilirsin. Otomatik üretilen kullanıcı QR dosyaları ve yüz eğitim verileri Git dışında tutulur.
+
+## Arayüz ve Kontrol Sistemi
+
+Genel ayar menüsü `Q` tuşu ile açılıp kapanır. Çıkış artık yalnızca `Esc` ile yapılır.
+
+Ayar menüsündeki seçenekler:
+
+- `1`: El landmark/debug çizimini açar/kapatır.
+- `2`: Yüz kutusu/debug çizimini açar/kapatır.
+- `3`: Doğrulama modunu `QR + Yüz` ve `Yalnızca Yüz` arasında değiştirir.
+- `4`: Büyü Kitabı panelini açar/kapatır.
+- `5`: Debug Sayfası'nı açar/kapatır.
+- `6`: Büyü efektlerini açar/kapatır.
+- `7`: Kamera aynalamayı açar/kapatır.
+- `0`: Doğrulama oturumunu sıfırlar.
+
+Varsayılan doğrulama modu `QR + Yüz` şeklindedir. Bu modda tam yetki için hem kayıtlı yüzün tanınması hem de doğru lonca mührünün kamerada okunması gerekir. Menüden `3` ile `Yalnızca Yüz` moduna geçildiğinde kayıtlı yüz tanınırsa QR göstermeden tam profil açılır.
+
+Kayıt tamamlandığında QR/lonca mührü şu konuma üretilir:
+
+```text
+assets/guild_seals/<username>_seal.png
+```
+
+Kullanıcı bu QR dosyasını telefonda açıp kameraya gösterebilir. Otomatik üretilen QR dosyaları Git'e eklenmez.
+
+Büyü Kitabı paneli kapak ve iki sayfalı kitap görünümüyle çalışır. Sağ/sol ok tuşları sayfa çiftlerini değiştirir.
 
 ## Kurulum
 
