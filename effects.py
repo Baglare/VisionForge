@@ -338,6 +338,14 @@ class Effects:
             f"Cooldown: {debug_info.get('cooldown', '-')}",
             f"Palm open score: {debug_info.get('palm_open_score', '-')}",
             f"Freeze stability: {debug_info.get('freeze_stability_score', '-')}",
+            f"El takip kalitesi: {debug_info.get('hand_tracking_quality_message', '-')}",
+            f"Fire state: {debug_info.get('fire_state', '-')}",
+            f"Fire start x: {debug_info.get('fire_start_x', '-')}",
+            f"Fire current x: {debug_info.get('fire_current_x', '-')}",
+            f"Fire gerekli mesafe: {debug_info.get('fire_required_distance', '-')}",
+            f"Fire gidilen mesafe: {debug_info.get('fire_travel_distance', '-')}",
+            f"Fire kayıp süre: {debug_info.get('fire_missing_time', '-')}",
+            f"Fire mühür penceresi: {debug_info.get('fire_seal_window_active', '-')}",
             f"Fire yatay mesafe: {debug_info.get('fire_horizontal_distance', '-')}",
             f"Fire swing: {debug_info.get('fire_swing_detected', '-')}",
             f"Shield two hand: {debug_info.get('shield_two_hand_score', '-')}",
@@ -349,7 +357,7 @@ class Effects:
             f"Trial mühürler: {debug_info.get('trial_completed_steps', '-')}",
             f"Trial mesaj: {debug_info.get('last_trial_message', '-')}",
         ]
-        text_step = max(14, min(20, (panel_height - 34) // max(1, len(lines) - 1)))
+        text_step = max(10, min(18, (panel_height - 34) // max(1, len(lines) - 1)))
         for index, line in enumerate(lines):
             color = (120, 220, 255) if index == 0 else (235, 235, 235)
             self._draw_text_fit(
@@ -358,7 +366,7 @@ class Effects:
                 (panel_x + 14, panel_y + 18 + index * text_step),
                 panel_width - 28,
                 color,
-                font_scale=0.36 if index else 0.50,
+                font_scale=0.30 if index else 0.46,
             )
 
         return frame
@@ -510,7 +518,10 @@ class Effects:
         elif spell_result and not spell_result.has_active_spell and spell_result.status == "Lonca yetkisi yetersiz":
             lines.append("Lonca yetkisi yetersiz")
         elif spell_result and not spell_result.has_active_spell and progress > 0:
-            lines.append(f"Hazırlık: %{int(progress * 100)}")
+            if spell_result.status.startswith("Ateş"):
+                lines.append(spell_result.status)
+            else:
+                lines.append(f"Hazırlık: %{int(progress * 100)}")
 
         text_x = panel_x + padding
         text_y = panel_y + 27

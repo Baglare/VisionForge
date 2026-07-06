@@ -5,6 +5,8 @@ from dataclasses import dataclass
 import math
 import time
 
+import cv2
+
 
 @dataclass
 class SpellResult:
@@ -24,6 +26,14 @@ class SpellResult:
     shield_two_hand_score: float = 0.0
     spell_prepare_progress: float = 0.0
     locked_spell_attempt: str = ""
+    fire_state: str = "idle"
+    fire_start_x: float = 0.0
+    fire_current_x: float = 0.0
+    fire_required_distance: float = 0.0
+    fire_travel_distance: float = 0.0
+    fire_missing_time: float = 0.0
+    fire_seal_window_active: bool = False
+    hand_tracking_quality_message: str = ""
 
 
 class SpellEngine:
@@ -42,7 +52,7 @@ class SpellEngine:
         fire_history_seconds: float = 1.3,
         fire_seal_window_seconds: float = 0.8,
     ) -> None:
-        self.status = "Ateş savurması bekleniyor"
+        self.status = "Ateş: yatay süpürme bekleniyor"
         self.freeze_hold_seconds = freeze_hold_seconds
         self.shield_hold_seconds = shield_hold_seconds
         self.cooldown_seconds = cooldown_seconds
@@ -54,6 +64,12 @@ class SpellEngine:
         self._last_palm_center: tuple[float, float, float] | None = None
         self._hand_center_history: deque[tuple[float, tuple[float, float, float]]] = deque()
         self._fire_seal_until = 0.0
+        self._fire_state = "idle"
+        self._fire_start_x: float | None = None
+        self._fire_start_y: float | None = None
+        self._fire_current_x: float | None = None
+        self._fire_started_at = 0.0
+        self._fire_last_seen_at = 0.0
         self._cooldown_until = 0.0
         self._active_until = 0.0
         self._active_spell_name: str | None = None
@@ -71,10 +87,12 @@ class SpellEngine:
         allowed_spells: list[str] | None = None,
         detection_profile: str = "Dengeli",
         now: float | None = None,
+        frame=None,
     ) -> SpellResult:
         """El algılama sonucuna göre büyü durumunu günceller."""
         current_time = now if now is not None else time.monotonic()
         profile = self._profile_config(detection_profile)
+        self._update_tracking_quality(frame)
         allowed_spells = allowed_spells or [
             self.FREEZE_SPELL_NAME,
             self.FIRE_SPELL_NAME,
@@ -130,11 +148,14 @@ class SpellEngine:
         open_palm_center = raw_open_palm_centers[0] if raw_open_palm_centers else None
         self._update_smoothing_scores(hand_result, raw_open_palm_centers, profile)
         if hand_center is None:
+            fire_missing_result = self._update_fire_missing(current_time, profile)
+            if fire_missing_result is not None:
+                return fire_missing_result
             self._reset_gesture_state(keep_history=False)
             return self._result(
                 has_active_spell=False,
                 active_spell_name=None,
-                status="Ateş savurması bekleniyor",
+                status="Ateş: yatay süpürme bekleniyor",
                 is_on_cooldown=False,
                 progress=0.0,
             )
@@ -151,7 +172,13 @@ class SpellEngine:
         if shield_result is not None:
             return shield_result
 
-        fire_result = self._update_fire_spell(current_time, open_palm_center, allowed_spells, profile)
+        fire_result = self._update_fire_spell(
+            current_time,
+            hand_center,
+            open_palm_center,
+            allowed_spells,
+            profile,
+        )
         if fire_result is not None:
             return fire_result
 
@@ -211,41 +238,111 @@ class SpellEngine:
     def _update_fire_spell(
         self,
         current_time: float,
+        hand_center: tuple[float, float, float],
         open_palm_center: tuple[float, float, float] | None,
         allowed_spells: list[str],
         profile: dict,
     ) -> SpellResult | None:
-        """Yatay savurma + açık avuç zincirinden Ateş büyüsünü üretir."""
-        if self._fire_seal_until >= current_time:
-            progress = 1.0 - max(0.0, self._fire_seal_until - current_time) / profile["fire_seal_window_seconds"]
+        """Kontrollü yatay süpürme + açık avuç zincirinden Ateş büyüsünü üretir."""
+        self._fire_last_seen_at = current_time
+        self._debug_scores["fire_missing_time"] = 0.0
+
+        if self._fire_state == "idle":
+            self._start_fire_tracking(current_time, hand_center)
+
+        if self._fire_state == "fire_seal_window":
+            self._update_fire_position(hand_center, profile, current_time)
+            self._debug_scores["fire_seal_window_active"] = True
+            if current_time > self._fire_seal_until:
+                self._reset_fire_state()
+                return None
+
+            remaining = max(0.0, self._fire_seal_until - current_time)
+            progress = 0.75 + 0.25 * (
+                1.0 - remaining / profile["fire_seal_window_seconds"]
+            )
             self._freeze_started_at = None
             self._last_palm_center = None
 
             if open_palm_center is not None and self._debug_scores["palm_open_score"] >= profile["palm_score_threshold"]:
+                self._fire_state = "triggered"
+                self._debug_scores["fire_state"] = "triggered"
                 return self._activate_spell(self.FIRE_SPELL_NAME, current_time, allowed_spells)
 
             return self._result(
                 has_active_spell=False,
                 active_spell_name=None,
-                status="Ateş mührü bekleniyor",
+                status="Ateş mührü: avuç göster",
                 is_on_cooldown=False,
                 progress=progress,
             )
 
-        self._fire_seal_until = 0.0
-        if self._has_horizontal_swipe(profile):
-            self._debug_scores["fire_swing_detected"] = True
+        self._update_fire_position(hand_center, profile, current_time)
+        elapsed = current_time - self._fire_started_at
+        required_distance = profile["fire_sweep_distance"]
+        travel_distance = self._debug_scores["fire_travel_distance"]
+
+        if elapsed > profile["fire_tracking_timeout_seconds"] and travel_distance < required_distance:
+            self._start_fire_tracking(current_time, hand_center)
+            return None
+
+        if travel_distance >= required_distance:
+            self._fire_state = "fire_seal_window"
             self._fire_seal_until = current_time + profile["fire_seal_window_seconds"]
+            self._debug_scores["fire_swing_detected"] = True
+            self._debug_scores["fire_state"] = self._fire_state
+            self._debug_scores["fire_seal_window_active"] = True
             self._freeze_started_at = None
             self._last_palm_center = None
             return self._result(
                 has_active_spell=False,
                 active_spell_name=None,
-                status="Ateş mührü bekleniyor",
+                status="Ateş mührü: avuç göster",
                 is_on_cooldown=False,
-                progress=0.0,
+                progress=0.75,
             )
 
+        progress = min(0.70, travel_distance / required_distance * 0.70)
+        if progress >= profile["fire_visible_progress"]:
+            self._freeze_started_at = None
+            self._last_palm_center = None
+            return self._result(
+                has_active_spell=False,
+                active_spell_name=None,
+                status="Ateş: yatay süpürme",
+                is_on_cooldown=False,
+                progress=progress,
+            )
+
+        return None
+
+    def _update_fire_missing(self, current_time: float, profile: dict) -> SpellResult | None:
+        """Kısa el kayıplarında Ateş hazırlığını hemen sıfırlamadan korur."""
+        if self._fire_state not in {"fire_tracking_sweep", "fire_seal_window"}:
+            return None
+        if self._fire_last_seen_at <= 0:
+            self._reset_fire_state()
+            return None
+
+        missing_time = current_time - self._fire_last_seen_at
+        self._debug_scores["fire_missing_time"] = max(0.0, missing_time)
+        self._debug_scores["fire_state"] = self._fire_state
+        self._debug_scores["fire_seal_window_active"] = self._fire_state == "fire_seal_window"
+        if missing_time <= profile["fire_missing_tolerance_seconds"]:
+            status = (
+                "Ateş mührü: avuç göster"
+                if self._fire_state == "fire_seal_window"
+                else "Ateş: yatay süpürme"
+            )
+            return self._result(
+                has_active_spell=False,
+                active_spell_name=None,
+                status=status,
+                is_on_cooldown=False,
+                progress=self._fire_progress(profile),
+            )
+
+        self._reset_fire_state()
         return None
 
     def _update_freeze_spell(
@@ -266,7 +363,7 @@ class SpellEngine:
             return self._result(
                 has_active_spell=False,
                 active_spell_name=None,
-                status="Ateş savurması bekleniyor",
+                status="Ateş: yatay süpürme bekleniyor",
                 is_on_cooldown=False,
                 progress=0.0 if self._freeze_started_at is None else palm_score * 0.35,
             )
@@ -308,7 +405,24 @@ class SpellEngine:
         allowed_spells: list[str],
     ) -> SpellResult:
         """Büyüyü aktif eder ve ortak cooldown başlatır."""
+        fire_debug_snapshot = None
+        if spell_name == self.FIRE_SPELL_NAME:
+            fire_debug_snapshot = {
+                key: self._debug_scores[key]
+                for key in (
+                    "fire_start_x",
+                    "fire_current_x",
+                    "fire_required_distance",
+                    "fire_travel_distance",
+                    "fire_horizontal_distance",
+                )
+            }
         self._reset_gesture_state()
+        if fire_debug_snapshot:
+            self._debug_scores.update(fire_debug_snapshot)
+            self._debug_scores["fire_state"] = "triggered"
+            self._debug_scores["fire_swing_detected"] = True
+            self._debug_scores["fire_seal_window_active"] = False
         if spell_name not in allowed_spells:
             self._locked_message_until = current_time + 1.2
             self._locked_spell_attempt = spell_name
@@ -361,6 +475,14 @@ class SpellEngine:
             shield_two_hand_score=self._debug_scores["shield_two_hand_score"],
             spell_prepare_progress=max(0.0, min(1.0, progress)),
             locked_spell_attempt=self._locked_spell_attempt,
+            fire_state=self._debug_scores["fire_state"],
+            fire_start_x=self._debug_scores["fire_start_x"],
+            fire_current_x=self._debug_scores["fire_current_x"],
+            fire_required_distance=self._debug_scores["fire_required_distance"],
+            fire_travel_distance=self._debug_scores["fire_travel_distance"],
+            fire_missing_time=self._debug_scores["fire_missing_time"],
+            fire_seal_window_active=self._debug_scores["fire_seal_window_active"],
+            hand_tracking_quality_message=self._debug_scores["hand_tracking_quality_message"],
         )
 
     def _remember_hand_center(
@@ -404,6 +526,83 @@ class SpellEngine:
         if len(self._hand_center_history) < 2:
             return 0.0
         return abs(self._hand_center_history[-1][1][0] - self._hand_center_history[0][1][0])
+
+    def _start_fire_tracking(
+        self,
+        current_time: float,
+        hand_center: tuple[float, float, float],
+    ) -> None:
+        """Ateş için kontrollü yatay süpürme takibini başlatır."""
+        self._fire_state = "fire_tracking_sweep"
+        self._fire_start_x = hand_center[0]
+        self._fire_start_y = hand_center[1]
+        self._fire_current_x = hand_center[0]
+        self._fire_started_at = current_time
+        self._fire_last_seen_at = current_time
+        self._fire_seal_until = 0.0
+        self._debug_scores["fire_state"] = self._fire_state
+        self._debug_scores["fire_start_x"] = self._fire_start_x
+        self._debug_scores["fire_current_x"] = self._fire_current_x
+        self._debug_scores["fire_travel_distance"] = 0.0
+        self._debug_scores["fire_horizontal_distance"] = 0.0
+        self._debug_scores["fire_missing_time"] = 0.0
+        self._debug_scores["fire_swing_detected"] = False
+        self._debug_scores["fire_seal_window_active"] = False
+
+    def _update_fire_position(
+        self,
+        hand_center: tuple[float, float, float],
+        profile: dict,
+        current_time: float,
+    ) -> None:
+        """Ateş süpürmesindeki güncel yatay ilerlemeyi debug skorlarına yazar."""
+        if self._fire_start_x is None or self._fire_start_y is None:
+            return
+
+        vertical_drift = abs(hand_center[1] - self._fire_start_y)
+        if (
+            vertical_drift > profile["fire_max_vertical_distance"]
+            and self._debug_scores["fire_travel_distance"] < profile["fire_sweep_distance"] * 0.45
+        ):
+            self._start_fire_tracking(current_time, hand_center)
+            return
+
+        self._fire_current_x = hand_center[0]
+        travel_distance = abs(self._fire_current_x - self._fire_start_x)
+        self._debug_scores["fire_state"] = self._fire_state
+        self._debug_scores["fire_start_x"] = self._fire_start_x
+        self._debug_scores["fire_current_x"] = self._fire_current_x
+        self._debug_scores["fire_required_distance"] = profile["fire_sweep_distance"]
+        self._debug_scores["fire_travel_distance"] = travel_distance
+        self._debug_scores["fire_horizontal_distance"] = travel_distance
+        self._debug_scores["fire_seal_window_active"] = self._fire_state == "fire_seal_window"
+
+    def _fire_progress(self, profile: dict) -> float:
+        """Ateş hazırlık ilerlemesini normalize eder."""
+        required_distance = max(0.001, profile["fire_sweep_distance"])
+        progress = self._debug_scores["fire_travel_distance"] / required_distance * 0.70
+        if self._fire_state == "fire_seal_window":
+            progress = max(0.75, progress)
+        return max(0.0, min(1.0, progress))
+
+    def _reset_fire_state(self) -> None:
+        """Ateş süpürme durum makinesini temizler."""
+        self._fire_state = "idle"
+        self._fire_start_x = None
+        self._fire_start_y = None
+        self._fire_current_x = None
+        self._fire_started_at = 0.0
+        self._fire_last_seen_at = 0.0
+        self._fire_seal_until = 0.0
+        self._debug_scores["fire_state"] = "idle"
+        self._debug_scores["fire_start_x"] = 0.0
+        self._debug_scores["fire_current_x"] = 0.0
+        self._debug_scores["fire_required_distance"] = 0.0
+        self._debug_scores["fire_travel_distance"] = 0.0
+        self._debug_scores["fire_horizontal_distance"] = 0.0
+        self._debug_scores["fire_missing_time"] = 0.0
+        self._debug_scores["fire_swing_detected"] = False
+        self._debug_scores["fire_seal_window_active"] = False
 
     def _hand_center(self, hand_result) -> tuple[float, float, float] | None:
         """Algılanan ilk elin yaklaşık merkez noktasını döndürür."""
@@ -480,6 +679,24 @@ class SpellEngine:
             return 0.0
         return sum(1 for item in history if item) / len(history)
 
+    def _update_tracking_quality(self, frame) -> None:
+        """El takibini etkileyebilecek basit ışık ve bulanıklık uyarılarını üretir."""
+        self._debug_scores["hand_tracking_quality_message"] = ""
+        if frame is None:
+            return
+
+        try:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) if len(frame.shape) == 3 else frame
+            brightness = float(gray.mean())
+            blur_score = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+        except cv2.error:
+            return
+
+        if brightness < 45.0:
+            self._debug_scores["hand_tracking_quality_message"] = "Işık düşük: el takibi zayıflayabilir"
+        elif blur_score < 28.0:
+            self._debug_scores["hand_tracking_quality_message"] = "Görüntü bulanık: eli biraz yavaşlat"
+
     def _profile_config(self, detection_profile: str) -> dict:
         """Algılama profiline göre büyü karar eşiklerini döndürür."""
         configs = {
@@ -495,6 +712,10 @@ class SpellEngine:
                 "fire_max_vertical_distance": 0.22,
                 "fire_direction_ratio": 1.45,
                 "fire_seal_window_seconds": 0.95,
+                "fire_sweep_distance": 0.16,
+                "fire_visible_progress": 0.12,
+                "fire_missing_tolerance_seconds": 0.35,
+                "fire_tracking_timeout_seconds": 2.2,
             },
             "Dengeli": {
                 "palm_score_threshold": 0.58,
@@ -508,6 +729,10 @@ class SpellEngine:
                 "fire_max_vertical_distance": 0.18,
                 "fire_direction_ratio": 1.8,
                 "fire_seal_window_seconds": self.fire_seal_window_seconds,
+                "fire_sweep_distance": 0.21,
+                "fire_visible_progress": 0.15,
+                "fire_missing_tolerance_seconds": 0.28,
+                "fire_tracking_timeout_seconds": 1.9,
             },
             "Kararlı": {
                 "palm_score_threshold": 0.72,
@@ -521,6 +746,10 @@ class SpellEngine:
                 "fire_max_vertical_distance": 0.14,
                 "fire_direction_ratio": 2.2,
                 "fire_seal_window_seconds": 0.65,
+                "fire_sweep_distance": 0.27,
+                "fire_visible_progress": 0.18,
+                "fire_missing_tolerance_seconds": 0.20,
+                "fire_tracking_timeout_seconds": 1.5,
             },
         }
         return configs.get(detection_profile, configs["Dengeli"])
@@ -533,6 +762,14 @@ class SpellEngine:
             "fire_horizontal_distance": 0.0,
             "fire_swing_detected": False,
             "shield_two_hand_score": 0.0,
+            "fire_state": "idle",
+            "fire_start_x": 0.0,
+            "fire_current_x": 0.0,
+            "fire_required_distance": 0.0,
+            "fire_travel_distance": 0.0,
+            "fire_missing_time": 0.0,
+            "fire_seal_window_active": False,
+            "hand_tracking_quality_message": "",
         }
 
     def _reset_gesture_state(self, keep_history: bool = True) -> None:
@@ -540,7 +777,7 @@ class SpellEngine:
         self._freeze_started_at = None
         self._shield_started_at = None
         self._last_palm_center = None
-        self._fire_seal_until = 0.0
+        self._reset_fire_state()
         self._freeze_missing_frames = 0
         if not keep_history:
             self._hand_center_history.clear()

@@ -100,13 +100,15 @@ Beklenen sonuç:
 
 Adımlar:
 1. Donma için avucu açık ve kısa süre sabit tut.
-2. Ateş için yatay savur ve ardından açık avuç göster.
+2. Ateş için elini kadraj içinde kontrollü şekilde yatay süpür ve ardından açık avuç göster.
 3. Kalkan için iki açık el göster.
 
 Beklenen sonuç:
 - Yetki varsa ilgili büyü tetiklenir.
 - Cooldown büyü spamlenmesini engeller.
 - Yetki yoksa kilitli büyü efekti başlamaz.
+- Ateş için çok hızlı savurma gerekmez; küçük titreşimler tetikleme sayılmaz.
+- Loş ışıkta veya bulanık görüntüde debug panelinde el takip kalite uyarısı görünebilir.
 
 ## Büyü Kitabı testi
 

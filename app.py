@@ -157,6 +157,7 @@ def main() -> None:
                 hand_result,
                 allowed_spells=allowed_spells,
                 detection_profile=ui_settings.get("detection_profile", "Dengeli"),
+                frame=processing_frame,
             )
             active_trial_spell = spell_result.active_spell_name if spell_result.has_active_spell else None
             trial_status = trial_engine.update(
@@ -230,6 +231,14 @@ def main() -> None:
                 "freeze_stability_score": _score_debug(spell_result.freeze_stability_score),
                 "fire_horizontal_distance": _score_debug(spell_result.fire_horizontal_distance),
                 "fire_swing_detected": str(bool(spell_result.fire_swing_detected)),
+                "fire_state": spell_result.fire_state,
+                "fire_start_x": _score_debug(spell_result.fire_start_x),
+                "fire_current_x": _score_debug(spell_result.fire_current_x),
+                "fire_required_distance": _score_debug(spell_result.fire_required_distance),
+                "fire_travel_distance": _score_debug(spell_result.fire_travel_distance),
+                "fire_missing_time": _score_debug(spell_result.fire_missing_time),
+                "fire_seal_window_active": str(bool(spell_result.fire_seal_window_active)),
+                "hand_tracking_quality_message": spell_result.hand_tracking_quality_message or "-",
                 "shield_two_hand_score": _score_debug(spell_result.shield_two_hand_score),
                 "spell_prepare_progress": _score_debug(spell_result.spell_prepare_progress),
                 "locked_spell_attempt": spell_result.locked_spell_attempt or "-",

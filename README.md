@@ -78,9 +78,9 @@ Bu aşama yalnızca ilk MVP büyü davranışını içerir; hareket zinciri, far
 
 ## Altıncı Aşama: Ateş Büyüsü
 
-Bu aşamada ilk hareket zinciri büyüsü eklenmiştir. Kullanıcı elini kısa süre içinde belirgin şekilde yatay savurup ardından açık avuç gösterdiğinde `Ateş` büyüsü tetiklenir.
+Bu aşamada ilk hareket zinciri büyüsü eklenmiştir. Kullanıcı elini kadraj içinde kontrollü şekilde yatay süpürüp ardından açık avuç gösterdiğinde `Ateş` büyüsü tetiklenir.
 
-Donma büyüsü açık ve sabit avuç ile çalışmaya devam eder. Ateş büyüsü ise savurma hareketi ve ardından açık avuç mührü ister. Aktif büyü veya bekleme süresi varken yeni büyü başlatılmaz.
+Donma büyüsü açık ve sabit avuç ile çalışmaya devam eder. Ateş büyüsü ise hızlı savurma yerine yatay mesafe kat eden kontrollü süpürme ve ardından açık avuç mührü ister. Aktif büyü veya bekleme süresi varken yeni büyü başlatılmaz.
 
 Ateş aktifken panelde `Aktif Büyü: Ateş` bilgisi görünür ve kamera görüntüsünde kısa süreli kırmızı/turuncu parlama efekti gösterilir.
 
@@ -91,7 +91,7 @@ Bu aşamada iki el algılamaya dayalı `Kalkan` büyüsü eklenmiştir. Kullanı
 Mevcut büyü tetiklemeleri:
 
 - `Donma`: Açık avuç kısa süre sabit tutulur.
-- `Ateş`: El belirgin yatay savrulur, ardından açık avuç gösterilir.
+- `Ateş`: El kadraj içinde kontrollü yatay süpürülür, ardından açık avuç gösterilir.
 - `Kalkan`: İki açık el kısa süre birlikte gösterilir.
 
 Aktif büyü veya bekleme süresi varken yeni büyü başlatılmaz. Kalkan aktifken panelde `Aktif Büyü: Kalkan` görünür ve kamera görüntüsünde kısa süreli koruma halkası efekti gösterilir.
@@ -103,7 +103,7 @@ Bu aşamada kamera üzerindeki arayüz toparlanmıştır. Sol üstte kompakt lon
 Büyü Defteri açık büyüleri ve kilitli büyüleri profil verisinden okur. Açık büyüler:
 
 - `Donma`: Avucu açık tut
-- `Ateş`: Yatay savur + avuç göster
+- `Ateş`: Yatay süpür + avuç göster
 - `Kalkan`: İki açık el göster
 
 Kilitli büyüler: `Şimşek`, `Alan Mührü`, `Zaman Kırığı`.
@@ -240,6 +240,8 @@ data/settings.json
 Dosya yoksa uygulama varsayılan ayarlarla oluşturur. Q menüsünden el/yüz debug çizimi, doğrulama modu, Büyü Kitabı, Debug Sayfası, büyü efektleri ve kamera aynalama ayarları değiştirildiğinde bu dosya güncellenir. Uygulama tekrar açıldığında son ayarlar korunur.
 
 Algılama profili `9` tuşuyla `Hassas`, `Dengeli` ve `Kararlı` arasında değiştirilir. Varsayılan profil `Dengeli` değeridir. `Hassas` daha kolay algılama, `Kararlı` daha seçici algılama hedefler.
+
+Ateş büyüsü hızlı bir savurma gerektirmez; elin kadraj içinde soldan sağa veya sağdan sola kontrollü yatay süpürülmesi yeterlidir. Loş ışık veya bulanık görüntü el takibini zayıflatabilir; daha iyi ışık ve daha kontrollü el hareketi önerilir. Debug paneli açıkken Ateş hazırlık durumu ve el takip kalite uyarıları görülebilir.
 
 Sistem Durumu paneli Q menüsünde `8` ile açılıp kapatılır. Panel şu kaynakları kontrol eder:
 
