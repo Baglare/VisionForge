@@ -236,3 +236,36 @@ Beklenen sonuç:
 10. Trial tamamlanınca rehberin final/tamamlandı durumuna geçtiğini ve `Demo tamamlandı` bildiriminin geldiğini kontrol et.
 11. `G` ile rehberi kapat.
 12. Q, Esc, E, B, H, R, T, D ve sağ/sol ok kısayollarının bozulmadığını kontrol et.
+
+## Portfolyo Dokümantasyon Kontrolü
+
+1. `README.md` dosyasını aç.
+2. README içinde şu belgelerin linklendiğini kontrol et:
+   - `docs/ARCHITECTURE.md`
+   - `docs/DEMO_SCRIPT.md`
+   - `docs/TROUBLESHOOTING.md`
+   - `docs/ROADMAP.md`
+   - `docs/PORTFOLIO_NOTES.md`
+   - `docs/MANUAL_TESTS.md`
+3. `docs/DEMO_SCRIPT.md` dosyasındaki demo sırasının uygulamadaki mevcut kısayollarla uyumlu olduğunu kontrol et.
+4. `docs/TROUBLESHOOTING.md` içinde kamera, model, QR, yüz tanıma, el algılama, OpenCV çakışması ve `settings.json` sorunlarının yer aldığını kontrol et.
+5. `docs/ARCHITECTURE.md` içinde kamera, yüz, el, HandStateTracker, SpellEngine, TrialEngine, DemoGuide ve UI/effects akışlarının ayrı anlatıldığını kontrol et.
+6. `docs/ROADMAP.md` dosyasında gelecek fikirlerin mevcut özellik gibi sunulmadığını kontrol et.
+7. `docs/PORTFOLIO_NOTES.md` dosyasında CV/GitHub/LinkedIn anlatımı ve profesyonel güvenlik iddiası yapılmaması notlarının bulunduğunu kontrol et.
+
+Beklenen sonuç:
+- README portfolyo sunumu için tek giriş noktası olur.
+- Demo videosu için izlenecek sıra netleşir.
+- Sorun giderme ve manuel test dokümanları hızlı başvuru olarak kullanılabilir.
+
+## Gitignore Kontrolü
+
+1. `.gitignore` dosyasında yerel kullanıcı verilerinin Git dışında kaldığını kontrol et.
+2. `assets/guild_seals/*.png` kuralının bulunduğunu doğrula.
+3. `assets/guild_seals/.gitkeep` dosyasının takip edilebilir kaldığını doğrula.
+4. `data/settings.json`, `data/face_gallery/`, `data/import_faces/`, `data/local_profiles.json`, `data/face_labels.json`, `models/*.task`, `models/*.tflite` ve `models/face_recognizer_lbph.yml` kurallarını kontrol et.
+
+Beklenen sonuç:
+- Otomatik üretilen QR/lonca mührü PNG dosyaları Git'e girmez.
+- `assets/guild_seals/.gitkeep` klasörü repoda tutar.
+- Kullanıcıya ait yerel yüz verileri, ayarlar ve model çıktıları Git dışında kalır.
