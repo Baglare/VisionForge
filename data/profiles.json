@@ -3,6 +3,7 @@
     {
       "username": "Misafir",
       "rank": "Misafir Büyücü",
+      "guild_name": "Loncasız",
       "unlocked_spells": [
         "Donma"
       ],
@@ -19,6 +20,7 @@
     {
       "username": "baglare",
       "rank": "S-Seviye Büyücü",
+      "guild_name": "VisionForge Loncası",
       "unlocked_spells": [
         "Donma",
         "Ateş",

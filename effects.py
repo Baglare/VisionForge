@@ -56,40 +56,29 @@ class Effects:
         self._font_cache: dict[int, ImageFont.FreeTypeFont | ImageFont.ImageFont] = {}
 
     def draw_head_profile_tag(self, frame, profile, face_result=None, verification_status: str = ""):
-        """Profil bilgisini yüz/kafa üstünde küçük ve sade bir etiket olarak gösterir."""
+        """Profil bilgisini yüz/kafa üstünde sade yazı olarak gösterir."""
         frame_height, frame_width = frame.shape[:2]
         if face_result and face_result.box is not None:
             x, y, width, height = face_result.box
             center_x = x + width // 2
-            tag_y = max(10, y - 60)
-            tag_width = min(220, max(150, width + 42))
+            tag_y = max(10, y - 54)
+            tag_width = min(230, max(160, width + 54))
         else:
             center_x = frame_width // 2
             tag_y = 24
-            tag_width = 190
+            tag_width = 210
 
         tag_x = max(12, min(frame_width - tag_width - 12, center_x - tag_width // 2))
-        tag_height = 52
-        self._draw_panel(
-            frame,
-            tag_x,
-            tag_y,
-            tag_width,
-            tag_height,
-            alpha=UI_THEME["panel_alpha_light"],
-            border_color=UI_THEME["panel_border_soft"],
-        )
-
-        short_status = self._short_verification_status(verification_status)
-        lines = [profile.username, profile.rank, short_status]
+        guild_name = getattr(profile, "guild_name", "Loncasız" if getattr(profile, "is_guest", False) else "Bağımsız Büyücüler")
+        lines = [profile.username, profile.rank, guild_name]
         for index, line in enumerate(lines):
             color = UI_THEME["accent"] if index == 0 else UI_THEME["text"]
             if index == 2:
-                color = UI_THEME["muted"] if short_status in {"Bekleniyor", "Sınırlı yetki"} else UI_THEME["shield"]
-            self._draw_centered_text_fit(
+                color = UI_THEME["muted"] if guild_name == "Loncasız" else UI_THEME["shield"]
+            self._draw_centered_text_shadow_fit(
                 frame,
                 line,
-                (tag_x, tag_y + 5 + index * 15),
+                (tag_x, tag_y + index * 15),
                 tag_width - 20,
                 color,
                 font_scale=0.34 if index else 0.36,
@@ -505,19 +494,7 @@ class Effects:
                 or spell_result.status == "Lonca yetkisi yetersiz"
             )
         )
-        show_progress = bool(spell_result and (spell_result.progress > 0 or spell_result.has_active_spell))
-        panel_height = 118 if show_spell_message or show_progress else 86
         padding = UI_THEME["padding"]
-
-        self._draw_panel(
-            frame,
-            panel_x,
-            panel_y,
-            panel_width,
-            panel_height,
-            alpha=UI_THEME["panel_alpha"],
-            border_color=UI_THEME["panel_border_soft"],
-        )
 
         active_spell = "Yok"
         cooldown_text = "Hazır"
@@ -546,8 +523,33 @@ class Effects:
         elif spell_result and not spell_result.has_active_spell and spell_result.status == "Lonca yetkisi yetersiz":
             lines[-1] = "Lonca yetkisi yetersiz"
 
+        show_progress = bool(
+            spell_result
+            and (
+                (not spell_result.has_active_spell and progress > 0)
+                or (spell_result.has_active_spell and progress > 0)
+            )
+        )
+        line_gap = 23
+        bar_height = 8
+        bar_gap = 10
+        panel_height = padding * 2 + len(lines) * line_gap
+        if show_progress:
+            panel_height += bar_gap + bar_height
+        panel_height = max(86, panel_height)
+
+        self._draw_panel(
+            frame,
+            panel_x,
+            panel_y,
+            panel_width,
+            panel_height,
+            alpha=UI_THEME["panel_alpha"],
+            border_color=UI_THEME["panel_border_soft"],
+        )
+
         text_x = panel_x + padding
-        text_y = panel_y + 27
+        text_y = panel_y + padding + 4
         for index, line in enumerate(lines):
             color = UI_THEME["text"] if index != 0 else UI_THEME["accent"]
             if index == 2 and line != "Hazırlık: Yok":
@@ -555,7 +557,7 @@ class Effects:
             self._draw_text_fit(
                 frame=frame,
                 text=line,
-                origin=(text_x, text_y + index * 23),
+                origin=(text_x, text_y + index * line_gap),
                 max_width=panel_width - padding * 2,
                 color=color,
                 font_scale=0.54,
@@ -563,7 +565,7 @@ class Effects:
 
         if show_progress:
             bar_x = panel_x + padding
-            bar_y = panel_y + panel_height - 22
+            bar_y = panel_y + panel_height - padding - bar_height
             self._draw_progress_bar(
                 frame,
                 bar_x,
@@ -1113,7 +1115,7 @@ class Effects:
         """Profil etiketi için doğrulama durumunu kısaltır."""
         mapping = {
             "Bekleniyor": "Bekleniyor",
-            "Misafir": "Sınırlı yetki",
+            "Misafir": "Loncasız",
             "Yüz tanındı, mühür bekleniyor": "Mühür bekleniyor",
             "Yüz tanındı": "Yüz tanındı",
             "Yüz + lonca mührü onaylandı": "Mühür onaylandı",
@@ -1237,6 +1239,34 @@ class Effects:
         text_width = self._text_width(text, font)
         text_x = origin[0] + max(0, (max_width - text_width) // 2) + 10
         self._draw_text(frame, text, (text_x, origin[1]), color, font_size=font_size)
+
+    def _draw_centered_text_shadow_fit(
+        self,
+        frame,
+        text: str,
+        origin: tuple[int, int],
+        max_width: int,
+        color,
+        font_scale: float = 0.68,
+    ) -> None:
+        """Panel kullanmadan okunur kalması için metni ince gölgeyle ortalar."""
+        font_size = max(14, int(font_scale * 32))
+
+        while font_size > 13:
+            font = self._get_font(font_size)
+            text_width = self._text_width(text, font)
+            if text_width <= max_width:
+                break
+            font_size -= 1
+
+        font = self._get_font(font_size)
+        text_width = self._text_width(text, font)
+        text_x = origin[0] + max(0, (max_width - text_width) // 2) + 10
+        text_y = origin[1]
+        shadow_color = (8, 10, 14)
+        for offset_x, offset_y in ((1, 1), (-1, 1), (1, -1), (-1, -1)):
+            self._draw_text(frame, text, (text_x + offset_x, text_y + offset_y), shadow_color, font_size=font_size)
+        self._draw_text(frame, text, (text_x, text_y), color, font_size=font_size)
 
     def _draw_text_fit(
         self,

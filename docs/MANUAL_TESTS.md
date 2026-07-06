@@ -39,6 +39,9 @@ Adımlar:
 Beklenen sonuç:
 - Yüz algılanırsa yüz kutusu doğru konumda görünür.
 - El algılanırsa landmark çizimi elde görünür.
+- Kafa üstünde kutusuz biçimde kullanıcı adı, rütbe ve lonca adı görünür.
+- Kafa üstünde doğrulama durumu yazısı görünmez.
+- Misafir profili için lonca satırı `Loncasız` olur.
 - El görünürken `raw_hand_detected` True ve `tracking_source` mediapipe görünür.
 - El kısa süre kaybolursa `tracking_source` kısa süre optical_flow olabilir, uzun kayıpta lost olur.
 - Loş ışık, bulanıklık veya kadraj kenarı sorunları `quality_warnings` içinde görünür.
@@ -114,6 +117,8 @@ Beklenen sonuç:
 - Cooldown büyü spamlenmesini engeller.
 - Yetki yoksa kilitli büyü efekti başlamaz.
 - Sol üst büyü panelinde hazırlık durumu metinle birlikte küçük progress bar olarak görünür.
+- Hazırlık yokken progress bar çizilmez ve `Hazırlık: Yok` satırı panel dışına taşmaz.
+- Hazırlık varken progress bar panel sınırları içinde kalır.
 - Donma hazırlığında bar soğuk tonlu, Ateş hazırlığında sıcak tonlu, Kalkan hazırlığında mavi/altın tonlu görünür.
 - Donma açık avuç sabit tutulduğunda %98-99 civarında takılı kalmadan tetiklenir.
 - Debug > Büyü / Trial sayfasında `freeze_state`, `freeze_elapsed`, `freeze_progress`, `freeze_velocity`, `freeze_deadzone`, `freeze_is_stable` ve `freeze_block` alanları Donma kararını açıklar.

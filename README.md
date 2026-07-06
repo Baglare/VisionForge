@@ -229,7 +229,7 @@ Büyü Kitabı paneli kapak ve iki sayfalı kitap görünümüyle çalışır. S
 
 Kamera aynalama ayarı yalnızca ekranda gösterilen görüntüye uygulanır. Yüz algılama, yüz tanıma, QR okuma ve el algılama ham kamera karesiyle çalışır; çizimler ekrandaki aynalama durumuna göre dönüştürülür.
 
-Normal kullanıcı ekranında paneller yarı saydam ve hafif tutulur. Kafa üstü profil etiketi kullanıcı adı, rütbe ve kısa doğrulama durumunu gösterir. Sol üst büyü panelinde aktif büyü, cooldown ve hazırlık durumu bulunur; büyü hazırlanırken küçük renkli bir ilerleme barı görünür.
+Normal kullanıcı ekranında paneller yarı saydam ve hafif tutulur. Kafa üstü profil etiketi kutusuz metin olarak kullanıcı adı, rütbe ve lonca adını gösterir; doğrulama durumu kafa üstünde gösterilmez. `baglare` için lonca adı `VisionForge Loncası`, Misafir için `Loncasız`, yeni kayıtlar için varsayılan `Bağımsız Büyücüler` olur. Sol üst büyü panelinde aktif büyü, cooldown ve hazırlık durumu bulunur; büyü hazırlanırken küçük renkli bir ilerleme barı görünür.
 
 Yüz tanıma modeli, eğitim sırasında yüz örneklerinin aynalanmış kopyalarını da kullanır. Doğrulama sırasında normal ve aynalı yüz kırpımı ayrı ayrı denenir; daha iyi LBPH skoru veren tahmin kullanılır.
 
