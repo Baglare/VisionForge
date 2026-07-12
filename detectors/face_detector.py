@@ -6,6 +6,8 @@ import time
 
 import cv2
 
+from runtime_paths import static_resource_path
+
 try:
     import mediapipe as mp
     from mediapipe.tasks import python as mp_tasks
@@ -144,7 +146,7 @@ class FaceDetector:
 
     def _default_model_path(self) -> Path:
         """Varsayılan MediaPipe model dosyası yolunu döndürür."""
-        return Path(__file__).resolve().parents[1] / "models" / "face_detector.tflite"
+        return static_resource_path("models", "face_detector.tflite")
 
     def _next_timestamp_ms(self) -> int:
         """VIDEO modu için sürekli artan kare zaman damgası üretir."""

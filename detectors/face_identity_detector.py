@@ -8,6 +8,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from runtime_paths import writable_path
+
 from face_preprocessing import FACE_SIZE, preprocess_face
 from identity_health import check_identity_health
 
@@ -42,9 +44,8 @@ class FaceIdentityDetector:
         labels_path: str | None = None,
         threshold: float = 75.0,
     ) -> None:
-        root = Path(__file__).resolve().parents[1]
-        self.model_path = Path(model_path) if model_path else root / "models" / "face_recognizer_lbph.yml"
-        self.labels_path = Path(labels_path) if labels_path else root / "data" / "face_labels.json"
+        self.model_path = Path(model_path) if model_path else writable_path("models", "face_recognizer_lbph.yml")
+        self.labels_path = Path(labels_path) if labels_path else writable_path("data", "face_labels.json")
         self.threshold = threshold
         self.warning_message = ""
         self._recognizer = None

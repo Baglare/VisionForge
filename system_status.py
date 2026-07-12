@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from identity_health import check_identity_health
+from runtime_paths import static_resource_path, writable_app_root, writable_path
 
 
 @dataclass
@@ -30,13 +31,12 @@ class SystemStatusItem:
 
 def project_root() -> Path:
     """Proje kök klasörünü döndürür."""
-    return Path(__file__).resolve().parent
+    return writable_app_root()
 
 
 def get_system_status() -> list[SystemStatusItem]:
     """Model, profil ve QR kaynaklarının durumunu döndürür."""
-    root = project_root()
-    guild_seal_root = root / "assets" / "guild_seals"
+    guild_seal_root = writable_path("assets", "guild_seals")
     has_qr_png = guild_seal_root.exists() and any(guild_seal_root.glob("*.png"))
     identity_health = check_identity_health()
     identity_hint = "; ".join(identity_health.warnings[:2]) if identity_health.warnings else "label/profil uyumlu"
@@ -44,37 +44,37 @@ def get_system_status() -> list[SystemStatusItem]:
     return [
         SystemStatusItem(
             "Face Detector modeli",
-            (root / "models" / "face_detector.tflite").exists(),
+            static_resource_path("models", "face_detector.tflite").exists(),
             True,
             "models/face_detector.tflite",
         ),
         SystemStatusItem(
             "Hand Landmarker modeli",
-            (root / "models" / "hand_landmarker.task").exists(),
+            static_resource_path("models", "hand_landmarker.task").exists(),
             True,
             "models/hand_landmarker.task",
         ),
         SystemStatusItem(
             "Yüz tanıma modeli",
-            (root / "models" / "face_recognizer_lbph.yml").exists(),
+            writable_path("models", "face_recognizer_lbph.yml").exists(),
             False,
             "E ile kayıt oluştur",
         ),
         SystemStatusItem(
             "Yüz etiketleri",
-            (root / "data" / "face_labels.json").exists(),
+            writable_path("data", "face_labels.json").exists(),
             False,
             "E ile kayıt oluştur",
         ),
         SystemStatusItem(
             "Yerel profiller",
-            (root / "data" / "local_profiles.json").exists(),
+            writable_path("data", "local_profiles.json").exists(),
             False,
             "E ile kayıt oluştur",
         ),
         SystemStatusItem(
             "Yüz galerisi",
-            (root / "data" / "face_gallery").exists(),
+            writable_path("data", "face_gallery").exists(),
             False,
             "data/face_gallery",
         ),
@@ -97,9 +97,8 @@ def get_system_status() -> list[SystemStatusItem]:
 
 def has_registered_wizard() -> bool:
     """Kayıtlı yerel yüz modeli ve profil var mı bilgisini döndürür."""
-    root = project_root()
     return (
-        (root / "models" / "face_recognizer_lbph.yml").exists()
-        and (root / "data" / "face_labels.json").exists()
-        and (root / "data" / "local_profiles.json").exists()
+        writable_path("models", "face_recognizer_lbph.yml").exists()
+        and writable_path("data", "face_labels.json").exists()
+        and writable_path("data", "local_profiles.json").exists()
     )

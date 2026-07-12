@@ -6,6 +6,8 @@ import time
 
 import cv2
 
+from runtime_paths import static_resource_path
+
 try:
     import mediapipe as mp
     from mediapipe.tasks import python as mp_tasks
@@ -156,7 +158,7 @@ class HandDetector:
 
     def _default_model_path(self) -> Path:
         """Varsayılan MediaPipe el modeli dosyası yolunu döndürür."""
-        return Path(__file__).resolve().parents[1] / "models" / "hand_landmarker.task"
+        return static_resource_path("models", "hand_landmarker.task")
 
     def _next_timestamp_ms(self) -> int:
         """VIDEO modu için sürekli artan kare zaman damgası üretir."""

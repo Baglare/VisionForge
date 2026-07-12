@@ -42,3 +42,7 @@ assets/guild_seals/*.png
 # Public repoda tutulmayacak kişisel notlar
 private/
 docs/PORTFOLIO_NOTES.md
+
+# PyInstaller build çıktıları
+/build/
+/dist/

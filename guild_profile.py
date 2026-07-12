@@ -5,6 +5,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from runtime_paths import static_resource_path, writable_app_root, writable_path
+
 
 DEFAULT_LOCKED_SPELLS = ["Ateş", "Kalkan", "Şimşek", "Alan Mührü", "Zaman Kırığı"]
 BAGLARE_FACE_LABEL = "baglare"
@@ -74,18 +76,18 @@ class GuildProfile:
 
 
 def project_root() -> Path:
-    """Proje kök klasörünü döndürür."""
-    return Path(__file__).resolve().parent
+    """Source kökünü veya frozen EXE yanındaki yazılabilir kökü döndürür."""
+    return writable_app_root()
 
 
 def default_profiles_path() -> Path:
     """Demo profil dosyası yolunu döndürür."""
-    return project_root() / "data" / "profiles.json"
+    return static_resource_path("data", "profiles.json")
 
 
 def local_profiles_path() -> Path:
     """Yerel kullanıcı profil dosyası yolunu döndürür."""
-    return project_root() / "data" / "local_profiles.json"
+    return writable_path("data", "local_profiles.json")
 
 
 def guest_profile() -> GuildProfile:

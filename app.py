@@ -6,11 +6,13 @@ import sys
 
 from PySide6.QtWidgets import QApplication
 
+from runtime_paths import ensure_writable_directories
 from ui.main_window import MainWindow
 
 
 def main() -> int:
     """Qt uygulamasını başlatır ve temiz kapanışı Qt event loop'una bırakır."""
+    ensure_writable_directories()
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()

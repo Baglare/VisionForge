@@ -4,7 +4,8 @@ from dataclasses import dataclass, field
 import json
 from pathlib import Path
 
-from guild_profile import default_profiles_path, load_profiles_from_file, local_profiles_path, project_root
+from guild_profile import default_profiles_path, load_profiles_from_file, local_profiles_path
+from runtime_paths import writable_path
 
 
 @dataclass
@@ -21,9 +22,8 @@ class IdentityHealthResult:
 
 def check_identity_health() -> IdentityHealthResult:
     """LBPH modeli, label dosyası ve profil dosyalarının tutarlılığını kontrol eder."""
-    root = project_root()
-    model_path = root / "models" / "face_recognizer_lbph.yml"
-    labels_path = root / "data" / "face_labels.json"
+    model_path = writable_path("models", "face_recognizer_lbph.yml")
+    labels_path = writable_path("data", "face_labels.json")
     local_path = local_profiles_path()
     demo_path = default_profiles_path()
 

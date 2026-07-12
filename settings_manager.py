@@ -3,6 +3,8 @@
 import json
 from pathlib import Path
 
+from runtime_paths import writable_path
+
 
 DEFAULT_SETTINGS = {
     "hand_debug_visible": False,
@@ -18,7 +20,7 @@ DEFAULT_SETTINGS = {
 
 def settings_path() -> Path:
     """Yerel ayar dosyasının yolunu döndürür."""
-    return Path(__file__).resolve().parent / "data" / "settings.json"
+    return writable_path("data", "settings.json")
 
 
 def load_settings() -> dict:
