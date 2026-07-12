@@ -2,15 +2,22 @@
 
 from pathlib import Path
 
+from PyInstaller.utils.hooks import get_package_paths
+
 
 PROJECT_ROOT = Path(SPECPATH).resolve().parent
+MEDIAPIPE_ROOT = Path(get_package_paths("mediapipe")[1])
+ICON_PATH = PROJECT_ROOT / "assets" / "branding" / "visionforge.ico"
 
 datas = [
     (str(PROJECT_ROOT / "models" / "face_detector.tflite"), "models"),
     (str(PROJECT_ROOT / "models" / "hand_landmarker.task"), "models"),
+    (str(ICON_PATH), "assets/branding"),
+    (str(MEDIAPIPE_ROOT / "tasks" / "c" / "libmediapipe.dll"), "mediapipe/tasks/c"),
 ]
 
 hiddenimports = [
+    "mediapipe.tasks.c",
     "mediapipe.tasks.python.vision",
     "qrcode.image.pil",
     "PIL.Image",
@@ -42,6 +49,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
+    icon=str(ICON_PATH),
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,

@@ -54,6 +54,12 @@ def verify_distribution(dist_root: Path) -> list[str]:
         "VisionForge.exe": dist_root / "VisionForge.exe",
         "Face Detector modeli": _find_relative(dist_root, "models", "face_detector.tflite"),
         "Hand Landmarker modeli": _find_relative(dist_root, "models", "hand_landmarker.task"),
+        "MediaPipe native runtime": _find_relative(
+            dist_root, "mediapipe", "tasks", "c", "libmediapipe.dll"
+        ),
+        "VisionForge uygulama ikonu": _find_relative(
+            dist_root, "assets", "branding", "visionforge.ico"
+        ),
         "Qt Windows platform plugin": _find_relative(dist_root, "platforms", "qwindows.dll"),
     }
     for label, path in required_paths.items():
