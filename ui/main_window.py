@@ -36,43 +36,64 @@ from ui.theme import application_stylesheet
 PAGE_ORDER = ("live", "spellbook", "trial", "enrollment", "settings", "system", "debug")
 SPELLBOOK_PAGES = (None, "Donma", "Ateş", "Kalkan")
 TRIAL_STEPS = ("Donma", "Ateş", "Kalkan")
-DEBUG_FIELDS = {
+DEBUG_GROUPS = {
     "Genel": (
-        ("FPS", "fps"),
-        ("Kamera çözünürlüğü", "capture_resolution"),
-        ("Algılama profili", "detection_profile"),
-        ("Kamera aynalama", "mirror_camera"),
+        ("Çalışma zamanı", (
+            ("FPS", "fps"),
+            ("Kamera çözünürlüğü", "capture_resolution"),
+            ("Kamera durumu", "camera_status"),
+            ("Worker durumu", "worker_status"),
+        )),
+        ("Görüntü profili", (
+            ("Algılama profili", "detection_profile"),
+            ("Kamera aynalama", "mirror_camera"),
+        )),
     ),
     "Yüz / Doğrulama": (
-        ("Yüz algılandı", "face_detected"),
-        ("Yüz skoru", "face_identity_score"),
-        ("Stabil etiket", "face_identity_stable_label"),
-        ("Stabilite sayısı", "face_identity_stability_count"),
-        ("Oturum durumu", "session_state"),
-        ("Grace kalan süre", "grace_remaining_seconds"),
-        ("QR durumu", "qr_status"),
-        ("Doğrulama modu", "verification_mode"),
+        ("Yüz kimliği", (
+            ("Yüz algılandı", "face_detected"),
+            ("Raw etiket", "face_identity_label"),
+            ("Stabil etiket", "face_identity_stable_label"),
+            ("Stabilite sayısı", "face_identity_stability_count"),
+            ("LBPH skoru", "face_identity_score"),
+            ("LBPH eşik", "face_identity_threshold"),
+        )),
+        ("Doğrulama oturumu", (
+            ("QR durumu", "qr_status"),
+            ("Oturum durumu", "session_state"),
+            ("Grace kalan süre", "grace_remaining_seconds"),
+            ("Doğrulama modu", "verification_mode"),
+        )),
     ),
     "El / Tracker": (
-        ("El algılandı", "hand_detected"),
-        ("El sayısı", "raw_hand_count"),
-        ("Sağ / sol el", "raw_handedness"),
-        ("Tracking source", "tracker_source"),
-        ("Tracking quality", "tracker_quality"),
-        ("Parlaklık", "tracker_brightness"),
-        ("Blur", "tracker_blur"),
-        ("Quality warnings", "tracker_quality_warnings"),
+        ("El algılama", (
+            ("El algılandı", "hand_detected"),
+            ("El sayısı", "raw_hand_count"),
+            ("Sağ / sol el", "raw_handedness"),
+            ("Tracking source", "tracker_source"),
+        )),
+        ("Takip kalitesi", (
+            ("Tracking quality", "tracker_quality"),
+            ("Parlaklık", "tracker_brightness"),
+            ("Blur", "tracker_blur"),
+            ("Kadraj kenarı", "tracker_hand_near_edge"),
+            ("Kalite uyarıları", "tracker_quality_warnings"),
+        )),
     ),
     "Büyü / Trial": (
-        ("Aktif büyü", "active_spell"),
-        ("Cooldown", "cooldown"),
-        ("Hazırlık ilerlemesi", "spell_prepare_progress"),
-        ("Donma durumu", "freeze_state"),
-        ("Ateş hareket mesafesi", "fire_horizontal_distance"),
-        ("Kalkan iki el skoru", "shield_two_hand_score"),
-        ("Trial durumu", "trial_state"),
-        ("Aktif Trial adımı", "trial_required_spell"),
-        ("Tamamlanan adımlar", "trial_completed_steps"),
+        ("Büyü motoru", (
+            ("Aktif büyü", "active_spell"),
+            ("Cooldown", "cooldown"),
+            ("Hazırlık ilerlemesi", "spell_prepare_progress"),
+            ("Donma state", "freeze_state"),
+            ("Ateş hareket mesafesi", "fire_horizontal_distance"),
+            ("Kalkan iki el skoru", "shield_two_hand_score"),
+        )),
+        ("Trial", (
+            ("Trial durumu", "trial_state"),
+            ("Aktif adım", "trial_required_spell"),
+            ("Tamamlanan adımlar", "trial_completed_steps"),
+        )),
     ),
 }
 
@@ -123,11 +144,14 @@ class MainWindow(QMainWindow):
         self.notifications_label = QLabel("")
 
         self.trial_state_label = QLabel("Bekleniyor")
+        self.trial_next_label = QLabel("Donma")
         self.trial_message_label = QLabel("T ile Trial başlat")
         self.trial_completed_label = QLabel("-")
         self.trial_pending_label = QLabel("Donma, Ateş, Kalkan")
         self.trial_progress_bar = QProgressBar()
         self.trial_step_labels: dict[str, QLabel] = {}
+        self.trial_step_frames: dict[str, QFrame] = {}
+        self.trial_step_status_labels: dict[str, QLabel] = {}
         self.trial_start_button = QPushButton("Trial Başlat / Yeniden Başlat")
 
         self.hand_debug_checkbox = QCheckBox("El landmark göster")
@@ -168,6 +192,8 @@ class MainWindow(QMainWindow):
         self.spellbook_trigger_label = QLabel("Sağ ok veya Sonraki ile aç")
         self.spellbook_rank_label = QLabel("")
         self.spellbook_description_label = QLabel("Aktif profile ait büyü yetkilerini görüntüler.")
+        self.spellbook_card = QFrame()
+        self.spellbook_details_widget = QWidget()
         self.previous_spellbook_button = QPushButton("Önceki")
         self.next_spellbook_button = QPushButton("Sonraki")
 
@@ -448,43 +474,97 @@ class MainWindow(QMainWindow):
 
     def _spellbook_page(self) -> QWidget:
         page = QWidget()
-        layout = QVBoxLayout(page)
-        layout.setContentsMargins(8, 4, 8, 8)
-        layout.setSpacing(12)
-
-        title_row = QHBoxLayout()
+        page_layout = QVBoxLayout(page)
+        page_layout.setContentsMargins(8, 4, 8, 8)
+        page_layout.setSpacing(10)
         title = QLabel("Büyü Kitabı")
         title.setObjectName("PageTitle")
-        title_row.addWidget(title)
-        title_row.addStretch(1)
-        self.spellbook_page_label.setProperty("role", "muted")
-        title_row.addWidget(self.spellbook_page_label)
-        layout.addLayout(title_row)
+        subtitle = QLabel("VisionForge Lonca Arşivi · Kapak, Donma, Ateş ve Kalkan")
+        subtitle.setProperty("role", "muted")
+        page_layout.addWidget(title)
+        page_layout.addWidget(subtitle)
 
-        card = QFrame()
-        card.setObjectName("SpellbookCard")
-        card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(32, 28, 32, 28)
-        card_layout.setSpacing(14)
+        scroll = QScrollArea()
+        scroll.setObjectName("SpellbookScroll")
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        content = QWidget()
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(0, 0, 4, 0)
+        content_layout.setSpacing(10)
+
+        self.spellbook_card.setObjectName("SpellbookCard")
+        self.spellbook_card.setMaximumWidth(900)
+        self.spellbook_card.setProperty("state", "cover")
+        card_layout = QVBoxLayout(self.spellbook_card)
+        card_layout.setContentsMargins(28, 22, 28, 24)
+        card_layout.setSpacing(12)
+
+        archive_header = QHBoxLayout()
+        archive_label = QLabel("LONCA BÜYÜ ARŞİVİ")
+        archive_label.setObjectName("CardTitle")
+        self.spellbook_page_label.setObjectName("PageBadge")
+        archive_header.addWidget(archive_label)
+        archive_header.addStretch(1)
+        archive_header.addWidget(self.spellbook_page_label)
+        card_layout.addLayout(archive_header)
+
         self.spellbook_title_label.setObjectName("SpellbookTitle")
         self.spellbook_title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.spellbook_status_label.setObjectName("SpellbookStatus")
         self.spellbook_status_label.setProperty("state", "cover")
         self.spellbook_status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        card_layout.addStretch(1)
         card_layout.addWidget(self.spellbook_title_label)
-        card_layout.addWidget(self.spellbook_status_label)
-        card_layout.addSpacing(12)
-        for label in (
-            self.spellbook_type_label,
-            self.spellbook_trigger_label,
-            self.spellbook_rank_label,
-            self.spellbook_description_label,
+        card_layout.addWidget(self.spellbook_status_label, 0, Qt.AlignmentFlag.AlignCenter)
+
+        details_layout = QVBoxLayout(self.spellbook_details_widget)
+        details_layout.setContentsMargins(0, 4, 0, 0)
+        details_layout.setSpacing(9)
+        meta_row = QHBoxLayout()
+        meta_row.setSpacing(9)
+        type_card = QFrame()
+        type_card.setObjectName("ArchiveMetaCard")
+        type_layout = QVBoxLayout(type_card)
+        type_layout.setContentsMargins(12, 9, 12, 9)
+        type_key = QLabel("BÜYÜ TÜRÜ")
+        type_key.setObjectName("CardTitle")
+        self.spellbook_type_label.setObjectName("ArchiveMetaValue")
+        type_layout.addWidget(type_key)
+        type_layout.addWidget(self.spellbook_type_label)
+        rank_card = QFrame()
+        rank_card.setObjectName("ArchiveMetaCard")
+        rank_layout = QVBoxLayout(rank_card)
+        rank_layout.setContentsMargins(12, 9, 12, 9)
+        rank_key = QLabel("GEREKEN RÜTBE")
+        rank_key.setObjectName("CardTitle")
+        self.spellbook_rank_label.setObjectName("ArchiveRankValue")
+        rank_layout.addWidget(rank_key)
+        rank_layout.addWidget(self.spellbook_rank_label)
+        meta_row.addWidget(type_card, 1)
+        meta_row.addWidget(rank_card, 1)
+        details_layout.addLayout(meta_row)
+
+        for section_title, value_label in (
+            ("TETİKLEME HAREKETİ", self.spellbook_trigger_label),
+            ("KISA AÇIKLAMA", self.spellbook_description_label),
         ):
-            label.setWordWrap(True)
-            card_layout.addWidget(label)
-        card_layout.addStretch(1)
-        layout.addWidget(card, 1)
+            section = QFrame()
+            section.setObjectName("SectionCard")
+            section_layout = QVBoxLayout(section)
+            section_layout.setContentsMargins(12, 9, 12, 9)
+            section_key = QLabel(section_title)
+            section_key.setObjectName("CardTitle")
+            value_label.setObjectName("ArchiveBodyText")
+            value_label.setWordWrap(True)
+            section_layout.addWidget(section_key)
+            section_layout.addWidget(value_label)
+            details_layout.addWidget(section)
+        card_layout.addWidget(self.spellbook_details_widget)
+        self.spellbook_details_widget.hide()
+        content_layout.addWidget(self.spellbook_card, 0, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
+        content_layout.addStretch(1)
+        scroll.setWidget(content)
+        page_layout.addWidget(scroll, 1)
 
         controls = QHBoxLayout()
         controls.addStretch(1)
@@ -492,60 +572,100 @@ class MainWindow(QMainWindow):
         self.next_spellbook_button.clicked.connect(lambda: self._change_spellbook_page(1))
         controls.addWidget(self.previous_spellbook_button)
         controls.addWidget(self.next_spellbook_button)
-        layout.addLayout(controls)
+        controls.addStretch(1)
+        page_layout.addLayout(controls)
         return page
 
     def _trial_page(self) -> QWidget:
         page = QWidget()
-        layout = QVBoxLayout(page)
-        layout.setContentsMargins(8, 4, 8, 8)
-        layout.setSpacing(12)
+        page_layout = QVBoxLayout(page)
+        page_layout.setContentsMargins(8, 4, 8, 8)
+        page_layout.setSpacing(10)
 
         title = QLabel("Trial")
         title.setObjectName("PageTitle")
         subtitle = QLabel("Mühürlü Kapı · Donma → Ateş → Kalkan")
         subtitle.setProperty("role", "muted")
-        layout.addWidget(title)
-        layout.addWidget(subtitle)
+        page_layout.addWidget(title)
+        page_layout.addWidget(subtitle)
 
-        steps_card = QFrame()
-        steps_card.setObjectName("PageCard")
-        steps_layout = QVBoxLayout(steps_card)
-        steps_layout.setContentsMargins(22, 20, 22, 20)
-        steps_layout.setSpacing(10)
+        scroll = QScrollArea()
+        scroll.setObjectName("TrialScroll")
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        content = QWidget()
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(0, 0, 4, 0)
+        content_layout.setSpacing(10)
+
+        steps_row = QHBoxLayout()
+        steps_row.setSpacing(9)
         for index, spell_name in enumerate(TRIAL_STEPS, start=1):
-            label = QLabel(f"{index}. {spell_name} · Bekliyor")
-            label.setObjectName("TrialStep")
-            label.setProperty("state", "pending")
-            self.trial_step_labels[spell_name] = label
-            steps_layout.addWidget(label)
+            step_card = QFrame()
+            step_card.setObjectName("TrialStepCard")
+            step_card.setProperty("state", "pending")
+            step_layout = QVBoxLayout(step_card)
+            step_layout.setContentsMargins(14, 12, 14, 12)
+            step_layout.setSpacing(7)
+            step_header = QHBoxLayout()
+            index_label = QLabel(str(index))
+            index_label.setObjectName("TrialStepIndex")
+            spell_label = QLabel(spell_name)
+            spell_label.setObjectName("TrialStepName")
+            status_label = QLabel("Bekliyor")
+            status_label.setObjectName("TrialStepStatus")
+            status_label.setProperty("state", "pending")
+            step_header.addWidget(index_label)
+            step_header.addWidget(spell_label)
+            step_header.addStretch(1)
+            step_layout.addLayout(step_header)
+            trigger_label = QLabel(_SPELLBOOK_DETAILS[spell_name]["trigger"])
+            trigger_label.setObjectName("TrialStepTrigger")
+            trigger_label.setWordWrap(True)
+            step_layout.addWidget(trigger_label)
+            step_layout.addStretch(1)
+            step_layout.addWidget(status_label, 0, Qt.AlignmentFlag.AlignLeft)
+            self.trial_step_labels[spell_name] = spell_label
+            self.trial_step_frames[spell_name] = step_card
+            self.trial_step_status_labels[spell_name] = status_label
+            steps_row.addWidget(step_card, 1)
+        content_layout.addLayout(steps_row)
 
         self.trial_progress_bar.setRange(0, len(TRIAL_STEPS))
         self.trial_progress_bar.setValue(0)
         self.trial_progress_bar.setFormat("%v/%m adım")
-        steps_layout.addSpacing(8)
-        steps_layout.addWidget(self.trial_progress_bar)
-
-        details = QGridLayout()
-        details.setHorizontalSpacing(18)
-        details.setVerticalSpacing(8)
+        summary_card = QFrame()
+        summary_card.setObjectName("SectionCard")
+        summary_layout = QGridLayout(summary_card)
+        summary_layout.setContentsMargins(16, 14, 16, 14)
+        summary_layout.setHorizontalSpacing(20)
+        summary_layout.setVerticalSpacing(8)
+        summary_title = QLabel("TRIAL ÖZETİ")
+        summary_title.setObjectName("CardTitle")
+        self.trial_state_label.setObjectName("TrialSummaryStatus")
+        summary_layout.addWidget(summary_title, 0, 0)
+        summary_layout.addWidget(self.trial_state_label, 0, 1, Qt.AlignmentFlag.AlignRight)
         rows = (
-            ("Durum", self.trial_state_label),
+            ("Sıradaki büyü", self.trial_next_label),
             ("Tamamlanan", self.trial_completed_label),
             ("Bekleyen", self.trial_pending_label),
-            ("Mesaj", self.trial_message_label),
+            ("Görev mesajı", self.trial_message_label),
         )
-        for row, (label_text, value_label) in enumerate(rows):
+        for row, (label_text, value_label) in enumerate(rows, start=1):
             key_label = QLabel(label_text)
             key_label.setProperty("role", "muted")
             value_label.setWordWrap(True)
-            details.addWidget(key_label, row, 0)
-            details.addWidget(value_label, row, 1)
-        steps_layout.addLayout(details)
+            summary_layout.addWidget(key_label, row, 0)
+            summary_layout.addWidget(value_label, row, 1)
+        summary_layout.addWidget(self.trial_progress_bar, len(rows) + 1, 0, 1, 2)
+        summary_layout.setColumnStretch(1, 1)
+        content_layout.addWidget(summary_card)
 
         self.trial_start_button.clicked.connect(lambda: self._send_action("start_trial"))
-        layout.addWidget(steps_card, 1)
-        layout.addWidget(self.trial_start_button, 0, Qt.AlignmentFlag.AlignLeft)
+        content_layout.addWidget(self.trial_start_button, 0, Qt.AlignmentFlag.AlignLeft)
+        content_layout.addStretch(1)
+        scroll.setWidget(content)
+        page_layout.addWidget(scroll, 1)
         return page
 
     def _enrollment_page(self) -> QWidget:
@@ -760,9 +880,9 @@ class MainWindow(QMainWindow):
 
     def _system_page(self) -> QWidget:
         page = QWidget()
-        layout = QVBoxLayout(page)
-        layout.setContentsMargins(8, 4, 8, 8)
-        layout.setSpacing(12)
+        page_layout = QVBoxLayout(page)
+        page_layout.setContentsMargins(8, 4, 8, 8)
+        page_layout.setSpacing(10)
 
         header = QHBoxLayout()
         title = QLabel("Sistem Durumu")
@@ -771,39 +891,73 @@ class MainWindow(QMainWindow):
         header.addWidget(title)
         header.addStretch(1)
         header.addWidget(self.system_refresh_button)
-        layout.addLayout(header)
+        page_layout.addLayout(header)
 
         subtitle = QLabel("Kamera, modeller, profiller ve lonca mührü kaynakları")
         subtitle.setProperty("role", "muted")
-        layout.addWidget(subtitle)
+        page_layout.addWidget(subtitle)
 
         scroll = QScrollArea()
+        scroll.setObjectName("SystemScroll")
         scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         content = QWidget()
-        rows_layout = QVBoxLayout(content)
-        rows_layout.setContentsMargins(0, 0, 0, 0)
-        rows_layout.setSpacing(8)
-        labels = ["Kamera", *[item.label for item in get_system_status()]]
-        for label_text in labels:
-            row = QFrame()
-            row.setObjectName("SystemRow")
-            row_layout = QGridLayout(row)
-            row_layout.setContentsMargins(14, 11, 14, 11)
-            name_label = QLabel(label_text)
-            status_label = QLabel("Bekleniyor")
-            status_label.setObjectName("StatusValue")
-            status_label.setProperty("state", "pending")
-            hint_label = QLabel("")
-            hint_label.setProperty("role", "muted")
-            hint_label.setWordWrap(True)
-            row_layout.addWidget(name_label, 0, 0)
-            row_layout.addWidget(status_label, 0, 1, Qt.AlignmentFlag.AlignRight)
-            row_layout.addWidget(hint_label, 1, 0, 1, 2)
-            self._system_rows[label_text] = (status_label, hint_label)
-            rows_layout.addWidget(row)
-        rows_layout.addStretch(1)
+        groups_grid = QGridLayout(content)
+        groups_grid.setContentsMargins(0, 0, 4, 0)
+        groups_grid.setHorizontalSpacing(10)
+        groups_grid.setVerticalSpacing(10)
+        groups = (
+            ("KAMERA VE ÇALIŞMA ZAMANI", ("Kamera",)),
+            (
+                "GÖRÜNTÜ İŞLEME MODELLERİ",
+                ("Face Detector modeli", "Hand Landmarker modeli", "Yüz tanıma modeli"),
+            ),
+            (
+                "KULLANICI VERİLERİ",
+                ("Yüz etiketleri", "Yerel profiller", "Yüz galerisi", "QR/lonca mühürleri"),
+            ),
+            ("TUTARLILIK KONTROLLERİ", ("Label/Profile eşleşmesi",)),
+        )
+        for group_index, (group_title, labels) in enumerate(groups):
+            group_card = QFrame()
+            group_card.setObjectName("SectionCard")
+            group_layout = QVBoxLayout(group_card)
+            group_layout.setContentsMargins(14, 12, 14, 12)
+            group_layout.setSpacing(7)
+            title_label = QLabel(group_title)
+            title_label.setObjectName("CardTitle")
+            group_layout.addWidget(title_label)
+            for label_text in labels:
+                row = QFrame()
+                row.setObjectName("SystemRow")
+                row_layout = QGridLayout(row)
+                row_layout.setContentsMargins(10, 8, 10, 8)
+                name_label = QLabel(label_text)
+                name_label.setObjectName("SystemItemName")
+                status_label = QLabel("Bekleniyor")
+                status_label.setObjectName("StatusValue")
+                status_label.setProperty("state", "pending")
+                hint_label = QLabel("")
+                hint_label.setObjectName("SystemHint")
+                hint_label.setWordWrap(True)
+                hint_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+                row_layout.addWidget(name_label, 0, 0)
+                row_layout.addWidget(status_label, 0, 1, Qt.AlignmentFlag.AlignRight)
+                row_layout.addWidget(hint_label, 1, 0, 1, 2)
+                row_layout.setColumnStretch(0, 1)
+                self._system_rows[label_text] = (status_label, hint_label)
+                group_layout.addWidget(row)
+            groups_grid.addWidget(
+                group_card,
+                group_index // 2,
+                group_index % 2,
+                Qt.AlignmentFlag.AlignTop,
+            )
+        groups_grid.setColumnStretch(0, 1)
+        groups_grid.setColumnStretch(1, 1)
+        groups_grid.setRowStretch(2, 1)
         scroll.setWidget(content)
-        layout.addWidget(scroll, 1)
+        page_layout.addWidget(scroll, 1)
         self._refresh_system_status()
         return page
 
@@ -819,25 +973,43 @@ class MainWindow(QMainWindow):
         layout.addWidget(title)
         layout.addWidget(subtitle)
 
-        for tab_name, fields in DEBUG_FIELDS.items():
+        for tab_name, groups in DEBUG_GROUPS.items():
             scroll = QScrollArea()
+            scroll.setObjectName("DebugScroll")
             scroll.setWidgetResizable(True)
+            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
             content = QWidget()
-            grid = QGridLayout(content)
-            grid.setContentsMargins(18, 16, 18, 16)
-            grid.setHorizontalSpacing(24)
-            grid.setVerticalSpacing(9)
-            for row, (display_name, key) in enumerate(fields):
-                name_label = QLabel(display_name)
-                name_label.setProperty("role", "muted")
-                value_label = QLabel("-")
-                value_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-                value_label.setWordWrap(True)
-                grid.addWidget(name_label, row, 0)
-                grid.addWidget(value_label, row, 1)
-                self._debug_value_labels[key] = value_label
-            grid.setColumnStretch(1, 1)
-            grid.setRowStretch(len(fields), 1)
+            groups_layout = QGridLayout(content)
+            groups_layout.setContentsMargins(10, 10, 10, 10)
+            groups_layout.setHorizontalSpacing(10)
+            groups_layout.setVerticalSpacing(10)
+            for group_index, (group_title, fields) in enumerate(groups):
+                group_card = QFrame()
+                group_card.setObjectName("DebugGroupCard")
+                group_grid = QGridLayout(group_card)
+                group_grid.setContentsMargins(14, 12, 14, 12)
+                group_grid.setHorizontalSpacing(16)
+                group_grid.setVerticalSpacing(7)
+                title_label = QLabel(group_title.upper())
+                title_label.setObjectName("CardTitle")
+                group_grid.addWidget(title_label, 0, 0, 1, 2)
+                for row, (display_name, key) in enumerate(fields, start=1):
+                    name_label = QLabel(display_name)
+                    name_label.setObjectName("DebugKey")
+                    value_label = QLabel("-")
+                    value_label.setObjectName("DebugValue")
+                    value_label.setMinimumWidth(0)
+                    value_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+                    value_label.setWordWrap(True)
+                    group_grid.addWidget(name_label, row, 0)
+                    group_grid.addWidget(value_label, row, 1)
+                    self._debug_value_labels[key] = value_label
+                group_grid.setColumnStretch(1, 1)
+                group_grid.setRowStretch(len(fields) + 1, 1)
+                groups_layout.addWidget(group_card, group_index // 2, group_index % 2)
+            groups_layout.setColumnStretch(0, 1)
+            groups_layout.setColumnStretch(1, 1)
+            groups_layout.setRowStretch((len(groups) + 1) // 2, 1)
             scroll.setWidget(content)
             self.debug_tabs.addTab(scroll, tab_name)
 
@@ -1161,17 +1333,23 @@ class MainWindow(QMainWindow):
         completed_steps = list(payload.get("trial_completed_steps", []))
         required_spell = payload.get("trial_required_spell", "-")
         completed_set = set(completed_steps)
+        allowed_set = set(payload.get("allowed_spells", []))
         pending_steps = [step for step in TRIAL_STEPS if step not in completed_set]
 
         state_text = {"idle": "Bekliyor", "active": "Aktif", "completed": "Tamamlandı"}.get(state, state)
         self.trial_label.setText(state_text)
         self.live_trial_step_label.setText(required_spell if required_spell != "-" else "Tamamlandı")
+        self.trial_next_label.setText(required_spell if required_spell != "-" else "Tamamlandı")
         self.live_trial_progress_label.setText(payload.get("trial_progress", "0/3"))
         self._set_widget_state(
             self.trial_label,
             "verified" if state == "completed" else ("warning" if state == "active" else "neutral"),
         )
         self.trial_state_label.setText(state_text)
+        self._set_widget_state(
+            self.trial_state_label,
+            "verified" if state == "completed" else ("warning" if state == "active" else "neutral"),
+        )
         self.trial_completed_label.setText(", ".join(completed_steps) or "-")
         self.trial_pending_label.setText(", ".join(pending_steps) or "-")
         self.trial_message_label.setText(payload.get("trial_message", "-"))
@@ -1180,13 +1358,16 @@ class MainWindow(QMainWindow):
         for index, spell_name in enumerate(TRIAL_STEPS, start=1):
             if spell_name in completed_set:
                 step_state, step_text = "complete", "Tamamlandı"
+            elif spell_name not in allowed_set:
+                step_state, step_text = "locked", "Yetki yetersiz"
             elif state == "active" and spell_name == required_spell:
                 step_state, step_text = "active", "Aktif"
             else:
                 step_state, step_text = "pending", "Bekliyor"
-            label = self.trial_step_labels[spell_name]
-            label.setText(f"{index}. {spell_name} · {step_text}")
-            self._set_widget_state(label, step_state)
+            status_label = self.trial_step_status_labels[spell_name]
+            status_label.setText(step_text)
+            self._set_widget_state(status_label, step_state)
+            self._set_widget_state(self.trial_step_frames[spell_name], step_state)
 
     def _update_spellbook(self, payload: dict) -> None:
         page = max(0, min(3, int(payload.get("spellbook_page", 0) or 0)))
@@ -1209,10 +1390,10 @@ class MainWindow(QMainWindow):
         self.spellbook_page_label.setText(f"Sayfa {page}/3")
         self.spellbook_title_label.setText(spell_name)
         self._set_spellbook_status("Durum: Açık" if is_open else "Durum: Kilitli", "open" if is_open else "locked")
-        self.spellbook_type_label.setText(f"Tür: {details['type']}")
-        self.spellbook_trigger_label.setText(f"Tetikleme: {details['trigger']}")
-        self.spellbook_rank_label.setText(f"Gereken yetki veya rütbe: {details['required_rank']}")
-        self.spellbook_description_label.setText(f"Açıklama: {details['effect']}")
+        self.spellbook_type_label.setText(details["type"])
+        self.spellbook_trigger_label.setText(details["trigger"])
+        self.spellbook_rank_label.setText(details["required_rank"])
+        self.spellbook_description_label.setText(details["effect"])
 
     def _update_enrollment(self, payload: dict, force: bool = False) -> None:
         if self._current_page != "enrollment" and not force:
@@ -1296,9 +1477,9 @@ class MainWindow(QMainWindow):
 
     def _set_spellbook_status(self, text: str, state: str) -> None:
         self.spellbook_status_label.setText(text)
-        self.spellbook_status_label.setProperty("state", state)
-        self.spellbook_status_label.style().unpolish(self.spellbook_status_label)
-        self.spellbook_status_label.style().polish(self.spellbook_status_label)
+        self._set_widget_state(self.spellbook_status_label, state)
+        self._set_widget_state(self.spellbook_card, state)
+        self.spellbook_details_widget.setVisible(state != "cover")
 
     def _update_settings(self, payload: dict, force: bool = False) -> None:
         settings = payload.get("settings", {})
@@ -1356,6 +1537,12 @@ class MainWindow(QMainWindow):
         self._last_debug_update = now
         debug = dict(payload.get("debug_info", {}))
         debug["capture_resolution"] = self._capture_resolution
+        debug["camera_status"] = "Aktif" if self._camera_frame_received else "Bekleniyor"
+        debug["worker_status"] = (
+            "Çalışıyor"
+            if self._worker_thread is not None and self._worker_thread.isRunning()
+            else "Pasif"
+        )
         debug["trial_completed_steps"] = ", ".join(payload.get("trial_completed_steps", [])) or "-"
         for key, label in self._debug_value_labels.items():
             label.setText(str(debug.get(key, "-")))

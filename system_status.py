@@ -73,6 +73,12 @@ def get_system_status() -> list[SystemStatusItem]:
             "E ile kayıt oluştur",
         ),
         SystemStatusItem(
+            "Yüz galerisi",
+            (root / "data" / "face_gallery").exists(),
+            False,
+            "data/face_gallery",
+        ),
+        SystemStatusItem(
             "QR/lonca mühürleri",
             has_qr_png,
             False,

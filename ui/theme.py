@@ -176,7 +176,77 @@ def application_stylesheet() -> str:
             color: #EF4444;
             background-color: #2A171C;
         }
-        QLabel#SpellbookTitle {
+    /* Shared archive, status and diagnostic page language. */
+    QFrame#SectionCard,
+    QFrame#DebugGroupCard,
+    QFrame#ArchiveMetaCard,
+    QFrame#TrialStepCard {
+        background: #121A24;
+        border: 1px solid #1E2B3A;
+        border-radius: 9px;
+    }
+    QFrame#SpellbookCard[state="cover"] { background: #121A24; border-color: #263443; }
+    QFrame#SpellbookCard[state="open"] { background: #101D20; border-color: #2A625E; }
+    QFrame#SpellbookCard[state="locked"] { background: #101720; border-color: #344252; }
+    QFrame#SectionCard QLabel,
+    QFrame#DebugGroupCard QLabel,
+    QFrame#ArchiveMetaCard QLabel,
+    QFrame#TrialStepCard QLabel,
+    QFrame#SpellbookCard QLabel,
+    QFrame#SystemRow QLabel {
+        background: transparent;
+    }
+    QLabel#PageBadge,
+    QLabel#TrialStepIndex {
+        background: #182330;
+        color: #91A0B3;
+        border: 1px solid #263747;
+        border-radius: 8px;
+        padding: 3px 8px;
+        font-size: 10px;
+        font-weight: 700;
+    }
+    QLabel#ArchiveMetaValue { color: #E6EDF3; font-size: 13px; font-weight: 600; }
+    QLabel#ArchiveRankValue { color: #D4A857; font-size: 13px; font-weight: 700; }
+    QLabel#ArchiveBodyText { color: #C1CBD6; font-size: 12px; }
+
+    QFrame#TrialStepCard[state="complete"] { background: #10201E; border-color: #28635D; }
+    QFrame#TrialStepCard[state="active"] { background: #211D15; border-color: #80652F; }
+    QFrame#TrialStepCard[state="locked"] { background: #10161E; border-color: #26313E; }
+    QLabel#TrialStepName { color: #E6EDF3; font-size: 15px; font-weight: 700; }
+    QLabel#TrialStepTrigger { color: #91A0B3; font-size: 11px; }
+    QLabel#TrialStepStatus,
+    QLabel#TrialSummaryStatus {
+        border-radius: 8px;
+        padding: 3px 8px;
+        font-size: 10px;
+        font-weight: 700;
+    }
+    QLabel#TrialStepStatus[state="complete"],
+    QLabel#TrialSummaryStatus[state="verified"] { background: #123A35; color: #2DD4BF; }
+    QLabel#TrialStepStatus[state="active"],
+    QLabel#TrialSummaryStatus[state="warning"] { background: #3B2B12; color: #F59E0B; }
+    QLabel#TrialStepStatus[state="locked"] { background: #202936; color: #78889B; }
+    QLabel#TrialStepStatus[state="pending"],
+    QLabel#TrialSummaryStatus[state="neutral"] { background: #182330; color: #91A0B3; }
+
+    QFrame#SystemRow {
+        background: #0E151E;
+        border: 1px solid #1B2836;
+        border-radius: 7px;
+    }
+    QLabel#SystemItemName { color: #E6EDF3; font-size: 12px; font-weight: 600; }
+    QLabel#SystemHint,
+    QLabel#DebugKey { color: #91A0B3; font-size: 11px; }
+    QLabel#DebugValue {
+        background: #0E151E;
+        color: #E6EDF3;
+        border-radius: 5px;
+        padding: 4px 7px;
+        font-size: 11px;
+    }
+
+    QLabel#SpellbookTitle {
             color: #D4A857;
             font-size: 28px;
             font-weight: 700;
