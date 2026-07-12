@@ -23,11 +23,11 @@ class CameraWorker(QObject):
         super().__init__()
         self.source = source
         self._running = False
-        self._action_queue: queue.Queue[str] = queue.Queue()
+        self._action_queue: queue.Queue[object] = queue.Queue()
         self._engine: VisionEngine | None = None
         self._capture = None
 
-    def request_action(self, action: str) -> None:
+    def request_action(self, action) -> None:
         """UI thread'inden gelen aksiyonu güvenli kuyruğa ekler."""
         if action:
             self._action_queue.put(action)
@@ -135,7 +135,11 @@ class CameraWorker(QObject):
             "cooldown": getattr(spell, "cooldown_remaining", 0.0) if spell is not None else 0.0,
             "prepare_progress": getattr(spell, "spell_prepare_progress", 0.0) if spell is not None else 0.0,
             "trial_state": getattr(trial, "state", "idle"),
+            "trial_current_step": getattr(trial, "current_step", 0),
             "trial_required_spell": getattr(trial, "required_spell", None) or "-",
+            "trial_completed_steps": list(getattr(trial, "completed_steps", []) or []),
+            "trial_total_steps": getattr(trial, "total_steps", 3),
+            "trial_is_completed": bool(getattr(trial, "is_completed", False)),
             "trial_progress": f"{getattr(trial, 'completed_count', 0)}/{getattr(trial, 'total_steps', 0)}",
             "trial_message": getattr(trial, "message", ""),
             "debug_info": result.debug_info,

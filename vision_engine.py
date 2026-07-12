@@ -72,6 +72,7 @@ class VisionEngine:
         self.face_confirmed = False
         self.missing_face_frames = 0
         self.enrollment_reload_done = False
+        self.last_enrollment_status: EnrollmentStatus | None = None
         self.last_frame_time = time.monotonic()
         self.fps = 0.0
         self.notification_state = {
@@ -178,25 +179,56 @@ class VisionEngine:
             trial_status=trial_status,
             debug_info=debug_info,
             notifications=self.notification_manager.active(),
+            enrollment_status=self.last_enrollment_status,
             status_text=status_text,
             hand_status_text=hand_status_text,
             spellbook_page=self.spellbook_page,
             ui_settings=self.ui_settings.copy(),
         )
 
-    def handle_action(self, action: str) -> None:
+    def handle_action(self, action) -> None:
         """Qt tarafındaki tuş ve buton aksiyonlarını engine durumuna uygular."""
+        if isinstance(action, dict):
+            command = action.get("command")
+            if command == "start_enrollment":
+                self.start_enrollment(
+                    username=str(action.get("username", "")),
+                    mode=str(action.get("mode", "camera")),
+                    import_directory=action.get("import_directory"),
+                )
+            elif command == "cancel_enrollment":
+                self.cancel_enrollment()
+            return
+
         settings_changed = False
 
         if action == "toggle_spellbook":
             self.ui_settings["show_spellbook"] = not self.ui_settings["show_spellbook"]
             settings_changed = True
+        elif action == "open_spellbook":
+            if not self.ui_settings["show_spellbook"]:
+                self.ui_settings["show_spellbook"] = True
+                settings_changed = True
+        elif action == "close_spellbook":
+            if self.ui_settings["show_spellbook"]:
+                self.ui_settings["show_spellbook"] = False
+                settings_changed = True
         elif action == "toggle_hand_debug":
             self.ui_settings["show_hand_debug"] = not self.ui_settings["show_hand_debug"]
             settings_changed = True
+        elif action.startswith("set_hand_debug:"):
+            enabled = action.endswith(":1")
+            if self.ui_settings["show_hand_debug"] != enabled:
+                self.ui_settings["show_hand_debug"] = enabled
+                settings_changed = True
         elif action == "toggle_face_debug":
             self.ui_settings["show_face_debug"] = not self.ui_settings["show_face_debug"]
             settings_changed = True
+        elif action.startswith("set_face_debug:"):
+            enabled = action.endswith(":1")
+            if self.ui_settings["show_face_debug"] != enabled:
+                self.ui_settings["show_face_debug"] = enabled
+                settings_changed = True
         elif action == "toggle_debug":
             self.ui_settings["show_debug_page"] = not self.ui_settings["show_debug_page"]
             settings_changed = True
@@ -207,23 +239,55 @@ class VisionEngine:
         elif action == "toggle_spell_effects":
             self.ui_settings["spell_effects_enabled"] = not self.ui_settings["spell_effects_enabled"]
             settings_changed = True
+        elif action.startswith("set_spell_effects:"):
+            enabled = action.endswith(":1")
+            if self.ui_settings["spell_effects_enabled"] != enabled:
+                self.ui_settings["spell_effects_enabled"] = enabled
+                settings_changed = True
         elif action == "toggle_mirror":
             self.ui_settings["mirror_camera"] = not self.ui_settings["mirror_camera"]
             self.verification_session.reset()
             self.face_identity_detector.reset_stability()
             settings_changed = True
+        elif action.startswith("set_mirror:"):
+            enabled = action.endswith(":1")
+            if self.ui_settings["mirror_camera"] != enabled:
+                self.ui_settings["mirror_camera"] = enabled
+                self.verification_session.reset()
+                self.face_identity_detector.reset_stability()
+                settings_changed = True
         elif action == "cycle_verification_mode":
             self.ui_settings["verification_requires_qr"] = not self.ui_settings["verification_requires_qr"]
             self.verification_session.reset()
             mode_text = "QR + Yüz" if self.ui_settings["verification_requires_qr"] else "Yalnızca Yüz"
             self.notification_manager.notify(f"Doğrulama modu: {mode_text}", type="info", key="verification-mode")
             settings_changed = True
+        elif action.startswith("set_verification_mode:"):
+            mode_text = action.split(":", 1)[1]
+            if mode_text in {"QR + Yüz", "Yalnızca Yüz"}:
+                requires_qr = mode_text == "QR + Yüz"
+                if self.ui_settings["verification_requires_qr"] != requires_qr:
+                    self.ui_settings["verification_requires_qr"] = requires_qr
+                    self.verification_session.reset()
+                    self.notification_manager.notify(
+                        f"Doğrulama modu: {mode_text}",
+                        type="info",
+                        key="verification-mode",
+                    )
+                    settings_changed = True
         elif action == "cycle_detection_profile":
             self.ui_settings["detection_profile"] = self._next_detection_profile(
                 self.ui_settings.get("detection_profile", "Dengeli")
             )
             self._apply_detection_profile(self.ui_settings["detection_profile"])
             settings_changed = True
+        elif action.startswith("set_detection_profile:"):
+            detection_profile = action.split(":", 1)[1]
+            if detection_profile in {"Hassas", "Dengeli", "Kararlı"}:
+                if self.ui_settings.get("detection_profile") != detection_profile:
+                    self.ui_settings["detection_profile"] = detection_profile
+                    self._apply_detection_profile(detection_profile)
+                    settings_changed = True
         elif action == "reset_auth":
             self.verification_session.reset()
             self.face_identity_detector.reload()
@@ -252,13 +316,33 @@ class VisionEngine:
         if settings_changed:
             save_ui_settings(self.ui_settings)
 
-    def start_enrollment(self) -> None:
+    def start_enrollment(
+        self,
+        username: str | None = None,
+        mode: str | None = None,
+        import_directory: str | None = None,
+    ) -> None:
         """Mevcut kayıt/import akışını başlatır ve gerekirse modeli yeniden yükler."""
-        enrollment_status = self.enrollment_manager.start(face_detector=self.face_detector)
+        if username is not None and mode is not None:
+            enrollment_status = self.enrollment_manager.start_with_options(
+                username,
+                mode,
+                face_detector=self.face_detector,
+                import_directory=import_directory,
+            )
+        else:
+            enrollment_status = self.enrollment_manager.start(face_detector=self.face_detector)
+        self.last_enrollment_status = enrollment_status
         if enrollment_status.message:
             self.notification_manager.notify(enrollment_status.message, type="info", key="enrollment-start", duration=4.0)
         if enrollment_status.is_complete:
             self._reload_after_enrollment(enrollment_status)
+
+    def cancel_enrollment(self) -> None:
+        """Aktif kayıt/import durumunu manager üzerinden güvenli biçimde sıfırlar."""
+        self.last_enrollment_status = self.enrollment_manager.reset()
+        self.enrollment_reload_done = False
+        self.notification_manager.notify("Kayıt sıfırlandı", type="info", key="enrollment-cancel")
 
     def close(self) -> None:
         """Dedektör kaynaklarını güvenli şekilde kapatır."""
@@ -270,6 +354,7 @@ class VisionEngine:
     def _process_enrollment_frame(self, processing_frame, display_frame, face_result, display_face_result) -> VisionEngineResult:
         """Kayıt modu aktifken tek kareyi işler."""
         enrollment_status = self.enrollment_manager.update(processing_frame, face_result)
+        self.last_enrollment_status = enrollment_status
         if enrollment_status.is_complete and not self.enrollment_reload_done:
             self._reload_after_enrollment(enrollment_status)
             self.enrollment_reload_done = True
@@ -329,9 +414,6 @@ class VisionEngine:
             face_result=display_face_result if display_face_result.detected else None,
             verification_status="",
         )
-
-        if self.ui_settings["show_spellbook"]:
-            frame = self.effects.draw_spellbook_panel(frame, active_profile, page=self.spellbook_page)
 
         return frame
 

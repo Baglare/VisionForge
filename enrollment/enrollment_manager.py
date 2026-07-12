@@ -72,23 +72,41 @@ class EnrollmentManager:
         username = self._ask_username()
         if not username:
             return self.status(message="Kayıt iptal edildi.")
+        mode = self._ask_enrollment_mode()
+        if not mode:
+            return self.status(message="Kayıt iptal edildi.")
+
+        return self.start_with_options(username, mode, face_detector=face_detector)
+
+    def start_with_options(
+        self,
+        username: str,
+        mode: str,
+        *,
+        face_detector=None,
+        import_directory: str | Path | None = None,
+    ) -> EnrollmentStatus:
+        """Qt gibi dış arayüzlerden alınmış kayıt seçenekleriyle mevcut akışı başlatır."""
+        if self.is_active:
+            return self.status(message="Kayıt zaten devam ediyor.")
 
         try:
             face_label = sanitize_username(username)
         except ValueError as error:
             return self.status(message=str(error))
 
+        if mode not in {"camera", "import"}:
+            return self.status(message="Geçersiz kayıt yöntemi.")
+
         self.username = username.strip()
         self.face_label = face_label
         self.sample_dir = self.gallery_root / face_label
-        mode = self._ask_enrollment_mode()
-        if not mode:
-            return self.status(message="Kayıt iptal edildi.")
 
         self._prepare_user_workspace()
 
         if mode == "import":
-            return self._import_images(face_detector)
+            source_dir = Path(import_directory) if import_directory else None
+            return self._import_images(face_detector, source_dir=source_dir)
 
         return self._start_camera_capture()
 
@@ -173,6 +191,23 @@ class EnrollmentManager:
         """Kayıt modunu kapatır."""
         self.is_active = False
         return self.status(message="Kayıt modu kapatıldı.")
+
+    def reset(self) -> EnrollmentStatus:
+        """Kayıt durumunu yeni bir işlem için güvenli başlangıç haline getirir."""
+        self.is_active = False
+        self.is_complete = False
+        self.username = ""
+        self.face_label = ""
+        self.sample_dir = None
+        self.sample_count = 0
+        self.rejected_count = 0
+        self.message = "Kayıt sıfırlandı."
+        self.quality_status = ""
+        self.import_report = ""
+        self.qr_path = None
+        self._last_sample_at = 0.0
+        self.completed_at = 0.0
+        return self.status()
 
     def status(self, message: str | None = None) -> EnrollmentStatus:
         """Güncel kayıt durumunu döndürür."""
@@ -322,11 +357,13 @@ class EnrollmentManager:
         default_dir.mkdir(parents=True, exist_ok=True)
         return default_dir
 
-    def _import_images(self, face_detector) -> EnrollmentStatus:
+    def _import_images(self, face_detector, source_dir: Path | None = None) -> EnrollmentStatus:
         """Klasördeki fotoğraflardan yüz örneği çıkarıp eğitimi tamamlar."""
         self.is_active = False
         self.is_complete = False
         self.sample_count = 0
+        self.rejected_count = 0
+        self.import_report = ""
         self.qr_path = None
         self.completed_at = 0.0
 
@@ -334,7 +371,7 @@ class EnrollmentManager:
             self.message = "Görsel import için yüz algılama modeli aktif olmalı."
             return self.status(message=self.message)
 
-        source_dir = self._ask_import_directory()
+        source_dir = source_dir or self._ask_import_directory()
         image_paths = list(self._iter_image_paths(source_dir))
         if not image_paths:
             self.message = f"Görsel bulunamadı. Fotoğrafları şu klasöre koy: {source_dir}"
