@@ -75,6 +75,20 @@ class VisionEngine:
         self.last_enrollment_status: EnrollmentStatus | None = None
         self.last_frame_time = time.monotonic()
         self.fps = 0.0
+        self._performance_samples = {
+            key: deque(maxlen=60)
+            for key in (
+                "frame_total_ms",
+                "face_detect_ms",
+                "face_identity_ms",
+                "qr_scan_ms",
+                "hand_detect_ms",
+                "hand_tracker_ms",
+                "spell_engine_ms",
+                "trial_engine_ms",
+                "overlay_ms",
+            )
+        }
         self.notification_state = {
             "verification_status": "",
             "recognized_user": "-",
@@ -89,6 +103,7 @@ class VisionEngine:
 
     def process_frame(self, processing_frame) -> VisionEngineResult:
         """Tek ham kamera karesini işler ve UI'ye aktarılacak sonucu döndürür."""
+        frame_started = time.perf_counter()
         display_frame = (
             cv2.flip(processing_frame, 1)
             if self.ui_settings["mirror_camera"]
@@ -96,7 +111,9 @@ class VisionEngine:
         )
         self._update_fps()
 
+        stage_started = time.perf_counter()
         face_result = self.face_detector.detect(processing_frame)
+        self._record_performance("face_detect_ms", stage_started)
         display_face_result = self._to_display_face_result(
             face_result,
             display_frame.shape[1],
@@ -112,15 +129,22 @@ class VisionEngine:
         if self.enrollment_manager.is_active:
             return self._process_enrollment_frame(processing_frame, display_frame, face_result, display_face_result)
 
+        stage_started = time.perf_counter()
         hand_result = self.hand_detector.detect(processing_frame)
+        self._record_performance("hand_detect_ms", stage_started)
+        stage_started = time.perf_counter()
         hand_state = self.hand_state_tracker.update(
             processing_frame,
             hand_result,
             detection_profile=self.ui_settings.get("detection_profile", "Dengeli"),
         )
+        self._record_performance("hand_tracker_ms", stage_started)
         display_hand_result = self._to_display_hand_result(hand_result, self.ui_settings["mirror_camera"])
 
-        auth_state = self._resolve_auth_state(processing_frame, face_result)
+        auth_performance = {"face_identity_ms": 0.0, "qr_scan_ms": 0.0}
+        auth_state = self._resolve_auth_state(processing_frame, face_result, auth_performance)
+        self._append_performance("face_identity_ms", auth_performance["face_identity_ms"])
+        self._append_performance("qr_scan_ms", auth_performance["qr_scan_ms"])
         active_profile = auth_state["active_profile"]
         allowed_spells = auth_state["allowed_spells"]
         verification_status = auth_state["verification_status"]
@@ -133,6 +157,7 @@ class VisionEngine:
         else:
             hand_status_text = "El algılandı" if hand_result.detected else "El bekleniyor"
 
+        stage_started = time.perf_counter()
         spell_result = self.spell_engine.update(
             hand_result,
             allowed_spells=allowed_spells,
@@ -140,15 +165,19 @@ class VisionEngine:
             frame=processing_frame,
             hand_state=hand_state,
         )
+        self._record_performance("spell_engine_ms", stage_started)
         active_trial_spell = spell_result.active_spell_name if spell_result.has_active_spell else None
+        stage_started = time.perf_counter()
         trial_status = self.trial_engine.update(
             active_spell_name=active_trial_spell,
             allowed_spells=allowed_spells,
         )
+        self._record_performance("trial_engine_ms", stage_started)
         self._emit_spell_notifications(spell_result)
         self._emit_trial_notifications(trial_status)
         self._update_demo_guide(verification_status, active_trial_spell, trial_status)
 
+        stage_started = time.perf_counter()
         display_frame = self._draw_camera_overlays(
             display_frame,
             active_profile,
@@ -156,6 +185,8 @@ class VisionEngine:
             display_hand_result,
             spell_result,
         )
+        self._record_performance("overlay_ms", stage_started)
+        self._record_performance("frame_total_ms", frame_started)
         debug_info = self._debug_info(
             face_result=face_result,
             hand_result=hand_result,
@@ -167,6 +198,7 @@ class VisionEngine:
             trial_status=trial_status,
             hand_status_text=hand_status_text,
         )
+        debug_info.update(self._performance_debug_info())
 
         return VisionEngineResult(
             display_frame=display_frame,
@@ -417,8 +449,11 @@ class VisionEngine:
 
         return frame
 
-    def _resolve_auth_state(self, frame, face_result) -> dict:
+    def _resolve_auth_state(self, frame, face_result, performance: dict | None = None) -> dict:
         """Yüz kimliği, QR ve VerificationSession ile aktif yetkiyi belirler."""
+        performance = performance if performance is not None else {}
+        performance.setdefault("face_identity_ms", 0.0)
+        performance.setdefault("qr_scan_ms", 0.0)
         guest = guest_profile()
         base = self._auth_base()
 
@@ -434,7 +469,9 @@ class VisionEngine:
             auth.update({"identity_status": self.face_identity_detector.warning_message or "pasif"})
             return auth
 
+        stage_started = time.perf_counter()
         identity_result = self.face_identity_detector.predict(frame, face_result.box)
+        performance["face_identity_ms"] = (time.perf_counter() - stage_started) * 1000.0
         identity_debug = self._identity_debug_fields(identity_result)
         identity_status = self._identity_debug_status(identity_result)
         face_score = self._face_score_debug(identity_result)
@@ -459,14 +496,18 @@ class VisionEngine:
 
         if candidate_profile is not None:
             if self.ui_settings["verification_requires_qr"]:
+                stage_started = time.perf_counter()
                 seal_result = self.guild_seal_detector.detect(frame, candidate_profile)
+                performance["qr_scan_ms"] = (time.perf_counter() - stage_started) * 1000.0
                 mismatch = bool(seal_result.mismatch)
                 if seal_result.matched:
                     full_verified_label = candidate_label
             else:
                 full_verified_label = candidate_label
         elif self.ui_settings["verification_requires_qr"]:
+            stage_started = time.perf_counter()
             seal_result = self.guild_seal_detector.detect(frame, None)
+            performance["qr_scan_ms"] = (time.perf_counter() - stage_started) * 1000.0
             mismatch = bool(seal_result and seal_result.mismatch)
 
         snapshot = self.verification_session.update(
@@ -547,6 +588,34 @@ class VisionEngine:
 
         auth["verification_status"] = snapshot.verification_status if snapshot.session_state == "EXPIRED" else (fallback_status or snapshot.verification_status)
         return auth
+
+    def _record_performance(self, key: str, started_at: float) -> None:
+        """Bir aşama süresini 60 karelik hafif hareketli ortalamaya ekler."""
+        self._append_performance(key, (time.perf_counter() - started_at) * 1000.0)
+
+    def _append_performance(self, key: str, duration_ms: float) -> None:
+        samples = self._performance_samples.get(key)
+        if samples is not None:
+            samples.append(float(duration_ms))
+
+    def _performance_average(self, key: str) -> float:
+        samples = self._performance_samples.get(key)
+        return sum(samples) / len(samples) if samples else 0.0
+
+    def _performance_debug_info(self) -> dict:
+        total_ms = self._performance_average("frame_total_ms")
+        return {
+            "perf_frame_total_ms": f"{total_ms:.2f} ms",
+            "perf_processing_fps": f"{1000.0 / total_ms:.2f}" if total_ms > 0 else "-",
+            "perf_face_detect_ms": f"{self._performance_average('face_detect_ms'):.2f} ms",
+            "perf_face_identity_ms": f"{self._performance_average('face_identity_ms'):.2f} ms",
+            "perf_qr_scan_ms": f"{self._performance_average('qr_scan_ms'):.2f} ms",
+            "perf_hand_detect_ms": f"{self._performance_average('hand_detect_ms'):.2f} ms",
+            "perf_hand_tracker_ms": f"{self._performance_average('hand_tracker_ms'):.2f} ms",
+            "perf_spell_engine_ms": f"{self._performance_average('spell_engine_ms'):.2f} ms",
+            "perf_trial_engine_ms": f"{self._performance_average('trial_engine_ms'):.2f} ms",
+            "perf_overlay_ms": f"{self._performance_average('overlay_ms'):.2f} ms",
+        }
 
     def _debug_info(
         self,

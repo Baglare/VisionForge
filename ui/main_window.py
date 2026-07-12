@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 
-from PySide6.QtCore import Qt, QThread
+from PySide6.QtCore import Qt, QThread, QTimer
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -47,6 +47,22 @@ DEBUG_GROUPS = {
         ("Görüntü profili", (
             ("Algılama profili", "detection_profile"),
             ("Kamera aynalama", "mirror_camera"),
+        )),
+        ("Performans", (
+            ("Toplam pipeline", "perf_pipeline_total_ms"),
+            ("Ortalama frame", "perf_frame_total_ms"),
+            ("Tahmini işleme FPS", "perf_processing_fps"),
+            ("Kamera okuma", "perf_camera_read_ms"),
+            ("Yüz algılama", "perf_face_detect_ms"),
+            ("Yüz kimliği", "perf_face_identity_ms"),
+            ("QR tarama", "perf_qr_scan_ms"),
+            ("El algılama", "perf_hand_detect_ms"),
+            ("HandStateTracker", "perf_hand_tracker_ms"),
+            ("SpellEngine", "perf_spell_engine_ms"),
+            ("TrialEngine", "perf_trial_engine_ms"),
+            ("Overlay", "perf_overlay_ms"),
+            ("Qt dönüşümü", "perf_qt_conversion_ms"),
+            ("UI frame aralığı", "perf_ui_emit_interval_ms"),
         )),
     ),
     "Yüz / Doğrulama": (
@@ -108,12 +124,16 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(1180, 700)
         self._worker_thread: QThread | None = None
         self._worker: CameraWorker | None = None
+        self._frame_poll_timer = QTimer(self)
+        self._frame_poll_timer.setInterval(33)
+        self._frame_poll_timer.timeout.connect(self._poll_latest_frame)
         self._last_payload: dict = {}
         self._current_page = "live"
         self._nav_buttons: dict[str, QPushButton] = {}
         self._last_settings_state: tuple | None = None
         self._debug_value_labels: dict[str, QLabel] = {}
         self._last_debug_update = 0.0
+        self._last_status_update = 0.0
         self._camera_frame_received = False
         self._capture_resolution = "Bekleniyor"
         self._system_rows: dict[str, tuple[QLabel, QLabel]] = {}
@@ -1222,16 +1242,17 @@ class MainWindow(QMainWindow):
         self._worker = CameraWorker()
         self._worker.moveToThread(self._worker_thread)
         self._worker_thread.started.connect(self._worker.start)
-        self._worker.frame_ready.connect(self._on_frame_ready)
         self._worker.error.connect(self._on_worker_error)
         self._worker.finished.connect(self._worker_thread.quit)
         self._worker.finished.connect(self._worker.deleteLater)
         self._worker_thread.finished.connect(self._worker_thread.deleteLater)
         self._worker_thread.finished.connect(self._on_thread_finished)
         self._worker_thread.start()
+        self._frame_poll_timer.start()
 
     def _stop_worker(self) -> None:
         """Kamera worker'ını durdurur ve thread'in kapanmasını bekler."""
+        self._frame_poll_timer.stop()
         if self._worker is not None:
             self._worker.stop()
         if self._worker_thread is not None:
@@ -1245,6 +1266,15 @@ class MainWindow(QMainWindow):
         if self._worker is not None:
             self._worker.request_action(action)
 
+    def _poll_latest_frame(self) -> None:
+        """UI kuyruğu oluşturmadan worker'daki en güncel kareyi gösterir."""
+        worker = self._worker
+        if worker is None:
+            return
+        latest = worker.take_latest_frame()
+        if latest is not None:
+            self._on_frame_ready(*latest)
+
     def _on_frame_ready(self, image, payload: dict) -> None:
         """Worker'dan gelen kare ve durum bilgisini ilgili Qt sayfalarına uygular."""
         self._last_payload = payload
@@ -1252,6 +1282,10 @@ class MainWindow(QMainWindow):
         first_camera_frame = not self._camera_frame_received
         self._camera_frame_received = True
         self._capture_resolution = f"{image.width()}x{image.height()}"
+        now = time.monotonic()
+        if not first_camera_frame and now - self._last_status_update < 0.1:
+            return
+        self._last_status_update = now
         self.live_resolution_label.setText(self._capture_resolution)
         self.live_fps_label.setText(f"FPS {payload.get('debug_info', {}).get('fps', '-')}")
         self.live_camera_status_label.setText("Kamera aktif")
@@ -1573,6 +1607,7 @@ class MainWindow(QMainWindow):
 
     def _on_thread_finished(self) -> None:
         """Thread referanslarını temizler."""
+        self._frame_poll_timer.stop()
         self._worker = None
         self._worker_thread = None
         if self.isVisible():
