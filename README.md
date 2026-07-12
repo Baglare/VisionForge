@@ -26,6 +26,9 @@ Ana fikir, klasik webcam demosunu oyunlaştırılmış bir lonca arayüzüne dö
 - Q menüsü, kalıcı ayarlar, debug sayfaları ve sistem durumu paneli.
 - Türkçe karakter destekli UI metin çizimi.
 - Kısa bildirim/toast sistemi.
+- PySide6 tabanlı yeniden boyutlandırılabilir masaüstü kabuğu.
+- OpenCV pencere döngüsünden ayrılmış `VisionEngine` işleme çekirdeği.
+- Tam doğrulanmış kullanıcı için 10 saniyelik yüz kaybı toleransı.
 
 ## Demo Akışı
 
@@ -90,6 +93,12 @@ assets/guild_seals/<username>_seal.png
 
 Eksik model veya profil dosyaları uygulamayı çökertmez; Sistem Durumu panelinde uyarı olarak gösterilir.
 
+## Masaüstü Kabuğu ve Görüntü İşleme Akışı
+
+Uygulama artık PySide6 tabanlı masaüstü penceresinde açılır. `app.py` yalnızca Qt uygulamasını başlatır; kamera okuma ve görüntü işleme ana UI thread'ini kilitlememek için `CameraWorker` içinde çalışır. Her ham kamera karesi `VisionEngine` tarafından işlenir ve sonuç Qt panellerine aktarılır.
+
+Kamera görüntüsü merkezde en-boy oranı korunarak gösterilir. Kamera 1280x720 çözünürlük ister; kamera farklı çözünürlük döndürürse uygulama çökmez ve görüntü letterbox ile ölçeklenir. Ana `cv2.imshow` penceresi kullanılmaz.
+
 ## Kullanıcı Kaydı / Yüz Eğitimi
 
 E tuşu yeni büyücü kaydını başlatır. Kayıt iki kaynaktan yapılabilir:
@@ -117,6 +126,8 @@ Varsayılan doğrulama modu `QR + Yüz` modudur.
 - Yanlış QR: tam yetki verilmez.
 
 Q menüsünde `3` tuşu ile `QR + Yüz` ve `Yalnızca Yüz` modları arasında geçiş yapılır. Yalnızca Yüz modunda kayıtlı yüz stabil tanınırsa QR gerekmeden tam profil açılır.
+
+Tam doğrulanan kullanıcı kısa süre kameradan çıkarsa oturum hemen kapanmaz. 10 saniyelik tolerans sırasında profil, rütbe, açık büyüler ve Trial yetkisi korunur. Aynı kullanıcı süre dolmadan tekrar stabil tanınırsa QR yeniden istenmez. Süre dolarsa oturum Misafir durumuna düşer ve doğrulama yeniden gerekir.
 
 ## Büyüler
 
@@ -164,6 +175,13 @@ Rehber adımları: Kamera ve profil, Doğrulama, Büyü Kitabı, Donma, Ateş, K
 | D | Debug paneli açıkken debug sayfası değiştir |
 | Sağ/Sol ok | Büyü Kitabı sayfalarını değiştir |
 | 1-9 / 0 | Q menüsü açıkken ayarları değiştir |
+
+## Test Komutları
+
+```powershell
+python -m unittest
+python -m py_compile app.py vision_engine.py auth/verification_session.py ui/main_window.py ui/camera_worker.py ui/frame_view.py
+```
 
 ## Sistem Sınırlamaları
 

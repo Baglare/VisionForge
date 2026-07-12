@@ -8,12 +8,28 @@ Olası nedenler:
 - Kamera başka bir uygulama tarafından kullanılıyor olabilir.
 - Varsayılan kamera kapalı veya sistem tarafından engellenmiş olabilir.
 - Sanal ortam yanlış Python kurulumu ile açılmış olabilir.
+- PySide6 bağımlılığı kurulmamış olabilir.
 
 Çözüm:
 1. Kamera kullanan diğer uygulamaları kapat.
 2. Windows kamera izinlerini kontrol et.
 3. Proje klasöründe doğru sanal ortamı etkinleştir.
-4. `python app.py` komutunu yeniden çalıştır.
+4. `pip install -r requirements.txt` komutunu çalıştır.
+5. `python app.py` komutunu yeniden çalıştır.
+
+## PySide6 penceresi açılmıyor
+
+Belirti:
+- `ModuleNotFoundError: No module named 'PySide6'` hatası alınır.
+- Uygulama Qt penceresine geçmeden kapanır.
+
+Çözüm:
+1. Sanal ortamı etkinleştir.
+2. `pip install -r requirements.txt` komutunu çalıştır.
+3. `python app.py` ile tekrar dene.
+
+Not:
+- VisionForge artık ana OpenCV penceresi yerine PySide6 masaüstü kabuğu kullanır.
 
 ## Model dosyası eksik
 

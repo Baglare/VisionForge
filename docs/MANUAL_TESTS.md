@@ -285,3 +285,32 @@ Beklenen sonuç:
 - Otomatik üretilen QR/lonca mührü PNG dosyaları Git'e girmez.
 - `assets/guild_seals/.gitkeep` klasörü repoda tutar.
 - Kullanıcıya ait yerel yüz verileri, ayarlar ve model çıktıları Git dışında kalır.
+
+## PySide6 Masaüstü Kabuğu Testi
+
+1. `python app.py` ile uygulamayı başlat.
+2. PySide6 ana penceresinin açıldığını doğrula.
+3. Ayrı bir `cv2.imshow` OpenCV penceresi açılmadığını kontrol et.
+4. Pencereyi büyütüp küçült; kamera görüntüsünün yatay veya dikey esnemediğini kontrol et.
+5. Sol navigasyon, üst profil alanı, orta kamera alanı ve sağ durum panelinin görünür olduğunu kontrol et.
+6. `Esc` ile uygulamayı kapat.
+
+Beklenen sonuç:
+- Kamera işlenirken UI donmaz.
+- Kamera görüntüsü letterbox ile oranı korunarak gösterilir.
+- Kapanışta kamera ve worker thread temiz kapanır.
+
+## 10 Saniyelik Doğrulama Toleransı Testi
+
+1. Kayıtlı kullanıcıyı `QR + Yüz` veya `Yalnızca Yüz` modunda tam doğrula.
+2. Yüzünü kameradan çıkar.
+3. Üst doğrulama alanında `Oturum korunuyor` ve kalan saniye bilgisini kontrol et.
+4. 10 saniye dolmadan aynı yüzü tekrar göster.
+5. Aynı testi 10 saniyeden uzun bekleyerek tekrarla.
+6. Mümkünse başka kayıtlı kullanıcıyı stabil şekilde göster.
+
+Beklenen sonuç:
+- Grace period sırasında profil, rütbe, açık büyüler ve Trial yetkisi korunur.
+- Aynı kullanıcı süre dolmadan geri dönerse QR yeniden istenmez.
+- Süre dolunca Misafir yetkisine dönülür.
+- Başka kayıtlı kullanıcı eski oturumu devralmaz.
