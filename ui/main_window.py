@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 
 from PySide6.QtCore import Qt, QThread, QTimer
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtGui import QAction, QFontMetrics, QKeySequence
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -48,16 +48,18 @@ DEBUG_GROUPS = {
             ("Algılama profili", "detection_profile"),
             ("Kamera aynalama", "mirror_camera"),
         )),
-        ("Performans", (
-            ("Toplam pipeline", "perf_pipeline_total_ms"),
+        ("Engine performansı", (
             ("Ortalama frame", "perf_frame_total_ms"),
             ("Tahmini işleme FPS", "perf_processing_fps"),
-            ("Kamera okuma", "perf_camera_read_ms"),
             ("Yüz algılama", "perf_face_detect_ms"),
             ("Yüz kimliği", "perf_face_identity_ms"),
             ("QR tarama", "perf_qr_scan_ms"),
             ("El algılama", "perf_hand_detect_ms"),
             ("HandStateTracker", "perf_hand_tracker_ms"),
+        )),
+        ("I/O ve sunum", (
+            ("Toplam pipeline", "perf_pipeline_total_ms"),
+            ("Kamera okuma", "perf_camera_read_ms"),
             ("SpellEngine", "perf_spell_engine_ms"),
             ("TrialEngine", "perf_trial_engine_ms"),
             ("Overlay", "perf_overlay_ms"),
@@ -137,6 +139,7 @@ class MainWindow(QMainWindow):
         self._camera_frame_received = False
         self._capture_resolution = "Bekleniyor"
         self._system_rows: dict[str, tuple[QLabel, QLabel]] = {}
+        self._system_group_badges: dict[tuple[str, ...], QLabel] = {}
         self._enrollment_request_pending = False
 
         self.frame_view = FrameView()
@@ -214,6 +217,11 @@ class MainWindow(QMainWindow):
         self.spellbook_description_label = QLabel("Aktif profile ait büyü yetkilerini görüntüler.")
         self.spellbook_card = QFrame()
         self.spellbook_details_widget = QWidget()
+        self.spellbook_archive_labels: list[QLabel] = []
+        self.spellbook_access_summary = QLabel("Misafir erişimi · 1/3 büyü açık")
+        self.spellbook_cover_hint = QLabel(
+            "Lonca arşivindeki büyüleri, tetikleme hareketlerini ve rütbe gereksinimlerini inceleyin."
+        )
         self.previous_spellbook_button = QPushButton("Önceki")
         self.next_spellbook_button = QPushButton("Sonraki")
 
@@ -294,8 +302,8 @@ class MainWindow(QMainWindow):
 
         body = QWidget()
         body_layout = QHBoxLayout(body)
-        body_layout.setContentsMargins(12, 12, 12, 12)
-        body_layout.setSpacing(12)
+        body_layout.setContentsMargins(16, 16, 16, 16)
+        body_layout.setSpacing(16)
         body_layout.addWidget(self._navigation_panel(), 0)
 
         pages = {
@@ -320,8 +328,8 @@ class MainWindow(QMainWindow):
         bar = QFrame()
         bar.setObjectName("TopBar")
         layout = QHBoxLayout(bar)
-        layout.setContentsMargins(18, 9, 18, 9)
-        layout.setSpacing(9)
+        layout.setContentsMargins(24, 8, 24, 8)
+        layout.setSpacing(8)
 
         brand_block = QVBoxLayout()
         brand_block.setSpacing(0)
@@ -344,6 +352,10 @@ class MainWindow(QMainWindow):
         self.top_verification_label.setObjectName("VerificationBadge")
         self.top_grace_label.setProperty("state", "warning")
         self.top_grace_label.setObjectName("GraceBadge")
+        self.top_user_label.setMaximumWidth(176)
+        self.top_rank_label.setMaximumWidth(168)
+        self.top_verification_label.setMaximumWidth(208)
+        self.top_grace_label.setMaximumWidth(144)
         layout.addWidget(self.top_user_label)
         layout.addWidget(self.top_rank_label)
         layout.addWidget(self.top_verification_label)
@@ -354,10 +366,10 @@ class MainWindow(QMainWindow):
     def _navigation_panel(self) -> QWidget:
         panel = QFrame()
         panel.setObjectName("NavPanel")
-        panel.setFixedWidth(188)
+        panel.setFixedWidth(208)
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(9, 14, 9, 12)
-        layout.setSpacing(6)
+        layout.setContentsMargins(8, 16, 8, 16)
+        layout.setSpacing(8)
 
         heading = QLabel("ANA")
         heading.setObjectName("NavGroupLabel")
@@ -385,7 +397,6 @@ class MainWindow(QMainWindow):
         for page_name, title in primary_pages:
             add_navigation_button(page_name, title)
 
-        layout.addSpacing(6)
         add_navigation_button("enrollment", "Kayıt")
         layout.addStretch(1)
 
@@ -412,12 +423,12 @@ class MainWindow(QMainWindow):
         page = QWidget()
         layout = QHBoxLayout(page)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(12)
+        layout.setSpacing(16)
 
         camera_column = QVBoxLayout()
-        camera_column.setSpacing(7)
+        camera_column.setSpacing(8)
         camera_header = QHBoxLayout()
-        camera_header.setSpacing(7)
+        camera_header.setSpacing(8)
         live_title = QLabel("Canlı Görüş")
         live_title.setObjectName("LivePageTitle")
         for label in (self.live_resolution_label, self.live_fps_label, self.live_camera_status_label):
@@ -442,8 +453,8 @@ class MainWindow(QMainWindow):
         sidebar.setObjectName("LiveSidebar")
         sidebar.setWidgetResizable(True)
         sidebar.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        sidebar.setMinimumWidth(280)
-        sidebar.setMaximumWidth(330)
+        sidebar.setMinimumWidth(296)
+        sidebar.setMaximumWidth(328)
         sidebar_content = QWidget()
         sidebar_layout = QVBoxLayout(sidebar_content)
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
@@ -495,8 +506,8 @@ class MainWindow(QMainWindow):
     def _spellbook_page(self) -> QWidget:
         page = QWidget()
         page_layout = QVBoxLayout(page)
-        page_layout.setContentsMargins(8, 4, 8, 8)
-        page_layout.setSpacing(10)
+        page_layout.setContentsMargins(8, 0, 8, 8)
+        page_layout.setSpacing(16)
         title = QLabel("Büyü Kitabı")
         title.setObjectName("PageTitle")
         subtitle = QLabel("VisionForge Lonca Arşivi · Kapak, Donma, Ateş ve Kalkan")
@@ -510,42 +521,49 @@ class MainWindow(QMainWindow):
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         content = QWidget()
         content_layout = QVBoxLayout(content)
-        content_layout.setContentsMargins(0, 0, 4, 0)
-        content_layout.setSpacing(10)
+        content_layout.setContentsMargins(0, 0, 8, 0)
+        content_layout.setSpacing(16)
+
+        archive = QWidget()
+        archive.setObjectName("SpellbookArchive")
+        archive.setMaximumWidth(1200)
+        archive_layout = QHBoxLayout(archive)
+        archive_layout.setContentsMargins(0, 0, 0, 0)
+        archive_layout.setSpacing(16)
 
         self.spellbook_card.setObjectName("SpellbookCard")
-        self.spellbook_card.setMaximumWidth(900)
+        self.spellbook_card.setMinimumWidth(560)
+        self.spellbook_card.setMinimumHeight(500)
         self.spellbook_card.setProperty("state", "cover")
         card_layout = QVBoxLayout(self.spellbook_card)
-        card_layout.setContentsMargins(28, 22, 28, 24)
-        card_layout.setSpacing(12)
+        card_layout.setContentsMargins(32, 32, 32, 32)
+        card_layout.setSpacing(16)
 
         archive_header = QHBoxLayout()
         archive_label = QLabel("LONCA BÜYÜ ARŞİVİ")
         archive_label.setObjectName("CardTitle")
-        self.spellbook_page_label.setObjectName("PageBadge")
         archive_header.addWidget(archive_label)
         archive_header.addStretch(1)
-        archive_header.addWidget(self.spellbook_page_label)
         card_layout.addLayout(archive_header)
 
         self.spellbook_title_label.setObjectName("SpellbookTitle")
-        self.spellbook_title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.spellbook_status_label.setObjectName("SpellbookStatus")
         self.spellbook_status_label.setProperty("state", "cover")
-        self.spellbook_status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.spellbook_cover_hint.setObjectName("SpellbookCoverHint")
+        self.spellbook_cover_hint.setWordWrap(True)
         card_layout.addWidget(self.spellbook_title_label)
-        card_layout.addWidget(self.spellbook_status_label, 0, Qt.AlignmentFlag.AlignCenter)
+        card_layout.addWidget(self.spellbook_status_label, 0, Qt.AlignmentFlag.AlignLeft)
+        card_layout.addWidget(self.spellbook_cover_hint)
 
         details_layout = QVBoxLayout(self.spellbook_details_widget)
-        details_layout.setContentsMargins(0, 4, 0, 0)
-        details_layout.setSpacing(9)
+        details_layout.setContentsMargins(0, 8, 0, 0)
+        details_layout.setSpacing(16)
         meta_row = QHBoxLayout()
-        meta_row.setSpacing(9)
+        meta_row.setSpacing(16)
         type_card = QFrame()
         type_card.setObjectName("ArchiveMetaCard")
         type_layout = QVBoxLayout(type_card)
-        type_layout.setContentsMargins(12, 9, 12, 9)
+        type_layout.setContentsMargins(16, 16, 16, 16)
         type_key = QLabel("BÜYÜ TÜRÜ")
         type_key.setObjectName("CardTitle")
         self.spellbook_type_label.setObjectName("ArchiveMetaValue")
@@ -554,7 +572,7 @@ class MainWindow(QMainWindow):
         rank_card = QFrame()
         rank_card.setObjectName("ArchiveMetaCard")
         rank_layout = QVBoxLayout(rank_card)
-        rank_layout.setContentsMargins(12, 9, 12, 9)
+        rank_layout.setContentsMargins(16, 16, 16, 16)
         rank_key = QLabel("GEREKEN RÜTBE")
         rank_key.setObjectName("CardTitle")
         self.spellbook_rank_label.setObjectName("ArchiveRankValue")
@@ -571,7 +589,7 @@ class MainWindow(QMainWindow):
             section = QFrame()
             section.setObjectName("SectionCard")
             section_layout = QVBoxLayout(section)
-            section_layout.setContentsMargins(12, 9, 12, 9)
+            section_layout.setContentsMargins(16, 16, 16, 16)
             section_key = QLabel(section_title)
             section_key.setObjectName("CardTitle")
             value_label.setObjectName("ArchiveBodyText")
@@ -580,27 +598,59 @@ class MainWindow(QMainWindow):
             section_layout.addWidget(value_label)
             details_layout.addWidget(section)
         card_layout.addWidget(self.spellbook_details_widget)
+        card_layout.addStretch(1)
         self.spellbook_details_widget.hide()
-        content_layout.addWidget(self.spellbook_card, 0, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
+
+        navigation_card = QFrame()
+        navigation_card.setObjectName("SpellbookNavCard")
+        navigation_card.setMinimumWidth(240)
+        navigation_card.setMaximumWidth(280)
+        nav_layout = QVBoxLayout(navigation_card)
+        nav_layout.setContentsMargins(24, 24, 24, 24)
+        nav_layout.setSpacing(16)
+        nav_title = QLabel("ARŞİV GEZİNTİSİ")
+        nav_title.setObjectName("CardTitle")
+        self.spellbook_page_label.setObjectName("SpellbookPageIndicator")
+        self.spellbook_access_summary.setObjectName("SpellbookAccessSummary")
+        self.spellbook_access_summary.setWordWrap(True)
+        nav_layout.addWidget(nav_title)
+        nav_layout.addWidget(self.spellbook_page_label)
+        nav_layout.addWidget(self.spellbook_access_summary)
+
+        pages_title = QLabel("SAYFALAR")
+        pages_title.setObjectName("CardTitle")
+        nav_layout.addWidget(pages_title)
+        for index, page_name in enumerate(("Kapak", "Donma", "Ateş", "Kalkan")):
+            page_label = QLabel(f"{index:02d}   {page_name}")
+            page_label.setObjectName("SpellbookNavItem")
+            page_label.setProperty("state", "active" if index == 0 else "neutral")
+            self.spellbook_archive_labels.append(page_label)
+            nav_layout.addWidget(page_label)
+        nav_layout.addStretch(1)
+
+        controls = QHBoxLayout()
+        controls.setSpacing(8)
+        self.previous_spellbook_button.clicked.connect(lambda: self._change_spellbook_page(-1))
+        self.next_spellbook_button.clicked.connect(lambda: self._change_spellbook_page(1))
+        self.previous_spellbook_button.setProperty("buttonRole", "secondary")
+        self.next_spellbook_button.setProperty("buttonRole", "primary")
+        controls.addWidget(self.previous_spellbook_button)
+        controls.addWidget(self.next_spellbook_button)
+        nav_layout.addLayout(controls)
+
+        archive_layout.addWidget(self.spellbook_card, 3)
+        archive_layout.addWidget(navigation_card, 1)
+        content_layout.addWidget(archive)
         content_layout.addStretch(1)
         scroll.setWidget(content)
         page_layout.addWidget(scroll, 1)
-
-        controls = QHBoxLayout()
-        controls.addStretch(1)
-        self.previous_spellbook_button.clicked.connect(lambda: self._change_spellbook_page(-1))
-        self.next_spellbook_button.clicked.connect(lambda: self._change_spellbook_page(1))
-        controls.addWidget(self.previous_spellbook_button)
-        controls.addWidget(self.next_spellbook_button)
-        controls.addStretch(1)
-        page_layout.addLayout(controls)
         return page
 
     def _trial_page(self) -> QWidget:
         page = QWidget()
         page_layout = QVBoxLayout(page)
-        page_layout.setContentsMargins(8, 4, 8, 8)
-        page_layout.setSpacing(10)
+        page_layout.setContentsMargins(8, 0, 8, 8)
+        page_layout.setSpacing(16)
 
         title = QLabel("Trial")
         title.setObjectName("PageTitle")
@@ -616,17 +666,18 @@ class MainWindow(QMainWindow):
         content = QWidget()
         content_layout = QVBoxLayout(content)
         content_layout.setContentsMargins(0, 0, 4, 0)
-        content_layout.setSpacing(10)
+        content_layout.setSpacing(16)
 
         steps_row = QHBoxLayout()
-        steps_row.setSpacing(9)
+        steps_row.setSpacing(16)
         for index, spell_name in enumerate(TRIAL_STEPS, start=1):
             step_card = QFrame()
             step_card.setObjectName("TrialStepCard")
+            step_card.setMinimumHeight(176)
             step_card.setProperty("state", "pending")
             step_layout = QVBoxLayout(step_card)
-            step_layout.setContentsMargins(14, 12, 14, 12)
-            step_layout.setSpacing(7)
+            step_layout.setContentsMargins(16, 16, 16, 16)
+            step_layout.setSpacing(8)
             step_header = QHBoxLayout()
             index_label = QLabel(str(index))
             index_label.setObjectName("TrialStepIndex")
@@ -655,10 +706,10 @@ class MainWindow(QMainWindow):
         self.trial_progress_bar.setValue(0)
         self.trial_progress_bar.setFormat("%v/%m adım")
         summary_card = QFrame()
-        summary_card.setObjectName("SectionCard")
+        summary_card.setObjectName("TrialSummaryCard")
         summary_layout = QGridLayout(summary_card)
-        summary_layout.setContentsMargins(16, 14, 16, 14)
-        summary_layout.setHorizontalSpacing(20)
+        summary_layout.setContentsMargins(24, 24, 24, 24)
+        summary_layout.setHorizontalSpacing(24)
         summary_layout.setVerticalSpacing(8)
         summary_title = QLabel("TRIAL ÖZETİ")
         summary_title.setObjectName("CardTitle")
@@ -682,6 +733,7 @@ class MainWindow(QMainWindow):
         content_layout.addWidget(summary_card)
 
         self.trial_start_button.clicked.connect(lambda: self._send_action("start_trial"))
+        self.trial_start_button.setProperty("buttonRole", "primary")
         content_layout.addWidget(self.trial_start_button, 0, Qt.AlignmentFlag.AlignLeft)
         content_layout.addStretch(1)
         scroll.setWidget(content)
@@ -691,8 +743,8 @@ class MainWindow(QMainWindow):
     def _enrollment_page(self) -> QWidget:
         page = QWidget()
         page_layout = QVBoxLayout(page)
-        page_layout.setContentsMargins(8, 4, 8, 8)
-        page_layout.setSpacing(10)
+        page_layout.setContentsMargins(8, 0, 8, 8)
+        page_layout.setSpacing(16)
         title = QLabel("Kayıt / Yüz Eğitimi")
         title.setObjectName("PageTitle")
         subtitle = QLabel("Mevcut canlı kamera veya fotoğraf import akışıyla yerel büyücü profili oluşturun.")
@@ -705,16 +757,17 @@ class MainWindow(QMainWindow):
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         content = QWidget()
-        content_layout = QVBoxLayout(content)
-        content_layout.setContentsMargins(0, 0, 4, 0)
-        content_layout.setSpacing(10)
+        content_layout = QGridLayout(content)
+        content_layout.setContentsMargins(0, 0, 8, 0)
+        content_layout.setHorizontalSpacing(16)
+        content_layout.setVerticalSpacing(16)
 
         start_card = QFrame()
         start_card.setObjectName("EnrollmentCard")
         start_layout = QGridLayout(start_card)
-        start_layout.setContentsMargins(18, 16, 18, 16)
-        start_layout.setHorizontalSpacing(14)
-        start_layout.setVerticalSpacing(9)
+        start_layout.setContentsMargins(24, 24, 24, 24)
+        start_layout.setHorizontalSpacing(16)
+        start_layout.setVerticalSpacing(8)
         start_title = QLabel("KAYIT BAŞLANGICI")
         start_title.setObjectName("CardTitle")
         self.enrollment_username_input.setPlaceholderText("Büyücü kullanıcı adı")
@@ -731,6 +784,8 @@ class MainWindow(QMainWindow):
         self.enrollment_method_combo.currentTextChanged.connect(self._update_enrollment_method)
         self.enrollment_start_button.clicked.connect(self._start_enrollment_from_ui)
         self.enrollment_cancel_button.clicked.connect(self._cancel_enrollment_from_ui)
+        self.enrollment_start_button.setProperty("buttonRole", "primary")
+        self.enrollment_cancel_button.setProperty("buttonRole", "secondary")
         self.enrollment_validation_label.setObjectName("EnrollmentMessage")
         self.enrollment_validation_label.setWordWrap(True)
 
@@ -750,8 +805,8 @@ class MainWindow(QMainWindow):
         status_card = QFrame()
         status_card.setObjectName("EnrollmentCard")
         status_layout = QGridLayout(status_card)
-        status_layout.setContentsMargins(18, 16, 18, 16)
-        status_layout.setHorizontalSpacing(18)
+        status_layout.setContentsMargins(24, 24, 24, 24)
+        status_layout.setHorizontalSpacing(24)
         status_layout.setVerticalSpacing(8)
         status_title = QLabel("CANLI KAYIT DURUMU")
         status_title.setObjectName("CardTitle")
@@ -781,7 +836,7 @@ class MainWindow(QMainWindow):
         )
         for row, (label_text, value_label) in enumerate(status_rows, start=1):
             key_label = QLabel(label_text)
-            key_label.setProperty("role", "muted")
+            key_label.setObjectName("MetricKey")
             status_layout.addWidget(key_label, row, 0)
             status_layout.addWidget(value_label, row, 1)
         progress_row = len(status_rows) + 1
@@ -791,7 +846,7 @@ class MainWindow(QMainWindow):
 
         self.enrollment_completion_frame.setObjectName("EnrollmentResultCard")
         completion_layout = QVBoxLayout(self.enrollment_completion_frame)
-        completion_layout.setContentsMargins(18, 16, 18, 16)
+        completion_layout.setContentsMargins(24, 24, 24, 24)
         completion_layout.setSpacing(8)
         completion_title = QLabel("KAYIT TAMAMLANDI")
         completion_title.setObjectName("CardTitle")
@@ -803,10 +858,12 @@ class MainWindow(QMainWindow):
         completion_layout.addWidget(self.enrollment_qr_path)
         self.enrollment_completion_frame.hide()
 
-        content_layout.addWidget(start_card)
-        content_layout.addWidget(status_card)
-        content_layout.addWidget(self.enrollment_completion_frame)
-        content_layout.addStretch(1)
+        content_layout.addWidget(start_card, 0, 0, Qt.AlignmentFlag.AlignTop)
+        content_layout.addWidget(status_card, 0, 1, Qt.AlignmentFlag.AlignTop)
+        content_layout.addWidget(self.enrollment_completion_frame, 1, 0, 1, 2)
+        content_layout.setColumnStretch(0, 1)
+        content_layout.setColumnStretch(1, 1)
+        content_layout.setRowStretch(2, 1)
         scroll.setWidget(content)
         page_layout.addWidget(scroll, 1)
         self._update_enrollment_method()
@@ -815,8 +872,8 @@ class MainWindow(QMainWindow):
     def _settings_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setContentsMargins(8, 4, 8, 8)
-        layout.setSpacing(12)
+        layout.setContentsMargins(8, 0, 8, 8)
+        layout.setSpacing(16)
         title = QLabel("Ayarlar")
         title.setObjectName("PageTitle")
         subtitle = QLabel("Değişiklikler mevcut VisionEngine ayarlarına uygulanır ve kalıcı olarak kaydedilir.")
@@ -833,20 +890,26 @@ class MainWindow(QMainWindow):
         content_layout.setContentsMargins(0, 0, 4, 0)
         content_layout.setSpacing(10)
         cards = QWidget()
-        cards.setMaximumWidth(820)
+        cards.setMinimumWidth(880)
+        cards.setMaximumWidth(1120)
         cards_grid = QGridLayout(cards)
         cards_grid.setContentsMargins(0, 0, 0, 0)
-        cards_grid.setHorizontalSpacing(10)
-        cards_grid.setVerticalSpacing(10)
+        cards_grid.setHorizontalSpacing(16)
+        cards_grid.setVerticalSpacing(16)
 
         display_card = QFrame()
         display_card.setObjectName("SettingCard")
         display_layout = QVBoxLayout(display_card)
-        display_layout.setContentsMargins(18, 16, 18, 16)
-        display_layout.setSpacing(7)
+        display_layout.setContentsMargins(24, 24, 24, 24)
+        display_layout.setSpacing(8)
         display_title = QLabel("GÖRÜNTÜ VE OVERLAY")
         display_title.setObjectName("CardTitle")
         display_layout.addWidget(display_title)
+        display_help = QLabel("Kamera sunumunu ve görüntü üzerindeki yardımcı katmanları yönetin.")
+        display_help.setObjectName("CardDescription")
+        display_help.setWordWrap(True)
+        display_layout.addWidget(display_help)
+        display_layout.addSpacing(8)
         checkboxes = (
             (self.hand_debug_checkbox, "set_hand_debug"),
             (self.face_debug_checkbox, "set_face_debug"),
@@ -854,6 +917,7 @@ class MainWindow(QMainWindow):
             (self.spell_effects_checkbox, "set_spell_effects"),
         )
         for checkbox, action_name in checkboxes:
+            checkbox.setObjectName("SettingOption")
             checkbox.toggled.connect(
                 lambda checked, name=action_name: self._send_action(f"{name}:{int(checked)}")
             )
@@ -863,11 +927,16 @@ class MainWindow(QMainWindow):
         mode_card = QFrame()
         mode_card.setObjectName("SettingCard")
         mode_layout = QVBoxLayout(mode_card)
-        mode_layout.setContentsMargins(18, 16, 18, 16)
-        mode_layout.setSpacing(7)
+        mode_layout.setContentsMargins(24, 24, 24, 24)
+        mode_layout.setSpacing(8)
         mode_title = QLabel("ALGILAMA VE DOĞRULAMA")
         mode_title.setObjectName("CardTitle")
         mode_layout.addWidget(mode_title)
+        mode_help = QLabel("Doğrulama güvenliğini ve algılama davranış profilini seçin.")
+        mode_help.setObjectName("CardDescription")
+        mode_help.setWordWrap(True)
+        mode_layout.addWidget(mode_help)
+        mode_layout.addSpacing(8)
         verification_label = QLabel("Doğrulama modu")
         verification_label.setProperty("role", "muted")
         self.verification_mode_combo.addItems(["QR + Yüz", "Yalnızca Yüz"])
@@ -892,7 +961,7 @@ class MainWindow(QMainWindow):
         cards_grid.addWidget(mode_card, 0, 1)
         cards_grid.setColumnStretch(0, 1)
         cards_grid.setColumnStretch(1, 1)
-        content_layout.addWidget(cards, 0, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        content_layout.addWidget(cards, 0, Qt.AlignmentFlag.AlignTop)
         content_layout.addStretch(1)
         scroll.setWidget(content)
         layout.addWidget(scroll, 1)
@@ -901,8 +970,8 @@ class MainWindow(QMainWindow):
     def _system_page(self) -> QWidget:
         page = QWidget()
         page_layout = QVBoxLayout(page)
-        page_layout.setContentsMargins(8, 4, 8, 8)
-        page_layout.setSpacing(10)
+        page_layout.setContentsMargins(8, 0, 8, 8)
+        page_layout.setSpacing(16)
 
         header = QHBoxLayout()
         title = QLabel("Sistem Durumu")
@@ -910,6 +979,7 @@ class MainWindow(QMainWindow):
         self.system_refresh_button.clicked.connect(self._refresh_system_status)
         header.addWidget(title)
         header.addStretch(1)
+        self.system_refresh_button.setProperty("buttonRole", "secondary")
         header.addWidget(self.system_refresh_button)
         page_layout.addLayout(header)
 
@@ -924,8 +994,8 @@ class MainWindow(QMainWindow):
         content = QWidget()
         groups_grid = QGridLayout(content)
         groups_grid.setContentsMargins(0, 0, 4, 0)
-        groups_grid.setHorizontalSpacing(10)
-        groups_grid.setVerticalSpacing(10)
+        groups_grid.setHorizontalSpacing(16)
+        groups_grid.setVerticalSpacing(16)
         groups = (
             ("KAMERA VE ÇALIŞMA ZAMANI", ("Kamera",)),
             (
@@ -942,16 +1012,24 @@ class MainWindow(QMainWindow):
             group_card = QFrame()
             group_card.setObjectName("SectionCard")
             group_layout = QVBoxLayout(group_card)
-            group_layout.setContentsMargins(14, 12, 14, 12)
-            group_layout.setSpacing(7)
+            group_layout.setContentsMargins(16, 16, 16, 16)
+            group_layout.setSpacing(8)
             title_label = QLabel(group_title)
             title_label.setObjectName("CardTitle")
-            group_layout.addWidget(title_label)
+            group_header = QHBoxLayout()
+            group_badge = QLabel("Kontrol ediliyor")
+            group_badge.setObjectName("SystemGroupStatus")
+            group_badge.setProperty("state", "neutral")
+            group_header.addWidget(title_label)
+            group_header.addStretch(1)
+            group_header.addWidget(group_badge)
+            group_layout.addLayout(group_header)
+            self._system_group_badges[tuple(labels)] = group_badge
             for label_text in labels:
                 row = QFrame()
                 row.setObjectName("SystemRow")
                 row_layout = QGridLayout(row)
-                row_layout.setContentsMargins(10, 8, 10, 8)
+                row_layout.setContentsMargins(12, 8, 12, 8)
                 name_label = QLabel(label_text)
                 name_label.setObjectName("SystemItemName")
                 status_label = QLabel("Bekleniyor")
@@ -984,8 +1062,8 @@ class MainWindow(QMainWindow):
     def _debug_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setContentsMargins(8, 4, 8, 8)
-        layout.setSpacing(12)
+        layout.setContentsMargins(8, 0, 8, 8)
+        layout.setSpacing(16)
         title = QLabel("Debug")
         title.setObjectName("PageTitle")
         subtitle = QLabel("VisionEngine debug_info verileri · D ile bölüm değiştir")
@@ -1000,22 +1078,24 @@ class MainWindow(QMainWindow):
             scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
             content = QWidget()
             groups_layout = QGridLayout(content)
-            groups_layout.setContentsMargins(10, 10, 10, 10)
-            groups_layout.setHorizontalSpacing(10)
-            groups_layout.setVerticalSpacing(10)
+            groups_layout.setContentsMargins(16, 16, 16, 16)
+            groups_layout.setHorizontalSpacing(16)
+            groups_layout.setVerticalSpacing(16)
             for group_index, (group_title, fields) in enumerate(groups):
                 group_card = QFrame()
                 group_card.setObjectName("DebugGroupCard")
                 group_grid = QGridLayout(group_card)
-                group_grid.setContentsMargins(14, 12, 14, 12)
+                group_grid.setContentsMargins(16, 16, 16, 16)
                 group_grid.setHorizontalSpacing(16)
-                group_grid.setVerticalSpacing(7)
+                group_grid.setVerticalSpacing(8)
                 title_label = QLabel(group_title.upper())
                 title_label.setObjectName("CardTitle")
                 group_grid.addWidget(title_label, 0, 0, 1, 2)
                 for row, (display_name, key) in enumerate(fields, start=1):
                     name_label = QLabel(display_name)
                     name_label.setObjectName("DebugKey")
+                    name_label.setMinimumWidth(136)
+                    name_label.setMaximumWidth(176)
                     value_label = QLabel("-")
                     value_label.setObjectName("DebugValue")
                     value_label.setMinimumWidth(0)
@@ -1076,7 +1156,8 @@ class MainWindow(QMainWindow):
         frame = QFrame()
         frame.setObjectName("InfoCard")
         layout = QVBoxLayout(frame)
-        layout.setContentsMargins(14, 12, 14, 12)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(8)
         title_label = QLabel(title)
         title_label.setObjectName("CardTitle")
         layout.addWidget(title_label)
@@ -1093,15 +1174,15 @@ class MainWindow(QMainWindow):
         frame = QFrame()
         frame.setObjectName("InfoCard")
         layout = QVBoxLayout(frame)
-        layout.setContentsMargins(13, 11, 13, 11)
-        layout.setSpacing(7)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(8)
         title_label = QLabel(title)
         title_label.setObjectName("CardTitle")
         layout.addWidget(title_label)
 
         grid = QGridLayout()
         grid.setHorizontalSpacing(12)
-        grid.setVerticalSpacing(5)
+        grid.setVerticalSpacing(8)
         for row, (key, value_label) in enumerate(rows):
             key_label = QLabel(key)
             key_label.setObjectName("MetricKey")
@@ -1113,6 +1194,7 @@ class MainWindow(QMainWindow):
         layout.addLayout(grid)
         if action_button is not None:
             action_button.setProperty("compact", True)
+            action_button.setProperty("buttonRole", "secondary")
             layout.addWidget(action_button)
         return frame
 
@@ -1310,9 +1392,9 @@ class MainWindow(QMainWindow):
         if rank == "-":
             rank = "Misafir Büyücü"
         verification = payload.get("verification_status") or "Bekleniyor"
-        self.top_user_label.setText(username)
-        self.top_rank_label.setText(rank)
-        self.top_verification_label.setText(verification)
+        self._set_elided_badge_text(self.top_user_label, username)
+        self._set_elided_badge_text(self.top_rank_label, rank)
+        self._set_elided_badge_text(self.top_verification_label, verification)
         self.live_user_label.setText(username)
         self.live_rank_label.setText(rank)
         self.session_label.setText(verification)
@@ -1320,7 +1402,10 @@ class MainWindow(QMainWindow):
         grace = float(payload.get("grace_remaining_seconds", 0.0) or 0.0)
         in_grace = payload.get("session_state") == "GRACE_PERIOD" and grace > 0
         self.top_grace_label.setVisible(in_grace)
-        self.top_grace_label.setText(f"Grace: {grace:.1f} sn" if in_grace else "")
+        self._set_elided_badge_text(
+            self.top_grace_label,
+            f"Grace: {grace:.1f} sn" if in_grace else "",
+        )
         self.live_grace_label.setText(f"{grace:.1f} sn" if in_grace else "Pasif")
 
         verification_lower = verification.lower()
@@ -1351,6 +1436,12 @@ class MainWindow(QMainWindow):
                 f"Doğrulama: {verification}\n"
                 "Yeni kayıt başlatmak için Kayıt Başlat düğmesini veya E tuşunu kullan."
             )
+
+    @staticmethod
+    def _set_elided_badge_text(label: QLabel, text: str) -> None:
+        label.setToolTip(text)
+        available_width = max(48, label.maximumWidth() - 24)
+        label.setText(QFontMetrics(label.font()).elidedText(text, Qt.TextElideMode.ElideRight, available_width))
 
     def _update_spell(self, payload: dict) -> None:
         cooldown = float(payload.get("cooldown", 0.0) or 0.0)
@@ -1405,6 +1496,17 @@ class MainWindow(QMainWindow):
 
     def _update_spellbook(self, payload: dict) -> None:
         page = max(0, min(3, int(payload.get("spellbook_page", 0) or 0)))
+        allowed_set = set(payload.get("allowed_spells", []))
+        open_count = len(allowed_set.intersection(TRIAL_STEPS))
+        self.spellbook_access_summary.setText(f"Profil yetkisi · {open_count}/3 büyü açık")
+        for index, label in enumerate(self.spellbook_archive_labels):
+            if index == page:
+                nav_state = "active"
+            elif index == 0 or SPELLBOOK_PAGES[index] in allowed_set:
+                nav_state = "open"
+            else:
+                nav_state = "locked"
+            self._set_widget_state(label, nav_state)
         self.previous_spellbook_button.setEnabled(page > 0)
         self.next_spellbook_button.setEnabled(page < 3)
 
@@ -1420,7 +1522,7 @@ class MainWindow(QMainWindow):
             return
 
         details = _SPELLBOOK_DETAILS[spell_name]
-        is_open = spell_name in set(payload.get("allowed_spells", []))
+        is_open = spell_name in allowed_set
         self.spellbook_page_label.setText(f"Sayfa {page}/3")
         self.spellbook_title_label.setText(spell_name)
         self._set_spellbook_status("Durum: Açık" if is_open else "Durum: Kilitli", "open" if is_open else "locked")
@@ -1506,6 +1608,7 @@ class MainWindow(QMainWindow):
                 f"Lonca mührü oluşturuldu\nToplam kullanılan örnek: {sample_count}"
             )
             self.enrollment_qr_path.setText(qr_path)
+            self.enrollment_qr_path.setToolTip(qr_path)
 
         self.enrollment_validation_label.setText("")
 
@@ -1514,6 +1617,7 @@ class MainWindow(QMainWindow):
         self._set_widget_state(self.spellbook_status_label, state)
         self._set_widget_state(self.spellbook_card, state)
         self.spellbook_details_widget.setVisible(state != "cover")
+        self.spellbook_cover_hint.setVisible(state == "cover")
 
     def _update_settings(self, payload: dict, force: bool = False) -> None:
         settings = payload.get("settings", {})
@@ -1556,11 +1660,23 @@ class MainWindow(QMainWindow):
         )
         self._set_widget_state(camera_status, "ok" if self._camera_frame_received else "pending")
 
-        for item in get_system_status():
+        system_items = {item.label: item for item in get_system_status()}
+        for item in system_items.values():
             status_label, hint_label = self._system_rows[item.label]
             status_label.setText(item.status_text)
             hint_label.setText(item.hint or item.importance_text)
+            hint_label.setToolTip(item.hint or item.importance_text)
             self._set_widget_state(status_label, "ok" if item.exists else "warning")
+
+        for labels, badge in self._system_group_badges.items():
+            ready = all(
+                self._camera_frame_received
+                if label == "Kamera"
+                else bool(system_items.get(label) and system_items[label].exists)
+                for label in labels
+            )
+            badge.setText("Hazır" if ready else "Kontrol gerekli")
+            self._set_widget_state(badge, "verified" if ready else "warning")
 
     def _update_debug(self, payload: dict, force: bool = False) -> None:
         if self._current_page != "debug" and not force:
@@ -1579,7 +1695,9 @@ class MainWindow(QMainWindow):
         )
         debug["trial_completed_steps"] = ", ".join(payload.get("trial_completed_steps", [])) or "-"
         for key, label in self._debug_value_labels.items():
-            label.setText(str(debug.get(key, "-")))
+            value = str(debug.get(key, "-"))
+            label.setText(value)
+            label.setToolTip(value)
 
     def _set_widget_state(self, widget: QWidget, state: str) -> None:
         if widget.property("state") == state:

@@ -1,420 +1,428 @@
-"""VisionForge PySide6 arayüzü için ortak koyu tema."""
+"""VisionForge PySide6 arayüzü için ortak arcane-tech tasarım sistemi."""
 
 
 def application_stylesheet() -> str:
-    """Uygulamanın sade, tekrar kullanılabilir Qt stilini döndürür."""
+    """Uygulamanın tekrar kullanılabilir koyu Qt stilini döndürür."""
     return """
         QMainWindow, QWidget {
-            background-color: #0B1017;
-            color: #E6EDF3;
-            font-family: "Segoe UI", Arial;
+            background-color: #080D13;
+            color: #EDF3F7;
+            font-family: "Segoe UI Variable", "Segoe UI", Arial;
             font-size: 13px;
         }
-        QFrame#TopBar, QFrame#NavPanel, QFrame#InfoCard,
-        QFrame#PageCard, QFrame#SpellbookCard, QFrame#SystemRow,
-        QFrame#CameraCard, QFrame#EnrollmentCard, QFrame#SettingCard,
-        QFrame#NavFooter {
-            background-color: #121A24;
-            border: 1px solid #1E2B3A;
-            border-radius: 10px;
+        QWidget:disabled {
+            color: #526474;
+        }
+        QLabel {
+            background-color: transparent;
         }
         QFrame#TopBar {
-            background-color: #0E151E;
+            background-color: #0C141D;
+            border: 0;
+            border-bottom: 1px solid #1B2A37;
             border-radius: 0;
-            border-width: 0 0 1px 0;
-            border-color: #1B2836;
         }
         QFrame#NavPanel {
-            background-color: #0E151E;
-            border-color: #1B2836;
+            background-color: #0C141D;
+            border: 1px solid #1A2936;
+            border-radius: 12px;
         }
         QFrame#NavFooter {
-            background-color: #0B1119;
-            border-color: #1B2836;
-            border-radius: 7px;
-        }
-        QFrame#InfoCard {
-            background-color: #121A24;
-            border-color: #1B2836;
-        }
-        QFrame#CameraCard {
-            background-color: #080C12;
-            border-color: #263747;
+            background-color: #0A1119;
+            border: 1px solid #172532;
             border-radius: 9px;
         }
         QLabel#BrandLabel {
             color: #2DD4BF;
-            font-size: 18px;
+            font-size: 19px;
             font-weight: 700;
         }
         QLabel#BrandSubtitle {
-            color: #66778B;
+            color: #6F8192;
             font-size: 10px;
         }
-        QLabel#LivePageTitle {
-            color: #E6EDF3;
-            font-size: 17px;
-            font-weight: 700;
-        }
         QLabel#PageTitle {
-            color: #E6EDF3;
-            font-size: 22px;
+            color: #EDF3F7;
+            font-size: 24px;
             font-weight: 700;
         }
-        QLabel#CardTitle, QLabel[role="muted"] {
-            color: #91A0B3;
+        QLabel#LivePageTitle {
+            color: #EDF3F7;
+            font-size: 18px;
+            font-weight: 650;
+        }
+        QLabel[role="muted"], QLabel#CardDescription {
+            color: #9AABBA;
+            font-size: 12px;
         }
         QLabel#CardTitle {
+            color: #9AABBA;
             font-size: 11px;
             font-weight: 700;
             letter-spacing: 1px;
         }
         QLabel#NavGroupLabel {
-            color: #66778B;
+            color: #6F8192;
             font-size: 10px;
             font-weight: 700;
-            padding: 2px 10px 4px 10px;
+            letter-spacing: 1px;
+            padding: 0 12px 4px 12px;
         }
         QLabel#ShortcutHint {
-            color: #66778B;
+            color: #6F8192;
             font-size: 10px;
-            padding: 5px 7px;
+            padding: 6px 8px;
         }
+
         QLabel[badge="true"] {
-            background-color: #182330;
-            border: 1px solid #263747;
-            border-radius: 7px;
-            padding: 5px 9px;
+            background-color: #111B26;
+            border: 1px solid #223442;
+            border-radius: 9px;
+            padding: 5px 10px;
             font-size: 11px;
         }
-        QLabel[badge="true"][state="neutral"] {
-            color: #B4C0CE;
-        }
+        QLabel[badge="true"][state="neutral"] { color: #9AABBA; }
         QLabel[badge="true"][state="rank"] {
-            color: #D4A857;
-            border-color: #57492D;
+            color: #E0B15A;
+            border-color: #594A2F;
+            background-color: #1B1A15;
         }
         QLabel[badge="true"][state="verified"] {
             color: #2DD4BF;
-            border-color: #245C58;
+            border-color: #285B58;
+            background-color: #10211F;
         }
         QLabel[badge="true"][state="warning"] {
-            color: #F59E0B;
-            border-color: #65461D;
+            color: #F4B84A;
+            border-color: #5D4827;
+            background-color: #211B11;
         }
         QLabel[badge="true"][state="error"] {
-            color: #EF4444;
-            border-color: #652D34;
+            color: #EF646A;
+            border-color: #623239;
+            background-color: #231317;
         }
+
+        QPushButton {
+            min-height: 20px;
+            background-color: #162432;
+            color: #EDF3F7;
+            border: 1px solid #294050;
+            border-radius: 9px;
+            padding: 8px 14px;
+            font-weight: 600;
+        }
+        QPushButton:hover {
+            background-color: #192A39;
+            border-color: #3B5A6B;
+        }
+        QPushButton:pressed {
+            background-color: #111B26;
+            border-color: #2DD4BF;
+        }
+        QPushButton:focus {
+            border: 1px solid #2DD4BF;
+        }
+        QPushButton:disabled {
+            color: #526474;
+            background-color: #0D151D;
+            border-color: #1A2936;
+        }
+        QPushButton[buttonRole="primary"] {
+            color: #061210;
+            background-color: #2DD4BF;
+            border-color: #2DD4BF;
+            font-weight: 700;
+        }
+        QPushButton[buttonRole="primary"]:hover { background-color: #42DDC9; }
+        QPushButton[buttonRole="primary"]:pressed { background-color: #21BCA9; }
+        QPushButton[buttonRole="secondary"] { background-color: #111B26; }
+        QPushButton[compact="true"] { padding: 6px 10px; font-size: 11px; }
+        QPushButton[nav="true"] {
+            min-height: 24px;
+            text-align: left;
+            color: #9AABBA;
+            background-color: transparent;
+            border: 1px solid transparent;
+            border-left: 3px solid transparent;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-weight: 500;
+        }
+        QPushButton[nav="true"]:hover {
+            color: #EDF3F7;
+            background-color: #111B26;
+            border-color: #1A2B38;
+            border-left-color: transparent;
+        }
+        QPushButton[nav="true"]:pressed { background-color: #0E1922; }
+        QPushButton[nav="true"]:checked {
+            color: #2DD4BF;
+            background-color: #14252B;
+            border-color: #1B3439;
+            border-left-color: #2DD4BF;
+            font-weight: 700;
+        }
+        QPushButton[nav="true"]:focus { border-color: #2DD4BF; }
+
+        QFrame#InfoCard, QFrame#PageCard, QFrame#EnrollmentCard,
+        QFrame#SettingCard, QFrame#SectionCard, QFrame#DebugGroupCard,
+        QFrame#ArchiveMetaCard, QFrame#TrialStepCard, QFrame#TrialSummaryCard,
+        QFrame#SpellbookNavCard {
+            background-color: #111B26;
+            border: 1px solid #1C2C39;
+            border-radius: 12px;
+        }
+        QFrame#InfoCard:hover, QFrame#SettingCard:hover {
+            border-color: #29404E;
+        }
+        QFrame#CameraCard {
+            background-color: #05090E;
+            border: 1px solid #243846;
+            border-radius: 12px;
+        }
+        QFrame#EnrollmentResultCard {
+            background-color: #10211F;
+            border: 1px solid #285B58;
+            border-radius: 12px;
+        }
+        QFrame#SectionCard QLabel, QFrame#DebugGroupCard QLabel,
+        QFrame#ArchiveMetaCard QLabel, QFrame#TrialStepCard QLabel,
+        QFrame#TrialSummaryCard QLabel, QFrame#SpellbookCard QLabel,
+        QFrame#SpellbookNavCard QLabel, QFrame#SystemRow QLabel {
+            background: transparent;
+        }
+
         QLabel#CameraMeta {
-            color: #91A0B3;
-            background-color: #121A24;
-            border: 1px solid #1E2B3A;
-            border-radius: 6px;
-            padding: 4px 7px;
+            color: #9AABBA;
+            background-color: #111B26;
+            border: 1px solid #1C2C39;
+            border-radius: 8px;
+            padding: 4px 8px;
             font-size: 10px;
         }
-        QLabel#CameraMeta[state="verified"] {
-            color: #2DD4BF;
-        }
-        QLabel#CameraMeta[state="error"] {
-            color: #EF4444;
-        }
-        QLabel#MetricKey {
-            color: #91A0B3;
-            font-size: 11px;
-        }
+        QLabel#CameraMeta[state="verified"] { color: #2DD4BF; border-color: #285B58; }
+        QLabel#CameraMeta[state="error"] { color: #EF646A; border-color: #623239; }
+        QLabel#MetricKey { color: #6F8192; font-size: 11px; }
         QLabel#MetricValue {
-            color: #E6EDF3;
+            color: #EDF3F7;
             font-size: 12px;
             font-weight: 600;
         }
-        QLabel#MetricValue[state="neutral"] {
-            color: #B4C0CE;
+        QLabel#MetricValue[state="neutral"] { color: #9AABBA; }
+        QLabel#MetricValue[state="verified"] { color: #2DD4BF; }
+        QLabel#MetricValue[state="warning"] { color: #F4B84A; }
+        QLabel#MetricValue[state="error"] { color: #EF646A; }
+        QLabel#MetricValue[state="rank"] { color: #E0B15A; }
+        QLabel#NotificationText { color: #9AABBA; font-size: 11px; }
+
+        QFrame#SpellbookCard {
+            background-color: #111B26;
+            border: 1px solid #29404E;
+            border-radius: 14px;
         }
-        QLabel#MetricValue[state="verified"] {
+        QFrame#SpellbookCard[state="cover"] { border-color: #344A58; }
+        QFrame#SpellbookCard[state="open"] { border-color: #2A6962; background-color: #0E1D20; }
+        QFrame#SpellbookCard[state="locked"] { border-color: #4B4538; background-color: #15191E; }
+        QLabel#SpellbookTitle {
+            color: #E0B15A;
+            font-size: 34px;
+            font-weight: 700;
+        }
+        QLabel#SpellbookStatus {
+            border-radius: 9px;
+            padding: 5px 10px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        QLabel#SpellbookStatus[state="open"] { color: #2DD4BF; background-color: #12322F; }
+        QLabel#SpellbookStatus[state="locked"] { color: #F4B84A; background-color: #2A2114; }
+        QLabel#SpellbookStatus[state="cover"] { color: #9AABBA; background-color: #162432; }
+        QLabel#SpellbookCoverHint {
+            color: #9AABBA;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        QLabel#ArchiveMetaValue { color: #EDF3F7; font-size: 15px; font-weight: 650; }
+        QLabel#ArchiveRankValue { color: #E0B15A; font-size: 15px; font-weight: 700; }
+        QLabel#ArchiveBodyText { color: #C5D0D8; font-size: 13px; }
+        QLabel#SpellbookPageIndicator {
+            color: #EDF3F7;
+            font-size: 20px;
+            font-weight: 700;
+        }
+        QLabel#SpellbookAccessSummary {
+            color: #9AABBA;
+            background-color: #0D1720;
+            border: 1px solid #1B2D3A;
+            border-radius: 9px;
+            padding: 10px;
+        }
+        QLabel#SpellbookNavItem {
+            color: #6F8192;
+            border-left: 2px solid #223442;
+            padding: 8px 10px;
+            font-weight: 600;
+        }
+        QLabel#SpellbookNavItem[state="open"] { color: #9AABBA; }
+        QLabel#SpellbookNavItem[state="locked"] { color: #566879; }
+        QLabel#SpellbookNavItem[state="active"] {
             color: #2DD4BF;
+            background-color: #14252B;
+            border-left-color: #2DD4BF;
         }
-        QLabel#MetricValue[state="warning"] {
-            color: #F59E0B;
-        }
-        QLabel#MetricValue[state="error"] {
-            color: #EF4444;
-        }
-        QLabel#MetricValue[state="rank"] {
-            color: #D4A857;
-        }
-        QLabel#NotificationText {
-            color: #B4C0CE;
+
+        QLabel#TrialStepIndex {
+            min-width: 18px;
+            color: #9AABBA;
+            background-color: #162432;
+            border: 1px solid #29404E;
+            border-radius: 9px;
+            padding: 3px 8px;
             font-size: 11px;
+            font-weight: 700;
         }
-        QFrame#EnrollmentResultCard {
-            background-color: #12231F;
-            border: 1px solid #245C58;
-            border-radius: 10px;
+        QLabel#TrialStepName { color: #EDF3F7; font-size: 17px; font-weight: 700; }
+        QLabel#TrialStepTrigger { color: #9AABBA; font-size: 12px; }
+        QFrame#TrialStepCard[state="complete"] { background-color: #0F211F; border-color: #285B58; }
+        QFrame#TrialStepCard[state="active"] { background-color: #211C13; border-color: #806431; }
+        QFrame#TrialStepCard[state="locked"] { background-color: #0D151D; border-color: #253442; }
+        QLabel#TrialStepStatus, QLabel#TrialSummaryStatus,
+        QLabel#SystemGroupStatus, QLabel#EnrollmentStatus, QLabel#EnrollmentMessage {
+            border-radius: 8px;
+            padding: 4px 9px;
+            font-size: 10px;
+            font-weight: 700;
         }
-        QLabel#EnrollmentStatus,
-        QLabel#EnrollmentMessage {
-            border-radius: 6px;
-            padding: 5px 8px;
+        QLabel#TrialStepStatus[state="complete"], QLabel#TrialSummaryStatus[state="verified"],
+        QLabel#SystemGroupStatus[state="verified"], QLabel#EnrollmentStatus[state="verified"] {
+            color: #2DD4BF; background-color: #12322F;
         }
-        QLabel#EnrollmentStatus[state="neutral"],
-        QLabel#EnrollmentMessage[state="neutral"] {
-            color: #91A0B3;
-            background-color: #182330;
-        }
-        QLabel#EnrollmentStatus[state="verified"] {
-            color: #2DD4BF;
-            background-color: #142B29;
-        }
-        QLabel#EnrollmentStatus[state="warning"],
+        QLabel#TrialStepStatus[state="active"], QLabel#TrialSummaryStatus[state="warning"],
+        QLabel#SystemGroupStatus[state="warning"], QLabel#EnrollmentStatus[state="warning"],
         QLabel#EnrollmentMessage[state="warning"] {
-            color: #F59E0B;
-            background-color: #2B2114;
+            color: #F4B84A; background-color: #2A2114;
         }
-        QLabel#EnrollmentMessage[state="error"] {
-            color: #EF4444;
-            background-color: #2A171C;
+        QLabel#TrialStepStatus[state="locked"] { color: #F4B84A; background-color: #211A11; }
+        QLabel#TrialStepStatus[state="pending"], QLabel#TrialSummaryStatus[state="neutral"],
+        QLabel#SystemGroupStatus[state="neutral"], QLabel#EnrollmentStatus[state="neutral"],
+        QLabel#EnrollmentMessage[state="neutral"] {
+            color: #9AABBA; background-color: #162432;
         }
-    /* Shared archive, status and diagnostic page language. */
-    QFrame#SectionCard,
-    QFrame#DebugGroupCard,
-    QFrame#ArchiveMetaCard,
-    QFrame#TrialStepCard {
-        background: #121A24;
-        border: 1px solid #1E2B3A;
-        border-radius: 9px;
-    }
-    QFrame#SpellbookCard[state="cover"] { background: #121A24; border-color: #263443; }
-    QFrame#SpellbookCard[state="open"] { background: #101D20; border-color: #2A625E; }
-    QFrame#SpellbookCard[state="locked"] { background: #101720; border-color: #344252; }
-    QFrame#SectionCard QLabel,
-    QFrame#DebugGroupCard QLabel,
-    QFrame#ArchiveMetaCard QLabel,
-    QFrame#TrialStepCard QLabel,
-    QFrame#SpellbookCard QLabel,
-    QFrame#SystemRow QLabel {
-        background: transparent;
-    }
-    QLabel#PageBadge,
-    QLabel#TrialStepIndex {
-        background: #182330;
-        color: #91A0B3;
-        border: 1px solid #263747;
-        border-radius: 8px;
-        padding: 3px 8px;
-        font-size: 10px;
-        font-weight: 700;
-    }
-    QLabel#ArchiveMetaValue { color: #E6EDF3; font-size: 13px; font-weight: 600; }
-    QLabel#ArchiveRankValue { color: #D4A857; font-size: 13px; font-weight: 700; }
-    QLabel#ArchiveBodyText { color: #C1CBD6; font-size: 12px; }
+        QLabel#EnrollmentMessage[state="error"] { color: #EF646A; background-color: #28171B; }
 
-    QFrame#TrialStepCard[state="complete"] { background: #10201E; border-color: #28635D; }
-    QFrame#TrialStepCard[state="active"] { background: #211D15; border-color: #80652F; }
-    QFrame#TrialStepCard[state="locked"] { background: #10161E; border-color: #26313E; }
-    QLabel#TrialStepName { color: #E6EDF3; font-size: 15px; font-weight: 700; }
-    QLabel#TrialStepTrigger { color: #91A0B3; font-size: 11px; }
-    QLabel#TrialStepStatus,
-    QLabel#TrialSummaryStatus {
-        border-radius: 8px;
-        padding: 3px 8px;
-        font-size: 10px;
-        font-weight: 700;
-    }
-    QLabel#TrialStepStatus[state="complete"],
-    QLabel#TrialSummaryStatus[state="verified"] { background: #123A35; color: #2DD4BF; }
-    QLabel#TrialStepStatus[state="active"],
-    QLabel#TrialSummaryStatus[state="warning"] { background: #3B2B12; color: #F59E0B; }
-    QLabel#TrialStepStatus[state="locked"] { background: #202936; color: #78889B; }
-    QLabel#TrialStepStatus[state="pending"],
-    QLabel#TrialSummaryStatus[state="neutral"] { background: #182330; color: #91A0B3; }
+        QFrame#SystemRow {
+            background-color: #0D1720;
+            border: 1px solid #182A37;
+            border-radius: 9px;
+        }
+        QLabel#SystemItemName { color: #EDF3F7; font-size: 12px; font-weight: 650; }
+        QLabel#SystemHint { color: #6F8192; font-size: 11px; }
+        QLabel#StatusValue { font-size: 11px; font-weight: 700; }
+        QLabel#StatusValue[state="ok"] { color: #2DD4BF; }
+        QLabel#StatusValue[state="warning"] { color: #F4B84A; }
+        QLabel#StatusValue[state="pending"] { color: #9AABBA; }
 
-    QFrame#SystemRow {
-        background: #0E151E;
-        border: 1px solid #1B2836;
-        border-radius: 7px;
-    }
-    QLabel#SystemItemName { color: #E6EDF3; font-size: 12px; font-weight: 600; }
-    QLabel#SystemHint,
-    QLabel#DebugKey { color: #91A0B3; font-size: 11px; }
-    QLabel#DebugValue {
-        background: #0E151E;
-        color: #E6EDF3;
-        border-radius: 5px;
-        padding: 4px 7px;
-        font-size: 11px;
-    }
-
-    QLabel#SpellbookTitle {
-            color: #D4A857;
-            font-size: 28px;
-            font-weight: 700;
-        }
-        QLabel#SpellbookStatus[state="open"] {
-            color: #2DD4BF;
-            font-size: 16px;
-            font-weight: 700;
-        }
-        QLabel#SpellbookStatus[state="locked"] {
-            color: #F59E0B;
-            font-size: 16px;
-            font-weight: 700;
-        }
-        QLabel#SpellbookStatus[state="cover"] {
-            color: #91A0B3;
-            font-size: 16px;
-            font-weight: 700;
-        }
-        QLabel#StatusValue[state="ok"], QLabel#TrialStep[state="complete"] {
-            color: #2DD4BF;
-            font-weight: 700;
-        }
-        QLabel#StatusValue[state="warning"] {
-            color: #F59E0B;
-            font-weight: 700;
-        }
-        QLabel#StatusValue[state="pending"], QLabel#TrialStep[state="pending"] {
-            color: #91A0B3;
-        }
-        QLabel#TrialStep[state="active"] {
-            color: #D4A857;
-            font-weight: 700;
-        }
-        QPushButton {
-            background-color: #182330;
-            color: #E6EDF3;
-            border: 1px solid #2A3A4D;
+        QLabel#DebugKey { color: #6F8192; font-size: 11px; }
+        QLabel#DebugValue {
+            color: #D8E3EA;
+            background-color: #0D1720;
+            border: 1px solid #172834;
             border-radius: 7px;
-            padding: 9px 12px;
+            padding: 5px 8px;
+            font-family: "Cascadia Mono", "Consolas", monospace;
+            font-size: 10px;
         }
-        QPushButton:hover {
-            border-color: #2DD4BF;
-            background-color: #1D2C3A;
-        }
-        QPushButton:pressed {
-            background-color: #121A24;
-        }
-        QPushButton:disabled {
-            color: #526174;
-            border-color: #202C3A;
-            background-color: #101821;
-        }
-        QPushButton[nav="true"] {
-            text-align: left;
-            border-color: transparent;
-            background-color: transparent;
+
+        QCheckBox#SettingOption {
+            color: #D8E3EA;
+            background-color: #0D1720;
+            border: 1px solid #182A37;
+            border-radius: 9px;
             padding: 10px 12px;
-            color: #A8B5C4;
+            spacing: 10px;
         }
-        QPushButton[nav="true"]:hover {
-            background-color: #16212D;
-            border-color: transparent;
-            color: #E6EDF3;
-        }
-        QPushButton[nav="true"]:pressed {
-            background-color: #111B25;
-        }
-        QPushButton[nav="true"]:checked {
-            color: #2DD4BF;
-            background-color: #172B31;
-            border-left: 3px solid #2DD4BF;
-            font-weight: 700;
-        }
-        QPushButton[compact="true"] {
-            text-align: center;
-            padding: 7px 9px;
-            font-size: 11px;
-        }
-        QCheckBox {
-            spacing: 9px;
-            padding: 7px 0;
-        }
+        QCheckBox#SettingOption:hover { border-color: #294757; }
+        QCheckBox { spacing: 10px; }
         QCheckBox::indicator {
             width: 18px;
             height: 18px;
-            border: 1px solid #526174;
-            border-radius: 4px;
-            background-color: #0B1017;
+            background-color: #080D13;
+            border: 1px solid #4A5E6D;
+            border-radius: 5px;
         }
-        QCheckBox::indicator:checked {
-            background-color: #2DD4BF;
-            border-color: #2DD4BF;
+        QCheckBox::indicator:hover { border-color: #2DD4BF; }
+        QCheckBox::indicator:checked { background-color: #2DD4BF; border-color: #2DD4BF; }
+        QCheckBox:focus { color: #2DD4BF; }
+
+        QLineEdit, QComboBox {
+            min-height: 22px;
+            color: #EDF3F7;
+            background-color: #0D1720;
+            border: 1px solid #29404E;
+            border-radius: 9px;
+            padding: 7px 10px;
+            selection-background-color: #285B58;
         }
-        QComboBox {
-            background-color: #182330;
-            border: 1px solid #2A3A4D;
-            border-radius: 7px;
-            padding: 8px 10px;
-            min-width: 180px;
-        }
-        QLineEdit {
-            background-color: #0E151E;
-            color: #E6EDF3;
-            border: 1px solid #2A3A4D;
-            border-radius: 7px;
-            padding: 8px 10px;
-            selection-background-color: #245C58;
-        }
-        QLineEdit:focus {
-            border-color: #2DD4BF;
-        }
-        QLineEdit:read-only {
-            color: #91A0B3;
-            background-color: #101821;
-        }
+        QLineEdit:hover, QComboBox:hover { border-color: #3B5968; }
+        QLineEdit:focus, QComboBox:focus { border-color: #2DD4BF; }
+        QLineEdit:read-only { color: #9AABBA; background-color: #0A121A; }
+        QComboBox { min-width: 176px; }
         QComboBox QAbstractItemView {
-            background-color: #182330;
-            color: #E6EDF3;
-            selection-background-color: #182F35;
+            color: #EDF3F7;
+            background-color: #162432;
+            border: 1px solid #29404E;
             selection-color: #2DD4BF;
+            selection-background-color: #142B30;
         }
         QProgressBar {
-            background-color: #0B1017;
-            border: 1px solid #2A3A4D;
-            border-radius: 6px;
-            text-align: center;
             min-height: 20px;
-        }
-        QProgressBar::chunk {
-            background-color: #2DD4BF;
-            border-radius: 5px;
-        }
-        QTabWidget::pane {
-            background-color: #121A24;
-            border: 1px solid #243244;
+            color: #EDF3F7;
+            background-color: #0A121A;
+            border: 1px solid #243947;
             border-radius: 8px;
+            text-align: center;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        QProgressBar::chunk { background-color: #2DD4BF; border-radius: 7px; }
+
+        QTabWidget::pane {
+            background-color: #0C141D;
+            border: 1px solid #1C2C39;
+            border-radius: 11px;
+            top: -1px;
         }
         QTabBar::tab {
-            background-color: #121A24;
-            color: #91A0B3;
-            border: 1px solid #243244;
-            padding: 9px 14px;
+            color: #9AABBA;
+            background-color: #0C141D;
+            border: 1px solid #1C2C39;
+            border-bottom: 0;
+            padding: 9px 16px;
         }
-        QTabBar::tab:selected {
-            color: #2DD4BF;
-            background-color: #182330;
-        }
-        QScrollArea, QStackedWidget {
-            background-color: transparent;
-            border: none;
-        }
+        QTabBar::tab:first { border-top-left-radius: 9px; }
+        QTabBar::tab:last { border-top-right-radius: 9px; }
+        QTabBar::tab:hover { color: #EDF3F7; background-color: #111B26; }
+        QTabBar::tab:selected { color: #2DD4BF; background-color: #162432; }
+        QTabBar::tab:focus { border-color: #2DD4BF; }
+
+        QScrollArea, QStackedWidget { background-color: transparent; border: none; }
         QScrollBar:vertical {
-            background: #0B1017;
             width: 10px;
-            margin: 0;
+            background: #080D13;
+            margin: 2px;
         }
         QScrollBar::handle:vertical {
-            background: #2A3A4D;
-            border-radius: 5px;
-            min-height: 24px;
+            min-height: 28px;
+            background: #29404E;
+            border-radius: 4px;
         }
-        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-            height: 0;
-        }
+        QScrollBar::handle:vertical:hover { background: #385666; }
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
         QToolTip {
-            color: #E6EDF3;
-            background-color: #182330;
-            border: 1px solid #2DD4BF;
+            color: #EDF3F7;
+            background-color: #192A39;
+            border: 1px solid #3A5968;
+            padding: 6px;
         }
     """

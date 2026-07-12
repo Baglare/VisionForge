@@ -23,11 +23,11 @@ class FrameView(QWidget):
     def paintEvent(self, event) -> None:
         """Görüntüyü widget alanına oranı bozmadan çizer."""
         painter = QPainter(self)
-        painter.fillRect(self.rect(), QColor(12, 14, 18))
+        painter.fillRect(self.rect(), QColor(5, 9, 14))
 
         if self._image is None or self._image.isNull():
-            painter.setPen(QColor(170, 180, 190))
-            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Kamera bekleniyor")
+            painter.setPen(QColor(111, 129, 146))
+            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Kamera akışı bekleniyor")
             return
 
         target = self._scaled_rect(self._image.width(), self._image.height())
