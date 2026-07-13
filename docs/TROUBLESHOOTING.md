@@ -1,181 +1,138 @@
 # VisionForge Sorun Giderme
 
-Bu belge demo öncesi sık karşılaşılan sorunları hızlıca ayırmak için hazırlanmıştır.
+## Source Uygulama Açılmıyor
 
-## Kamera açılmıyor
+1. Proje klasöründe sanal ortamı etkinleştirin.
+2. `python -m pip install -r requirements.txt` çalıştırın.
+3. `python tools\download_models.py` çalıştırın.
+4. `python app.py` ile yeniden deneyin.
 
-Olası nedenler:
-- Kamera başka bir uygulama tarafından kullanılıyor olabilir.
-- Varsayılan kamera kapalı veya sistem tarafından engellenmiş olabilir.
-- Sanal ortam yanlış Python kurulumu ile açılmış olabilir.
-- PySide6 bağımlılığı kurulmamış olabilir.
+`PySide6`, `cv2` veya `mediapipe` import hatası varsa komutun doğru sanal ortam Python'uyla çalıştığını doğrulayın.
 
-Çözüm:
-1. Kamera kullanan diğer uygulamaları kapat.
-2. Windows kamera izinlerini kontrol et.
-3. Proje klasöründe doğru sanal ortamı etkinleştir.
-4. `pip install -r requirements.txt` komutunu çalıştır.
-5. `python app.py` komutunu yeniden çalıştır.
+## Kamera Açılamıyor
 
-## PySide6 penceresi açılmıyor
+1. Kamera kullanan diğer uygulamaları kapatın.
+2. Windows Ayarları'nda masaüstü uygulamaları için kamera iznini kontrol edin.
+3. Canlı Görüş sayfasındaki kamera durumuna bakın.
+4. Başka fiziksel/sanal kamera varsa varsayılan kamera sırasını kontrol edin.
+5. Uygulamayı yeniden başlatın.
 
-Belirti:
-- `ModuleNotFoundError: No module named 'PySide6'` hatası alınır.
-- Uygulama Qt penceresine geçmeden kapanır.
+Worker kamerayı açamazsa UI hata durumu gösterir; kayıt ve canlı görüntü çalışmaz.
 
-Çözüm:
-1. Sanal ortamı etkinleştir.
-2. `pip install -r requirements.txt` komutunu çalıştır.
-3. `python app.py` ile tekrar dene.
+## Kamera Gecikiyor veya FPS Düşük
 
-Not:
-- VisionForge artık ana OpenCV penceresi yerine PySide6 masaüstü kabuğu kullanır.
+1. Debug → Genel sayfasında kamera okuma, pipeline, Qt dönüşümü ve UI frame aralığını kontrol edin.
+2. Ayarlar'dan yüz/el debug çizimlerini kapatın.
+3. Büyü efektlerini geçici olarak kapatıp karşılaştırın.
+4. Algılama profilini `Dengeli` veya `Kararlı` yapın.
+5. Kamerayı kullanan başka uygulamaları ve yoğun CPU süreçlerini kapatın.
 
-## Model dosyası eksik
+VisionForge 640×480 işler ve yalnız en güncel kareyi gösterir. Yavaşlama eski kare kuyruğundan değil, kamera/algılama işlem süresinden kaynaklanmalıdır.
 
-Gerekli dosyalar:
-- `models/face_detector.tflite`
-- `models/hand_landmarker.task`
+## Model Dosyası Eksik
 
-Yerel eğitimden sonra oluşan dosyalar:
-- `models/face_recognizer_lbph.yml`
-- `data/face_labels.json`
-- `data/local_profiles.json`
-
-Çözüm:
-1. Sistem Durumu panelini `Q > 8` ile aç.
-2. Gerekli MediaPipe modellerini otomatik indirmek için şu komutu çalıştır:
+Source ortamında:
 
 ```powershell
-python tools/download_models.py
+python tools\download_models.py
 ```
 
-3. Script başarısız olursa dosyaları manuel olarak ilgili `models/` konumuna koy.
-4. Yüz tanıma modeli eksikse `E` ile kayıt oluştur.
+Ardından Sistem Durumu sayfasında **Yenile** düğmesine basın. Gerekli statik dosyalar:
 
-## Türkçe karakterler bozuk görünürse
+```text
+models/face_detector.tflite
+models/hand_landmarker.task
+```
 
-Belirti:
-- `Büyü Kitabı`, `Şimşek`, `Alan Mührü`, `S-Seviye Büyücü` gibi metinler `?` karakterleriyle görünür.
+## Source ve Frozen Model Yolları Farklı
 
-Çözüm:
-1. Pillow bağımlılığının kurulu olduğunu kontrol et.
-2. Windows fontlarından `segoeui.ttf`, `arial.ttf` veya `calibri.ttf` erişilebilir olmalı.
-3. Sorun devam ederse sanal ortamı yeniden kurup `pip install -r requirements.txt` çalıştır.
+- Source uygulama statik modelleri repo içindeki `models/` klasöründen okur.
+- Frozen uygulama statik modelleri PyInstaller bundle içinden okur.
+- Eğitilmiş LBPH modeli source'da repo köküne, frozen uygulamada EXE yanındaki `models/` klasörüne yazılır.
 
-## Yüz tanıma çalışmıyor
+Source'daki kişisel LBPH modelini build içinde aramayın; kullanıcı verileri bilinçli olarak dağıtıma alınmaz.
 
-Olası nedenler:
-- `opencv-contrib-python` yerine `opencv-python` kurulu olabilir.
-- `cv2.face` modülü yoktur.
-- `face_recognizer_lbph.yml` ve `face_labels.json` uyumsuzdur.
-- Label dosyasında görünen kullanıcı profil dosyalarında yoktur.
+## Yüz Tanıma Çalışmıyor
 
-Çözüm:
-1. `python -c "import cv2; print(hasattr(cv2, 'face'))"` komutunun True verdiğini kontrol et.
-2. `Q > 8` Sistem Durumu panelinde model, label ve profil uyumunu kontrol et.
-3. Gerekirse `E` ile yeniden kayıt yap.
-4. OpenCV paket çakışması varsa aynı ortamda yalnızca `opencv-contrib-python` bırak.
+1. Sistem Durumu sayfasında yüz tanıma modeli, etiketler, local profiller ve label/profile eşleşmesini kontrol edin.
+2. `python -c "import cv2; print(hasattr(cv2, 'face'))"` komutunun `True` verdiğini doğrulayın.
+3. Aynı ortamda yalnız `opencv-contrib-python` bırakın; `opencv-python` ve headless varyantlarını kaldırın.
+4. Kayıt sayfasından yeni, iyi aydınlatılmış bir kayıt oluşturun.
 
-## QR okunmuyor
+## QR/Lonca Mührü Okunmuyor
 
-Olası nedenler:
-- QR görüntüsü çok küçük veya bulanık olabilir.
-- Ekran parlaklığı düşük olabilir.
-- QR kameraya açılı veya yansımalı gösteriliyor olabilir.
+1. Ayarlar'da doğrulama modunun `QR + Yüz` olduğunu kontrol edin.
+2. Kullanıcı yüzünün stabil tanındığından emin olun.
+3. Mührü kameraya düz, yeterince büyük ve yansımasız gösterin.
+4. Doğru kullanıcıya ait mühür dosyasını kullandığınızı kontrol edin.
+5. Canlı Görüş veya Debug → Yüz/Doğrulama durumunu izleyin.
 
-Çözüm:
-1. QR dosyasını telefonda tam ekran aç.
-2. Telefon parlaklığını artır.
-3. QR'ı kameraya daha düz ve daha yakın göster.
-4. QR dosyasının `assets/guild_seals/<username>_seal.png` konumunda oluştuğunu kontrol et.
+## El veya Büyü Algılama Zayıf
 
-## El algılama zayıf
+1. Işığı artırın ve eli kadrajın merkezine alın.
+2. Debug → El/Tracker sekmesindeki brightness, blur, kadraj ve tracking source değerlerini kontrol edin.
+3. Ateş hareketini hızlı savurma yerine kontrollü yatay süpürmeyle yapın.
+4. Kalkan için iki açık elin de aynı anda ve birbirini kapatmadan göründüğünü doğrulayın.
+5. İlgili büyünün profil yetkisinde açık olduğunu Büyü Kitabı'ndan kontrol edin.
 
-Olası nedenler:
-- Ortam ışığı düşük olabilir.
-- El kadraj kenarında kalıyor olabilir.
-- Hareket bulanıklığı oluşuyor olabilir.
-- `models/hand_landmarker.task` eksik olabilir.
+## `settings.json` Bozuk
 
-Çözüm:
-1. Işığı artır.
-2. Eli kadrajın merkezine al.
-3. Hareketi biraz yavaşlat.
-4. Debug panelinde `D` ile El / Tracker sayfasına geçip kalite uyarılarını kontrol et.
+1. Uygulamayı kapatın.
+2. Source'da repo kökündeki, frozen uygulamada EXE yanındaki `data\settings.json` dosyasını silin.
+3. Uygulamayı yeniden açın.
 
-## Ateş büyüsü tetiklenmiyor
+Varsayılan ayarlar yeni dosyaya yazılır.
 
-Beklenen hareket:
-- Eli kadraj içinde kontrollü yatay süpür.
-- Ardından açık avuç göster.
+## Portable EXE Açılmıyor
 
-Çözüm:
-1. Çok hızlı savurma yerine daha kontrollü yatay hareket yap.
-2. Elini kadraj dışına çıkarmamaya çalış.
-3. Tam doğrulanmış kullanıcı olduğundan veya Ateş yetkisinin açık olduğundan emin ol.
-4. Debug panelinde Büyü / Trial sayfasında `fire_state`, `fire_travel_distance` ve `fire_required_distance` değerlerini kontrol et.
+1. Yalnız `VisionForge.exe` dosyasını taşımadığınızdan emin olun.
+2. `dist\VisionForge\` klasörünün tamamını birlikte tutun.
+3. Build makinesinde dağıtım doğrulayıcısını çalıştırın:
 
-## Kalkan için iki el algılanmıyor
+```powershell
+.venv\Scripts\python.exe tools\verify_distribution.py dist\VisionForge
+```
 
-Beklenen hareket:
-- İki açık el aynı anda kamerada görünmeli.
+4. Antivirüs karantinasını ve eksik Qt/MediaPipe dosyalarını kontrol edin.
+5. Gerekirse build'i temiz sanal ortamda yeniden alın.
 
-Çözüm:
-1. İki eli de kadraj içine al.
-2. Elleri yüzün veya birbirinin üstüne bindirme.
-3. `Q > 1` ile el debug çizimini aç.
-4. Debug panelinde El / Tracker sayfasında `raw_hand_count` değerinin 2 olduğunu kontrol et.
+## ZIP İçinden Çalıştırma
 
-## Loş ışık veya motion blur problemi
+Uygulamayı ZIP arşivinin içinden çalıştırmayın. Tüm klasörü normal, yazılabilir bir konuma çıkarın ve EXE'yi oradan açın. Aksi durumda runtime dosyaları bulunamayabilir veya kullanıcı verileri yazılamayabilir.
 
-Belirti:
-- El veya yüz takibi sık kaybolur.
-- Debug panelinde `Işık düşük` veya `Görüntü bulanık` uyarısı görünür.
+## Yazma İzni Olmayan Klasör
 
-Çözüm:
-1. Ortam ışığını artır.
-2. Kameraya biraz daha yaklaş.
-3. Eli daha yavaş hareket ettir.
-4. Kamera lensini temizle.
+Frozen uygulama ayar, kayıt, LBPH modeli ve lonca mührünü EXE yanında oluşturur. `Program Files`, salt okunur ağ klasörü veya yönetici izni gerektiren konumlarda bu işlemler başarısız olabilir.
 
-## opencv-python ve opencv-contrib-python çakışması
+1. Dağıtım klasörünü kullanıcının yazabildiği bir konuma taşıyın.
+2. Klasörde yeni dosya oluşturabildiğinizi kontrol edin.
+3. Kayıt veya ayar işlemini yeniden deneyin.
 
-Belirti:
-- `cv2.face` yoktur.
-- OpenCV modülleri eksik veya beklenmedik davranır.
+## Windows SmartScreen Uyarısı
 
-Çözüm:
-1. Aynı sanal ortamda birden fazla OpenCV paketi bırakma.
-2. `opencv-python` ve headless varyantlarını kaldır.
-3. `opencv-contrib-python` paketini requirements ile kur.
+Mevcut build kod imzalı değildir. SmartScreen bilinmeyen yayıncı uyarısı gösterebilir. Dosyayı yalnız güvenilen, kendi ürettiğiniz build'den çalıştırın. Public dağıtım için kod imzalama release aşamasında ele alınmalıdır.
 
-Not:
-- Proje LBPH yüz tanıma için `opencv-contrib-python` ister.
+## Eski İkon Görünüyor
 
-## settings.json bozulursa
+1. Uygulamayı görev çubuğundan kaldırıp yeniden sabitleyin.
+2. Eski EXE kısayolunu silip yeni build'den kısayol oluşturun.
+3. `dist\VisionForge\` klasörünü yeniden build edin.
+4. Gerekirse Windows Explorer'ı veya oturumu yeniden başlatın.
 
-Belirti:
-- Ayarlar yüklenemeyebilir veya uygulama varsayılan davranışa dönebilir.
+Windows ikon önbelleği eski EXE ikonunu bir süre gösterebilir; spec ve uygulama aynı `assets\branding\visionforge.ico` dosyasını kullanır.
 
-Çözüm:
-1. Uygulamayı kapat.
-2. `data/settings.json` dosyasını sil.
-3. Uygulamayı yeniden başlat.
+## Yerel Verileri Temizleme
 
-Beklenen sonuç:
-- Dosya varsayılan ayarlarla yeniden oluşturulur.
+Uygulamayı kapattıktan sonra yalnız temizlemek istediğiniz portable kökte şu kullanıcı çıktıları kaldırılabilir:
 
-## Yerel veri temizliği
+```text
+data/face_gallery/
+data/import_faces/
+data/face_labels.json
+data/local_profiles.json
+data/settings.json
+models/face_recognizer_lbph.yml
+assets/guild_seals/*.png
+```
 
-Kullanıcı verilerini temizlemek için şu yerel çıktılar silinebilir:
-- `data/face_gallery/`
-- `data/import_faces/`
-- `models/face_recognizer_lbph.yml`
-- `data/face_labels.json`
-- `data/local_profiles.json`
-- `assets/guild_seals/*.png`
-
-Not:
-- Bu dosyalar Git dışında tutulur.
-- `assets/guild_seals/.gitkeep` klasörün repoda kalması için tutulur.
+Bu işlem kayıtlı kullanıcıları ve yerel tanıma verisini geri alınamaz biçimde kaldırır.

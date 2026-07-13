@@ -1,168 +1,101 @@
-# VisionForge Mimari Notları
+# VisionForge Mimarisi
 
-Bu belge VisionForge'un ana modüllerini ve çalışma zamanındaki veri akışını özetler. Amaç kod ayrıntısına boğmadan portfolyo sunumunda sistemin nasıl kurulduğunu açıklamaktır.
+Bu belge güncel PySide6 uygulamasının çalışma zamanı, görüntü işleme ve Windows paketleme yapısını özetler.
 
-## Genel Sistem Yapısı
+## Katmanlar
 
-VisionForge PySide6 tabanlı bir masaüstü kabuğu içinde çalışır. `app.py` yalnızca Qt uygulamasını başlatır. Kamera okuma `ui/camera_worker.py` içinde ayrı thread'de yapılır; tek karelik görüntü işleme ve karar akışı `vision_engine.py` içinde toplanır.
+- `app.py`: Yazılabilir klasörleri hazırlar, `QApplication` ve özel ikonu yükler, `MainWindow`'u açar.
+- `ui/main_window.py`: Yedi Qt sayfasını, navigasyonu, kalıcı ayar kontrollerini ve worker yaşam döngüsünü yönetir.
+- `ui/camera_worker.py`: Kamera ile `VisionEngine` işini ayrı `QThread` içinde yürütür.
+- `vision_engine.py`: Tek karelik algılama, doğrulama, büyü, Trial, bildirim ve kayıt kararlarını birleştirir.
+- `ui/frame_view.py`: Son `QImage` karesini en-boy oranını koruyarak gösterir.
+- `runtime_paths.py`: Source ve frozen ortamlarında statik/yazılabilir yolları ayırır.
 
-Ana katmanlar:
+## Kamera ve Latest-frame Pipeline
 
-- Kamera ve görüntü akışı.
-- Yüz algılama ve yüz tanıma.
-- QR/lonca mührü doğrulama.
-- El algılama ve el takip durumu.
-- Büyü motoru.
-- Trial görev motoru.
-- Demo rehberi.
-- UI/effects çizim katmanı.
-- Yerel veri ve ayar dosyaları.
+`CameraWorker`, OpenCV kaynağını açar ve kameradan 640×480 görüntü ister. Her döngüde:
 
-## Kamera Akışı
+1. UI aksiyon kuyruğu boşaltılır.
+2. Kameradan ham `processing_frame` okunur.
+3. Kare `VisionEngine.process_frame()` ile işlenir.
+4. Sonuç görüntüsü kopyalanmış bir `QImage`e çevrilir.
+5. QImage ve durum payload'u kilit korumalı tek bir `_latest_frame` alanına yazılır.
+6. Qt ana thread'i `take_latest_frame()` ile bu alanı alıp temizler.
 
-Kamera okuma işlemi Qt ana thread'inde çalışmaz. `CameraWorker`, OpenCV kamera kaynağını açar, öncelikle 1280x720 çözünürlük ister, ham kareyi okur ve `VisionEngine` ile işler. Uygulamada iki ayrı kare kavramı bulunur:
+Bu yaklaşım eski kareleri biriktirmez. UI bir kareyi atlayabilir ancak giderek büyüyen bir görüntü kuyruğunun gecikmesine maruz kalmaz. Kamera okuma, MediaPipe, LBPH, QR ve büyü işlemleri UI thread'inde çalışmaz. Kapanışta worker durdurulur, kamera serbest bırakılır ve thread için sınırlı süre beklenir.
 
-- `processing_frame`: Algılama ve tanıma işlemleri için ham kamera karesi.
-- `display_frame`: Kullanıcıya gösterilen, gerekirse aynalanan kare.
+## VisionEngine İşleme Çekirdeği
 
-Bu ayrım sayesinde kamera aynalama sadece görsel deneyimi etkiler; yüz tanıma, QR okuma ve el algılama ham görüntü üzerinde çalışır. Qt tarafında `FrameView`, işlenmiş görüntüyü en-boy oranını bozmadan letterbox ile gösterir.
+`VisionEngine` iki kare görünümünü ayırır:
 
-## Yüz Algılama
+- `processing_frame`: Yüz, QR ve el kararlarında kullanılan ham kamera karesi.
+- `display_frame`: Kamera aynalama ve kullanıcıya gösterilecek overlay'ler için kullanılan kopya.
 
-`detectors/face_detector.py`, MediaPipe Tasks Face Detector kullanır. Model dosyası:
-
-```text
-models/face_detector.tflite
-```
-
-Model yoksa uygulama çökmez; yüz algılama pasif kalır ve kullanıcı Sistem Durumu panelinde uyarı görür.
-
-## Yüz Tanıma
-
-`detectors/face_identity_detector.py`, OpenCV LBPH yüz tanıma modelini kullanır. Eğitim çıktıları:
+Ana işlem sırası:
 
 ```text
-models/face_recognizer_lbph.yml
-data/face_labels.json
+FaceDetector + FaceIdentityDetector
+  → GuildSealDetector + VerificationSession
+  → HandDetector + HandStateTracker
+  → SpellEngine + TrialEngine
+  → Effects/notifications/debug payload
+  → VisionEngineResult
 ```
 
-Tahmin sırasında normal ve aynalanmış yüz kırpımı denenir. Daha iyi skor veren sonuç kullanılır. Tek karelik sonuçla profil değiştirilmez; kısa geçmiş içinde stabil etiket oluşması beklenir.
+Kayıt aktifken normal büyü akışı yerine `EnrollmentManager` güncellenir. Kayıt tamamlandığında yerel yüz tanıma bileşeni yeniden yüklenir.
 
-`identity_health.py`, model, label ve profil dosyalarının tutarlılığını kontrol eder. Label dosyasında olan her yüz etiketi demo veya local profil dosyasında bulunmalıdır.
+## Yüz, QR ve VerificationSession
 
-## QR / Lonca Mührü Doğrulama
+- `FaceDetector`, bundled `models/face_detector.tflite` dosyasını kullanır.
+- `FaceIdentityDetector`, yazılabilir alandaki LBPH modeli ve etiket dosyasını kullanır.
+- Stabil kimlik kararı tek karelik tahmin yerine kısa geçmiş üzerinden oluşur.
+- `GuildSealDetector`, OpenCV `QRCodeDetector` ile lonca mührünü profil koduyla eşleştirir.
+- `VerificationSession`, `UNAUTHENTICATED`, `PENDING_SEAL`, `VERIFIED`, `GRACE_PERIOD` ve `EXPIRED` durumlarını yönetir.
+- Grace period sabiti 10 saniyedir. Aynı kullanıcı dönerse oturum yenilenir; başka stabil kullanıcı eski oturumu sıfırlar.
 
-`detectors/guild_seal_detector.py`, OpenCV `QRCodeDetector` ile kameradaki QR/lonca mührünü okur. QR içeriği kullanıcı profilindeki `guild_seal_code` ile eşleşirse QR onayı verilir.
+## El Takibi, Büyüler ve Trial
 
-Doğrulama modları:
+`HandDetector`, `models/hand_landmarker.task` üzerinden 21 landmark, el sayısı ve handedness üretir. `HandStateTracker`; merkez, yumuşatılmış merkez, hız, optical-flow devamlılığı, parlaklık, blur ve kadraj uyarılarını hesaplar.
 
-- `QR + Yüz`: Tam yetki için stabil yüz tanıma ve doğru QR gerekir.
-- `Yalnızca Yüz`: Stabil yüz tanıma tam yetki için yeterlidir.
+Optical flow tek başına avuç veya iki el doğrulaması değildir. `SpellEngine` Donma, Ateş ve Kalkan kararlarını gerçek algılama, takip durumu, yetki ve cooldown ile birleştirir. `TrialEngine` Donma → Ateş → Kalkan sırasını izler.
 
-`auth/verification_session.py`, tam doğrulanan kullanıcı için 10 saniyelik yüz kaybı toleransını yönetir. Tolerans sırasında aynı kullanıcının profil, rütbe, açık büyü ve Trial yetkileri korunur. Aynı kullanıcı süre dolmadan geri dönerse QR tekrar istenmez. Başka kayıtlı kullanıcı stabil tanınırsa eski oturum iptal edilir.
+## Qt Sayfaları ve Kamera Overlay Ayrımı
 
-## El Algılama
+`MainWindow` şu sayfaları içerir: Canlı Görüş, Büyü Kitabı, Trial, Kayıt, Ayarlar, Sistem Durumu ve Debug.
 
-`detectors/hand_detector.py`, MediaPipe Tasks Hand Landmarker kullanır. Model dosyası:
+Qt tarafında navigasyon, kartlar, rozetler, formlar, progress barlar, sekmeler ve teknik değerler bulunur. Kamera pikseliyle doğrudan ilişkili profil etiketi, yüz/el debug çizimi ve büyü efektleri `effects.py` üzerinden `display_frame` üzerine çizilir. Büyü Kitabı ve Trial ayrı Qt sayfalarıdır.
 
-```text
-models/hand_landmarker.task
-```
+`FrameView`, gelen QImage'i widget boyutuna göre letterbox eder; görüntüyü yatay veya dikey esnetmez.
 
-El algılama sonucu 21 landmark noktası, el sayısı ve sağ/sol bilgisi içerir. Kalkan gibi iki el isteyen kararlar raw MediaPipe el sonucuna dayanır.
+## Native Qt Kayıt Akışı
 
-## HandStateTracker
+Kayıt sayfası kullanıcı adı, kayıt yöntemi ve isteğe bağlı fotoğraf klasörünü Qt kontrollerinden alır. `EnrollmentManager.start_with_options()` mevcut motoru başlatır. Canlı kayıt 30 kabul edilmiş örneği beş aşamaya böler; fotoğraf importu kabul/red nedenlerini raporlar.
 
-`tracking/hand_state_tracker.py`, raw el algılama sonucundan daha stabil bir takip durumu üretir:
+Tamamlama çıktıları LBPH modeli, etiket eşlemesi, local profil ve QR/lonca mührüdür. Bu çıktılar statik bundle kaynakları değildir.
 
-- El merkezi.
-- Yumuşatılmış el merkezi.
-- El hızı.
-- Kısa süreli kayıp toleransı.
-- Optical flow tabanlı kısa hareket devamlılığı.
-- Parlaklık, blur ve kadraj kenarı uyarıları.
+## Source ve Frozen Yol Ayrımı
 
-Bu katman özellikle Ateş büyüsünde kontrollü yatay süpürme hareketinin daha kararlı izlenmesine yardım eder. Optical flow tek başına avuç açık veya Kalkan gibi kararları tetiklemez.
+`runtime_paths.py` üç kök tanımlar:
 
-## SpellEngine
+| Yol | Source | Frozen |
+| --- | --- | --- |
+| `bundle_root()` | Repo kökü | PyInstaller `_MEIPASS` |
+| `executable_root()` | Repo kökü | `VisionForge.exe` klasörü |
+| `writable_app_root()` | Repo kökü | `VisionForge.exe` klasörü |
 
-`spell_engine.py`, el verisini büyü kararlarına çevirir:
+`static_resource_path()` bundled yüz/el modelleri ve uygulama ikonu için kullanılır. `writable_path()` ayarlar, yüz galerisi, import klasörü, LBPH modeli, etiketler, local profiller ve lonca mühürleri için kullanılır.
 
-- Donma: Açık avuç ve sabitlik.
-- Ateş: Kontrollü yatay süpürme + açık avuç mührü.
-- Kalkan: İki gerçek açık el.
+## PyInstaller onedir Yapısı
 
-Yetki listesi aktif profile göre `app.py` tarafından verilir. Guest kullanıcı yalnızca Donma kullanabilir. Cooldown sistemi aynı anda birden fazla büyü tetiklenmesini engeller.
+`packaging/VisionForge.spec`:
 
-## TrialEngine
+- `VisionForge.exe` için özel `assets/branding/visionforge.ico` ikonunu kullanır.
+- İki MediaPipe modelini ve native `libmediapipe.dll` dosyasını bundle'a ekler.
+- Qt Windows platform eklentilerini PyInstaller toplamasıyla taşır.
+- `COLLECT` ile `dist/VisionForge/` onedir çıktısı üretir.
 
-`trial_engine.py`, Mühürlü Kapı görevini yönetir. Görev sırası:
+Kullanıcı verileri bundle'a eklenmez. `tools/verify_distribution.py`; zorunlu runtime dosyalarını doğrular ve yüz galerisi, local profiller, ayarlar, eğitilmiş model, lonca mührü, kaynak kodu veya geliştirme klasörleri bulunursa dağıtımı reddeder.
 
-```text
-Donma -> Ateş -> Kalkan
-```
+## Tema
 
-Doğru büyü ilerletir, yanlış büyü görevi sıfırlamaz. Tamamlandığında kısa süreli sonuç paneli ve bildirim gösterilir.
-
-## DemoGuide
-
-`demo_guide.py`, portfolyo demosu için adım adım yönlendirme sağlar. Gerçek sistemin yerine geçmez; sadece sıradaki demo adımını gösterir. Bazı olayları okuyarak otomatik ilerleyebilir:
-
-- Büyü Kitabı açıldı.
-- Donma, Ateş veya Kalkan tetiklendi.
-- Trial başladı veya tamamlandı.
-
-Manuel kontrol için `G`, `N`, `P` kısayolları kullanılır.
-
-## UI / Effects Katmanı
-
-`effects.py`, kamera görüntüsüyle doğrudan ilişkili overlay'leri çizer:
-
-- Kafa üstü profil etiketi.
-- Büyü efektleri.
-- Yüz debug kutusu.
-- El landmark çizimleri.
-
-Profil, doğrulama, büyü, Trial, ayarlar, sistem durumu, debug ve bildirim bilgileri PySide6 panellerinde gösterilir. Eski OpenCV panel çizimleri gerektiğinde uyumluluk için korunur ancak ana pencere artık Qt tarafındadır.
-
-Kullanıcıya görünen metinler Pillow tabanlı Unicode çizimle işlenir; Türkçe karakterler OpenCV `putText` sınırlamasına takılmaz.
-
-## Veri Dosyaları ve Yerel Kullanıcı Verileri
-
-Demo profilleri:
-
-```text
-data/profiles.json
-```
-
-Yerel kullanıcı verileri:
-
-```text
-data/local_profiles.json
-data/face_gallery/
-data/import_faces/
-data/face_labels.json
-models/face_recognizer_lbph.yml
-assets/guild_seals/*.png
-data/settings.json
-```
-
-Bu yerel dosyalar Git dışında tutulur.
-
-## Modüller Arası Akış
-
-1. `MainWindow` Qt kabuğunu açar.
-2. `CameraWorker` ayrı thread'de kameradan ham kare okur.
-3. `VisionEngine.process_frame()` ham kareyi işler.
-4. `FaceDetector` yüz kutusunu üretir.
-5. `FaceIdentityDetector` yüz kimliği tahmini yapar.
-6. `GuildSealDetector` QR/lonca mührünü kontrol eder.
-7. `VerificationSession` tam doğrulama ve grace period durumunu yönetir.
-8. `guild_profile.py` aktif profil ve yetki kararına destek verir.
-9. `HandDetector` el landmark verisini üretir.
-10. `HandStateTracker` el takip kalitesini ve yumuşatılmış hareket bilgisini üretir.
-11. `SpellEngine` büyü kararını verir.
-12. `TrialEngine` aktif büyüye göre görev ilerlemesini günceller.
-13. `DemoGuide` demo adımlarını günceller.
-14. `VisionEngineResult` Qt tarafına görüntü, profil, yetki, debug ve bildirim bilgisini taşır.
-15. `FrameView` görüntüyü oranı bozmadan gösterir; Qt panelleri durum bilgilerini günceller.
+Ortak QSS `ui/theme.py` içindedir. Ana arka plan gece laciverti; yüzeyler koyu indigo; marka ve focus vurguları kontrollü mor/lavanta kullanır. Uyarı, hata ve gerçek başarı renkleri marka morundan ayrı semantik rollerde tutulur.

@@ -1,92 +1,86 @@
 # VisionForge Demo Görsel Rehberi
 
-Bu belge README veya portfolyo sayfasına eklenecek ekran görüntülerini planlamak için hazırlanmıştır. Gerçek görseller hazır olmadan README içine kırık görsel linki eklenmemelidir.
+Bu belge public README veya teknik belgelerde kullanılabilecek gerçek uygulama ekranlarının kapsamını tanımlar. Görseller hazır değilken Markdown içine placeholder veya kırık bağlantı eklenmemelidir.
 
-Görseller için önerilen klasör:
+Önerilen klasör:
 
 ```text
 assets/demo/
 ```
 
-Bu klasördeki demo görselleri kullanıcıya özel yüz verisi veya gizli QR içermiyorsa Git'e eklenebilir.
+## Görsel Kimlik
 
-## Alınması Önerilen Görseller
+Güncel ekranlar PySide6 masaüstü uygulamasından alınmalıdır:
 
-### 1. Ana kamera ve profil etiketi
+- Gece laciverti ana arka plan
+- Koyu indigo kart yüzeyleri
+- Kontrollü mor aktif/focus vurguları
+- Lavanta başlık/rütbe detayları
+- Ayrı amber uyarı, kırmızı hata ve soğuk yeşil başarı durumları
 
-Amaç:
-- Kamera görüntüsünün aktif olduğunu göstermek.
-- Kafa üstünde kullanıcı adı, rütbe ve lonca bilgisinin göründüğünü göstermek.
+Legacy OpenCV ana pencere ve görüntü içine çizilmiş menü/panel görselleri kullanılmamalıdır.
 
-Dikkat:
-- Yüz görünüyorsa paylaşılabilir olduğundan emin ol.
-- Gerekirse demo için temsili, paylaşılabilir bir kayıt kullan.
+## Önerilen Ekranlar
 
-### 2. Büyü Kitabı kapak görünümü
+### 1. Canlı Görüş
 
-Amaç:
-- `Büyü Kitabı` kapağını ve `VisionForge Lonca Arşivi` temasını göstermek.
+- PySide6 pencere çerçevesi, sol navigasyon ve üst profil alanı görünmeli.
+- Kamera görüntüsü, oturum, aktif büyü, Trial ve bildirim kartları aynı kadrajda olmalı.
+- Paylaşılabilir yüz veya temsili profil kullanılmalı.
 
-Dikkat:
-- Türkçe karakterlerin düzgün göründüğünü kontrol et.
+### 2. Büyü Kitabı
 
-### 3. Büyü Kitabı sayfa görünümü
+- Ayrı Qt sayfası ve arşiv navigasyonu görünmeli.
+- Açık/kilitli durum, tetikleme, etki ve gereken rütbe alanları okunmalı.
 
-Amaç:
-- Sayfa başına bir büyü yapısını göstermek.
-- Tür, tetikleme, etki, durum ve gereken rütbe alanlarını göstermek.
+### 3. Trial
 
-Dikkat:
-- Misafir ve tam doğrulanmış kullanıcı farkı gösterilecekse iki ayrı ekran görüntüsü alınabilir.
+- Tamamlanan, aktif, bekleyen ve yetki yetersiz adımların semantik renkleri ayrışmalı.
+- Mümkünse 1/3 veya 2/3 ilerleme anı seçilmeli.
 
-### 4. Donma, Ateş ve Kalkan örnekleri
+### 4. Kayıt
 
-Amaç:
-- Büyü hazırlık panelini, progress bar'ı ve kısa efektleri göstermek.
+- Native kullanıcı adı/yöntem kontrolleri, aşama durumu ve iki progress bar görünmeli.
+- Gerçek yerel dosya yolu, kullanıcı adı veya yüz örneği paylaşılmamalı.
 
-Öneri:
-- Donma için açık avuç.
-- Ateş için yatay süpürme sonrası avuç.
-- Kalkan için iki açık el.
+### 5. Ayarlar
 
-### 5. Trial Mode / Kapı Açıldı anı
+- Overlay checkbox'ları, doğrulama modu ve algılama profili görünmeli.
+- Focus veya checked durumu kontrollü mor vurguya örnek olabilir.
 
-Amaç:
-- Mühürlü Kapı görev panelini ve tamamlanma mesajını göstermek.
+### 6. Sistem Durumu
 
-Dikkat:
-- Görev tamamlandıktan sonraki kısa sonuç süresinde görüntü al.
+- Hazır ve eksik/opsiyonel kaynaklar birlikte anlaşılır görünmeli.
+- Kullanıcıya özel dosya adları kadraja girmemeli.
 
-### 6. Q ayar menüsü veya Debug paneli
+### 7. Debug / Performans
 
-Amaç:
-- Ayar menüsünün ve debug sayfalarının portfolyo açısından düzenli olduğunu göstermek.
+- Genel sekmede FPS, 640×480 çözünürlük ve pipeline değerleri gösterilebilir.
+- Makineye özel hassas dosya yolu veya kişisel veri bulunmamalı.
 
-Dikkat:
-- Debug panelinde kişisel veya paylaşılmaması gereken yerel dosya yolu görünmemesine dikkat et.
+### 8. Büyü Efektleri
 
-### 7. Sistem Durumu paneli
+- Donma, Ateş ve Kalkan için ayrı Canlı Görüş kareleri alınabilir.
+- El/yüz görüntüsü paylaşılacaksa açık izin ve uygun demo verisi kullanılmalı.
 
-Amaç:
-- Model, profil ve yerel veri durumlarının kullanıcıya anlaşılır şekilde sunulduğunu göstermek.
-
-Dikkat:
-- Eksik dosya durumu gösterilecekse bunun bilinçli bir demo tercihi olduğunu açıklayacak bağlam ekle.
-
-## Dosya Adı Önerileri
+## Önerilen Dosya Adları
 
 ```text
-assets/demo/01-main-profile.png
-assets/demo/02-spellbook-cover.png
-assets/demo/03-spellbook-page.png
-assets/demo/04-freeze-spell.png
-assets/demo/05-fire-spell.png
-assets/demo/06-shield-spell.png
-assets/demo/07-trial-complete.png
-assets/demo/08-settings-debug.png
-assets/demo/09-system-status.png
+assets/demo/01-live-view.png
+assets/demo/02-spellbook.png
+assets/demo/03-trial.png
+assets/demo/04-enrollment.png
+assets/demo/05-settings.png
+assets/demo/06-system-status.png
+assets/demo/07-debug-performance.png
+assets/demo/08-freeze.png
+assets/demo/09-fire.png
+assets/demo/10-shield.png
 ```
 
-## README Kullanımı
+## Yayın Öncesi Kontrol
 
-Görseller hazırlandıktan sonra README'ye gerçek dosya linkleri eklenebilir. Görseller hazır değilken README içinde boş veya kırık link bırakma.
+1. Görselin güncel mor/indigo PySide6 arayüzünden alındığını doğrulayın.
+2. Yüz, kullanıcı adı, QR/lonca mührü ve yerel yolları kişisel veri açısından inceleyin.
+3. Görselin gerçekten repoda bulunduğunu kontrol edin.
+4. Ancak bundan sonra README'ye göreli Markdown bağlantısı ekleyin.

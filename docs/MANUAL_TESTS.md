@@ -1,316 +1,193 @@
 # VisionForge Manuel Test Listesi
 
-Bu doküman demo öncesi elde çalıştırılacak kısa kontrol listesidir. Testler gerçek kamera, yerel model dosyaları ve mevcut kullanıcı kaydı durumuna göre uygulanır.
+Bu liste source ve frozen uygulamanın güncel PySide6 sayfaları üzerinden doğrulanması içindir. Test verisi olarak yalnız paylaşımı ve işlenmesi uygun yüz/QR verileri kullanılmalıdır.
 
-## Kurulum testi
+## 1. Otomatik Ön Kontrol
 
-Adımlar:
-1. Proje klasöründe sanal ortamı etkinleştir.
-2. `pip install -r requirements.txt` komutunu çalıştır.
-3. `python tools/download_models.py` komutunu çalıştır.
-4. `python -m py_compile app.py camera.py effects.py guild_profile.py spell_engine.py trial_engine.py settings_manager.py system_status.py tools/download_models.py` komutunu çalıştır.
+```powershell
+python -m unittest
+python -m py_compile app.py vision_engine.py runtime_paths.py auth\verification_session.py ui\main_window.py ui\camera_worker.py ui\frame_view.py enrollment\enrollment_manager.py
+```
 
-Beklenen sonuç:
-- Bağımlılıklar yüklenir.
-- `models/face_detector.tflite` ve `models/hand_landmarker.task` dosyaları oluşur veya zaten varsa script bunu bildirir.
-- Python sözdizimi hatası alınmaz.
+Beklenen: Komutlar hata vermeden tamamlanır.
 
-## Model indirme testi
+## 2. Source Kurulum
 
-Adımlar:
-1. `python tools/download_models.py` komutunu çalıştır.
-2. `models/face_detector.tflite` dosyasının var olduğunu kontrol et.
-3. `models/hand_landmarker.task` dosyasının var olduğunu kontrol et.
-4. Uygulamayı açıp `Q > 8` ile Sistem Durumu panelini göster.
+1. Sanal ortamı oluşturup etkinleştirin.
+2. `python -m pip install -r requirements.txt` çalıştırın.
+3. `python tools\download_models.py` çalıştırın.
+4. `python app.py` ile uygulamayı açın.
 
-Beklenen sonuç:
-- Script eksik modelleri indirir.
-- Model zaten varsa terminalde anlaşılır şekilde `zaten var` mesajı görünür.
-- İndirme başarısız olursa terminalde net hata mesajı ve manuel hedef konum görünür.
-- Sistem Durumu paneli Face Detector ve Hand Landmarker modellerini `Var` olarak gösterir.
+Beklenen:
 
-## Kamera testi
+- PySide6 penceresi özel VisionForge ikonuyla açılır.
+- Ayrı bir ana OpenCV penceresi açılmaz.
+- Canlı Görüş, Büyü Kitabı, Trial, Kayıt, Ayarlar, Sistem Durumu ve Debug navigasyonda görünür.
 
-Adımlar:
-1. `python app.py` ile uygulamayı başlat.
-2. Kamera penceresinin açıldığını kontrol et.
-3. `Esc` tuşuna bas.
+## 3. Kamera, FrameView ve Performans
 
-Beklenen sonuç:
-- Kamera görüntüsü gelir.
-- Uygulama `Esc` ile temiz kapanır.
-- `q` veya `Q` çıkış yapmaz, ayar menüsünü açar/kapatır.
+1. Canlı Görüş sayfasını açın.
+2. Çözünürlük rozetinin `640x480` olduğunu kontrol edin.
+3. Pencereyi büyütüp minimum 1180×700 boyutuna kadar küçültün.
+4. Kamera görüntüsünün gerilmediğini ve boş alanların letterbox olarak kaldığını doğrulayın.
+5. Sayfalar arasında hızla geçerken kameranın ve UI'ın yanıt vermeye devam ettiğini gözleyin.
+6. Debug → Genel sayfasında FPS, kamera okuma, pipeline, Qt dönüşümü ve UI frame aralığı değerlerini kontrol edin.
+7. `Esc` ile kapatın.
 
-## Yüz/el algılama testi
+Beklenen:
 
-Adımlar:
-1. `models/face_detector.tflite` ve `models/hand_landmarker.task` dosyalarının yerinde olduğundan emin ol.
-2. Uygulamayı aç.
-3. `Q` menüsünden `2` ile yüz kutusu çizimini aç.
-4. `Q` menüsünden `1` ile el landmark çizimini aç.
-5. `Q` menüsünden `5` ile Debug Sayfası'nı aç.
-6. `D` ile El / Tracker sayfasına geç.
-7. Kameraya yüzünü ve elini göster.
+- Görüntü 640×480 işleme çözünürlüğünde ve oranı korunarak gösterilir.
+- UI eski karelerden oluşan giderek büyüyen bir gecikme üretmez.
+- Kapanışta kamera serbest bırakılır ve worker thread temiz kapanır.
 
-Beklenen sonuç:
-- Yüz algılanırsa yüz kutusu doğru konumda görünür.
-- El algılanırsa landmark çizimi elde görünür.
-- Kafa üstünde kutusuz biçimde kullanıcı adı, rütbe ve lonca adı görünür.
-- Kafa üstünde doğrulama durumu yazısı görünmez.
-- Misafir profili için lonca satırı `Loncasız` olur.
-- El görünürken `raw_hand_detected` True ve `tracking_source` mediapipe görünür.
-- El kısa süre kaybolursa `tracking_source` kısa süre optical_flow olabilir, uzun kayıpta lost olur.
-- Loş ışık, bulanıklık veya kadraj kenarı sorunları `quality_warnings` içinde görünür.
-- Model eksikse uygulama çökmez, ilgili algılama pasif kalır.
+## 4. Native Kayıt ve Yüz Eğitimi
 
-## Kayıt/eğitim testi
+### Canlı kamera
 
-Adımlar:
-1. Uygulamayı aç.
-2. `E` ile kayıt akışını başlat.
-3. Kullanıcı adını gir.
-4. Canlı kamera veya görsel import seçeneğini kullan.
-5. Canlı kayıt seçildiyse aşamaları sırayla takip et: düz bak, hafif sağa dön, hafif sola dön, biraz yaklaş, biraz uzaklaş.
-6. Kayıt ekranında aşama adı, aşama içi örnek sayısı, toplam örnek sayısı ve kalite durumunu kontrol et.
-7. Eğitim tamamlanana kadar yönlendirmeleri takip et.
+1. Kayıt sayfasında kullanıcı adı girin.
+2. `Canlı Kamera` yöntemini seçip **Kayıt Başlat** düğmesine basın.
+3. Düz, sağ, sol, yakın ve uzak aşamalarını izleyin.
+4. Aşama/genel progress barlarını, kalite mesajını ve kabul/red sayılarını kontrol edin.
+5. Tamamlanınca sonuç kartını ve lonca mührü yolunu doğrulayın.
 
-Beklenen sonuç:
-- Kötü örneklerde yüz bulunamadı, yüz çok küçük, kamera ortasına gel veya görüntü bulanık gibi kısa mesajlar görünür.
-- Kaliteli örnek alınmadan aşama ilerlemez.
-- Yüz örnekleri `data/face_gallery/` altında oluşur.
-- Örnek dosya adları aşama bilgisini içerir.
-- Görsel import seçilirse kötü fotoğraflar reddedilir ve kabul/red raporu görünür.
-- LBPH modeli `models/face_recognizer_lbph.yml` olarak kaydedilir.
-- Etiketler `data/face_labels.json` içine yazılır.
-- Yerel profil `data/local_profiles.json` içine eklenir.
-- QR/lonca mührü `assets/guild_seals/<username>_seal.png` olarak üretilir.
+### Fotoğraf içe aktarma
 
-## QR + Yüz doğrulama testi
+1. `Fotoğraf İçe Aktarma` yöntemini seçin.
+2. **Klasör Seç** ile yüz görsellerini içeren klasörü seçin.
+3. Kaydı başlatıp kabul/red özetini kontrol edin.
 
-Adımlar:
-1. `Q` menüsünden `3` ile doğrulama modunu `QR + Yüz` yap.
-2. Kayıtlı kullanıcı yüzünü kameraya göster.
-3. QR/lonca mührünü göstermeden durumu kontrol et.
-4. Kullanıcıya ait QR/lonca mührünü kameraya göster.
+Beklenen:
 
-Beklenen sonuç:
-- QR yokken tam yetki açılmaz.
-- Doğru QR okununca tam profil açılır.
-- Yanlış QR gösterilirse tam yetki verilmez.
+- Kalitesiz, bulanık, küçük veya bulunamayan yüzler reddedilir.
+- `data/face_gallery/`, `models/face_recognizer_lbph.yml`, `data/face_labels.json`, `data/local_profiles.json` ve kullanıcı mührü oluşur.
+- Yeni yüz modeli uygulamayı yeniden başlatmadan kullanılabilir.
+- **İptal / Sıfırla** aktif kaydı güvenli biçimde sonlandırır.
 
-## Yalnızca Yüz doğrulama testi
+## 5. QR + Yüz Doğrulama
 
-Adımlar:
-1. `Q` menüsünden `3` ile doğrulama modunu `Yalnızca Yüz` yap.
-2. Kayıtlı kullanıcı yüzünü kameraya göster.
+1. Ayarlar → Doğrulama modu alanından `QR + Yüz` seçin.
+2. Kayıtlı yüzü stabil biçimde gösterin.
+3. Lonca mührünü göstermeden Canlı Görüş durumunu kontrol edin.
+4. Aynı kullanıcıya ait mührü kameraya gösterin.
+5. Başka kullanıcıya ait veya geçersiz QR deneyin.
 
-Beklenen sonuç:
-- Kayıtlı yüz tanınınca QR gerekmeden tam profil açılır.
-- Profilin açık büyüleri kullanılabilir hale gelir.
+Beklenen:
 
-## Misafir yetki testi
+- Yüz tek başına tam yetki açmaz; durum mühür beklediğini gösterir.
+- Doğru mühür tam profili ve açık büyüleri etkinleştirir.
+- Eşleşmeyen mühür tam yetki vermez ve hata bildirimi üretir.
 
-Adımlar:
-1. Tanınmayan bir yüz ile kameraya bak.
-2. Büyü Kitabı ve Debug panelindeki aktif yetkiyi kontrol et.
-3. Donma, Ateş ve Kalkan hareketlerini dene.
+## 6. Yalnızca Yüz Doğrulama
 
-Beklenen sonuç:
-- Profil Misafir olarak kalır.
-- Yalnızca Donma açık olur.
-- Ateş ve Kalkan kilitli kalır.
+1. Ayarlar → Doğrulama modu alanından `Yalnızca Yüz` seçin.
+2. Kayıtlı yüzü stabil biçimde gösterin.
+3. Ayarı kapatıp uygulamayı yeniden açarak kalıcılığı kontrol edin.
 
-## Donma/Ateş/Kalkan testi
+Beklenen: QR gerekmeksizin tam profil açılır ve seçim `data/settings.json` içinde korunur.
 
-Adımlar:
-1. Donma için avucu açık ve kısa süre sabit tut.
-2. Ateş için elini kadraj içinde kontrollü şekilde yatay süpür ve ardından açık avuç göster.
-3. Kalkan için iki açık el göster.
-4. Debug panelinde `D` ile El / Tracker ve Büyü / Trial sayfalarını kontrol et.
+## 7. Grace Period
 
-Beklenen sonuç:
-- Yetki varsa ilgili büyü tetiklenir.
-- Cooldown büyü spamlenmesini engeller.
-- Yetki yoksa kilitli büyü efekti başlamaz.
-- Sol üst büyü panelinde hazırlık durumu metinle birlikte küçük progress bar olarak görünür.
-- Hazırlık yokken progress bar çizilmez ve `Hazırlık: Yok` satırı panel dışına taşmaz.
-- Hazırlık varken progress bar panel sınırları içinde kalır.
-- Donma hazırlığında bar soğuk tonlu, Ateş hazırlığında sıcak tonlu, Kalkan hazırlığında mavi/altın tonlu görünür.
-- Donma açık avuç sabit tutulduğunda %98-99 civarında takılı kalmadan tetiklenir.
-- Debug > Büyü / Trial sayfasında `freeze_state`, `freeze_elapsed`, `freeze_progress`, `freeze_velocity`, `freeze_deadzone`, `freeze_is_stable` ve `freeze_block` alanları Donma kararını açıklar.
-- Ateş için çok hızlı savurma gerekmez; küçük titreşimler tetikleme sayılmaz.
-- Minimal el titreşimi `fire_candidate_active` değerini gereksiz yere True yapmamalıdır.
-- Ateş sırasında el çok kısa kaybolursa hazırlık hemen sıfırlanmaz; final tetikleme için yine gerçek açık avuç görülmelidir.
-- Büyü / Trial debug sayfasında `spell_uses_tracker`, `tracker_source_used`, `fire_travel_distance`, `fire_required_distance` ve `fire_seal_window_active` alanları görünür.
-- `tracker_source_used` kısa süre `optical_flow` olsa bile Donma veya Kalkan tek başına tetiklenmemelidir.
-- Loş ışıkta veya bulanık görüntüde debug panelinde el takip kalite uyarısı görünebilir.
-- Kalkan için iki el görünürken `raw_hand_count` 2 olmalı ve `shield_two_hand_score` yükselmelidir.
-- Tek el görünürken Kalkan tetiklenmemelidir.
+1. Herhangi bir modda kullanıcıyı tam doğrulayın.
+2. Yüzü kameradan çıkarın.
+3. Canlı Görüş ve üst bardaki amber grace durumunu izleyin.
+4. 10 saniye dolmadan aynı yüzle geri dönün.
+5. Testi 10 saniyeden uzun bekleyerek tekrarlayın.
+6. Mümkünse grace sırasında farklı kayıtlı yüz gösterin.
 
-## Büyü Kitabı testi
+Beklenen:
 
-Adımlar:
-1. `B` ile Büyü Kitabı panelini aç/kapat.
-2. Sağ ve sol ok tuşlarıyla sayfa değiştir.
-3. Misafir ve doğrulanmış kullanıcı durumlarını ayrı ayrı kontrol et.
-
-Beklenen sonuç:
-- Kitap kapak sayfasıyla açılır.
-- Her sayfada bir büyü bilgisi görünür.
-- Açık/kilitli büyüler aktif yetkiye göre değişir.
-- Kitap paneli kamera görüntüsünü tamamen kapatmayacak kadar saydam kalır.
-
-## Trial Mode testi
-
-Adımlar:
-1. Uygulama açılır açılmaz Trial panelinin görünmediğini kontrol et.
-2. `T` ile Mühürlü Kapı Trial görevini başlat.
-3. Sırayla Donma, Ateş ve Kalkan büyülerini yap.
-4. Yanlış büyüyü deneyerek görevin sıfırlanmadığını kontrol et.
-
-Beklenen sonuç:
-- Trial paneli sadece aktifken veya tamamlandıktan sonraki kısa sonuç süresinde görünür.
-- Doğru sırada mühür ilerlemesi artar.
-- Donma, Ateş ve Kalkan mühürleri ayrı göstergeler olarak görünür.
-- Açılmamış mühürler soluk, açılmış mühürler parlak, sıradaki mühür hafif vurgulu görünür.
-- Yanlış büyü görevi sıfırlamaz.
-- Tamamlanınca `Kapı Açıldı` / `Trial tamamlandı` görünür ve panel kısa süre sonra kaybolur.
-
-## Ayarlar ve Sistem Durumu testi
-
-Adımlar:
-1. `Q` ile ayar menüsünü aç.
-2. `1-9` seçeneklerini sırayla değiştir.
-3. Uygulamayı kapatıp yeniden aç.
-4. `8` ile Sistem Durumu panelini aç.
-5. `9` ile Algılama Profilini `Hassas`, `Dengeli`, `Kararlı` arasında değiştir.
-6. Debug Sayfasını açıp `D` ile Genel, Yüz / Doğrulama, El / Tracker ve Büyü / Trial sayfalarını gez.
-
-Beklenen sonuç:
-- Kalıcı ayarlar `data/settings.json` içine yazılır.
-- Uygulama yeniden açıldığında son ayarlar korunur.
-- Sistem Durumu paneli model, profil ve QR dosya durumlarını anlaşılır şekilde gösterir.
-- Debug paneli tek uzun liste yerine sayfalara bölünür.
-- El / Tracker sayfasında raw el sayısı, takip kaynağı, kalite uyarıları, brightness ve blur bilgisi görünür.
-- `0` doğrulama oturumunu sıfırlar.
-
-## Büyü Kitabı İçerik Testi
-
-1. Uygulamayı başlat.
-2. `B` ile Büyü Kitabı'nı aç.
-3. Kapakta `Büyü Kitabı`, `VisionForge Lonca Arşivi` ve `Sağ ok ile aç` yazılarını kontrol et.
-4. Sağ ok ile kitap sayfalarına geç.
-5. Her sayfada yalnızca bir büyünün detaylarının göründüğünü doğrula.
-6. Donma sayfasında tür, tetikleme, etki, durum ve gereken rütbe alanlarını kontrol et.
-7. Misafir modunda Donma'nın `Açık`, Ateş ve Kalkan dahil diğer büyülerin `Kilitli` göründüğünü doğrula.
-8. Baglare / S-Seviye doğrulamasında Donma, Ateş ve Kalkan'ın `Açık` göründüğünü kontrol et.
-9. Kilitli büyülerde gereken rütbe bilgisinin yalnızca bilgilendirme olduğunu, yeni rütbe/XP sistemi açmadığını doğrula.
-10. Sol ve sağ oklarla sayfa geçişinin bozulmadığını kontrol et.
-
-## Türkçe Karakter UI Testi
-
-1. Uygulamayı başlat.
-2. Büyü Kitabı kapağında `Büyü Kitabı`, `VisionForge Lonca Arşivi` ve `Sağ ok ile aç` metinlerini kontrol et.
-3. Kitap sayfalarında `Şimşek`, `Alan Mührü` ve `Zaman Kırığı` metinlerinin bozulmadan göründüğünü doğrula.
-4. Kafa üstü etikette `S-Seviye Büyücü` metninin düzgün göründüğünü kontrol et.
-5. Q menüsü, Debug paneli, Sistem Durumu ve Trial panelindeki Türkçe karakterlerin `?` karakterlerine dönüşmediğini doğrula.
-
-## Yüz Tanıma Sağlık ve Reload Testi
-
-1. Uygulamayı başlat.
-2. Q menüsünden `8` ile Sistem Durumu panelini aç.
-3. `Yüz tanıma modeli`, `Yüz etiketleri`, `Yerel profiller` ve `Label/Profile eşleşmesi` satırlarını kontrol et.
-4. Model veya label eksikse uygulamanın çökmeden Misafir/demo akışıyla devam ettiğini doğrula.
-5. `E` ile yeni kayıt/eğitim tamamla.
-6. Uygulamayı kapatmadan kameraya dön ve yeni kullanıcının tanınabildiğini kontrol et.
-7. Debug panelini açıp `D` ile Yüz / Doğrulama sayfasına geç.
-8. `face_identity_score`, `face_identity_threshold`, `face_identity_match`, `stable_label`, `stability_count` ve `identity_health` alanlarının göründüğünü doğrula.
-9. Yüz kadrajdan çıkınca tanıma durumunun sıfırlandığını, tekrar girince birkaç kare sonra stabil hale geldiğini kontrol et.
-
-## Bildirim / Toast Testi
-
-1. Uygulamayı başlat ve bildirimlerin alt orta bölgede küçük kartlar olarak göründüğünü kontrol et.
-2. Donma, Ateş veya Kalkan büyüsü tetikle; ilgili büyü bildiriminin geldiğini doğrula.
-3. QR + Yüz modunda tanınan kullanıcı için QR göstermeden `Lonca mührü bekleniyor` bildiriminin yalnızca durum değişince geldiğini kontrol et.
-4. Doğru QR gösterildiğinde `Lonca mührü onaylandı` bildiriminin geldiğini doğrula.
-5. Yanlış QR gösterildiğinde `Mühür kullanıcıyla eşleşmedi` bildiriminin geldiğini doğrula.
-6. T ile Trial başlat; `Mühürlü Kapı başladı` bildirimi görünmeli.
-7. Trial tamamlanınca `Kapı açıldı` bildirimi görünmeli.
-8. Bildirimlerin birkaç saniye sonra kaybolduğunu ve aynı durumun her karede spam yapmadığını kontrol et.
-
-## Demo Rehberi Testi
-
-1. Uygulamayı başlat.
-2. `G` ile Demo Rehberi'ni aç; küçük rehber paneli görünmeli.
-3. Panelin altındaki küçük kısayol alanında `Q: Menü`, `E: Kayıt`, `B: Kitap`, `T: Trial`, `Esc: Çıkış` bilgisini kontrol et.
-4. İlk adımda `E ile büyücü kaydı başlat` bilgisinin göründüğünü doğrula.
-5. `N` ile sonraki adıma geç, `P` ile önceki adıma dön.
-6. Büyü Kitabı adımında `E: Kayıt`, `B: Kitap` ve `Sağ/Sol Ok: Sayfa değiştir` ipuçlarını kontrol et.
-7. `B` ile Büyü Kitabı'nı açıp sağ okla sayfaya geç; rehberin Büyü Kitabı adımını hemen kaybetmeden kısa süre gösterdiğini kontrol et.
-8. Donma, Ateş ve Kalkan büyülerini tetikle; ilgili demo adımlarının en az yaklaşık 1.5 saniye görünür kaldıktan sonra ilerlediğini kontrol et.
-9. `T` ile Mühürlü Kapı görevini başlat; Trial adımı algılanmalı.
-10. Trial tamamlanınca rehberin final/tamamlandı durumuna geçtiğini ve `Demo tamamlandı` bildiriminin geldiğini kontrol et.
-11. `G` ile rehberi kapat.
-12. Q, Esc, E, B, H, R, T, D ve sağ/sol ok kısayollarının bozulmadığını kontrol et.
-
-## Portfolyo Dokümantasyon Kontrolü
-
-1. `README.md` dosyasını aç.
-2. README içinde şu belgelerin linklendiğini kontrol et:
-   - `docs/ARCHITECTURE.md`
-   - `docs/DEMO_SCRIPT.md`
-   - `docs/DEMO_ASSETS.md`
-   - `docs/TROUBLESHOOTING.md`
-   - `docs/ROADMAP.md`
-   - `docs/MANUAL_TESTS.md`
-3. `docs/DEMO_SCRIPT.md` dosyasındaki demo sırasının uygulamadaki mevcut kısayollarla uyumlu olduğunu kontrol et.
-4. `docs/TROUBLESHOOTING.md` içinde kamera, model, QR, yüz tanıma, el algılama, OpenCV çakışması ve `settings.json` sorunlarının yer aldığını kontrol et.
-5. `docs/ARCHITECTURE.md` içinde kamera, yüz, el, HandStateTracker, SpellEngine, TrialEngine, DemoGuide ve UI/effects akışlarının ayrı anlatıldığını kontrol et.
-6. `docs/ROADMAP.md` dosyasında gelecek fikirlerin mevcut özellik gibi sunulmadığını kontrol et.
-7. Public docs klasöründe kişisel portfolyo/CV notu kalmadığını kontrol et.
-
-Beklenen sonuç:
-- README portfolyo sunumu için tek giriş noktası olur.
-- Demo videosu için izlenecek sıra netleşir.
-- Sorun giderme ve manuel test dokümanları hızlı başvuru olarak kullanılabilir.
-
-## Gitignore Kontrolü
-
-1. `.gitignore` dosyasında yerel kullanıcı verilerinin Git dışında kaldığını kontrol et.
-2. `assets/guild_seals/*.png` kuralının bulunduğunu doğrula.
-3. `assets/guild_seals/.gitkeep` dosyasının takip edilebilir kaldığını doğrula.
-4. `data/settings.json`, `data/face_gallery/`, `data/import_faces/`, `data/local_profiles.json`, `data/face_labels.json`, `models/*.task`, `models/*.tflite` ve `models/face_recognizer_lbph.yml` kurallarını kontrol et.
-
-Beklenen sonuç:
-- Otomatik üretilen QR/lonca mührü PNG dosyaları Git'e girmez.
-- `assets/guild_seals/.gitkeep` klasörü repoda tutar.
-- Kullanıcıya ait yerel yüz verileri, ayarlar ve model çıktıları Git dışında kalır.
-
-## PySide6 Masaüstü Kabuğu Testi
-
-1. `python app.py` ile uygulamayı başlat.
-2. PySide6 ana penceresinin açıldığını doğrula.
-3. Ayrı bir `cv2.imshow` OpenCV penceresi açılmadığını kontrol et.
-4. Pencereyi büyütüp küçült; kamera görüntüsünün yatay veya dikey esnemediğini kontrol et.
-5. Sol navigasyon, üst profil alanı, orta kamera alanı ve sağ durum panelinin görünür olduğunu kontrol et.
-6. `Esc` ile uygulamayı kapat.
-
-Beklenen sonuç:
-- Kamera işlenirken UI donmaz.
-- Kamera görüntüsü letterbox ile oranı korunarak gösterilir.
-- Kapanışta kamera ve worker thread temiz kapanır.
-
-## 10 Saniyelik Doğrulama Toleransı Testi
-
-1. Kayıtlı kullanıcıyı `QR + Yüz` veya `Yalnızca Yüz` modunda tam doğrula.
-2. Yüzünü kameradan çıkar.
-3. Üst doğrulama alanında `Oturum korunuyor` ve kalan saniye bilgisini kontrol et.
-4. 10 saniye dolmadan aynı yüzü tekrar göster.
-5. Aynı testi 10 saniyeden uzun bekleyerek tekrarla.
-6. Mümkünse başka kayıtlı kullanıcıyı stabil şekilde göster.
-
-Beklenen sonuç:
-- Grace period sırasında profil, rütbe, açık büyüler ve Trial yetkisi korunur.
-- Aynı kullanıcı süre dolmadan geri dönerse QR yeniden istenmez.
+- Profil ve yetkiler en fazla 10 saniye korunur.
+- Aynı kullanıcı zamanında dönerse QR yeniden istenmez.
 - Süre dolunca Misafir yetkisine dönülür.
-- Başka kayıtlı kullanıcı eski oturumu devralmaz.
+- Farklı stabil kullanıcı eski oturumu devam ettirmez.
+
+## 8. Donma, Ateş ve Kalkan
+
+1. Donma için açık avucu sabit tutun.
+2. Ateş için kontrollü yatay süpürme yapıp açık avuç gösterin.
+3. Kalkan için iki açık eli aynı anda gösterin.
+4. Her büyüde hazırlık, cooldown, bildirim ve kamera efektini kontrol edin.
+5. Misafir profille Ateş ve Kalkanı deneyin.
+
+Beklenen:
+
+- Donma Misafir yetkisinde çalışır.
+- Ateş ve Kalkan yalnız yetkili profilde çalışır.
+- Tek el Kalkanı tetiklemez; optical flow tek başına Donma/Kalkan kararı vermez.
+- Cooldown aynı büyünün arka arkaya spamlenmesini engeller.
+
+## 9. Büyü Kitabı
+
+1. Sol navigasyondan Büyü Kitabı sayfasını açın.
+2. **Önceki** ve **Sonraki** ile kapak, Donma, Ateş ve Kalkan sayfalarını gezin.
+3. Misafir ve tam doğrulanmış profil durumlarını karşılaştırın.
+
+Beklenen:
+
+- Kitap ayrı bir Qt sayfasında gösterilir.
+- Her sayfada tür, tetikleme, etki, durum ve gereken rütbe görünür.
+- Açık ve kilitli büyüler aktif yetkiyle eşleşir.
+
+## 10. Trial
+
+1. Trial sayfasını açın ve **Trial Başlat / Yeniden Başlat** düğmesine basın.
+2. Donma → Ateş → Kalkan sırasını tamamlayın.
+3. Sıra dışı büyü deneyin.
+4. Yetkisiz profille kilitli adımları kontrol edin.
+
+Beklenen:
+
+- Aktif, tamamlanan, bekleyen ve yetki yetersiz adımlar ayrışır.
+- Yanlış büyü ilerlemeyi sıfırlamaz.
+- Üç adım sonunda Trial tamamlanır.
+
+## 11. Ayarlar
+
+1. El landmark, yüz kutusu, kamera aynalama ve büyü efektleri seçeneklerini değiştirin.
+2. Doğrulama modunu ve `Hassas`, `Dengeli`, `Kararlı` algılama profillerini deneyin.
+3. Uygulamayı kapatıp yeniden açın.
+
+Beklenen: Seçimler motora uygulanır, kamera aynalama yalnız sunumu etkiler ve kalıcı ayarlar yeniden yüklenir.
+
+## 12. Sistem Durumu
+
+1. Sistem Durumu sayfasını açın.
+2. **Yenile** düğmesine basın.
+3. Kamera, iki MediaPipe modeli, LBPH modeli, etiketler, local profiller, yüz galerisi, lonca mühürleri ve label/profile eşleşmesini kontrol edin.
+4. Opsiyonel yerel dosyalardan birinin olmadığı temiz kurulum durumunu doğrulayın.
+
+Beklenen: Gerekli/opsiyonel durumlar uygulamayı çökertmeden hazır, eksik veya uyarı olarak görünür.
+
+## 13. Debug
+
+1. Debug sayfasındaki dört sekmeyi açın.
+2. Genel sekmede performans ve çözünürlük değerlerini kontrol edin.
+3. Yüz/Doğrulama sekmesinde stabil etiket, skor, QR ve session state değerlerini kontrol edin.
+4. El/Tracker sekmesinde el sayısı, kaynak, kalite, brightness ve blur değerlerini kontrol edin.
+5. Büyü/Trial sekmesinde aktif büyü, hazırlık, cooldown ve Trial değerlerini kontrol edin.
+
+Beklenen: Değerler koyu teknik alanlarda güncellenir; uzun değerler tooltip ile okunabilir.
+
+## 14. Frozen EXE
+
+1. [Paketleme](PACKAGING.md) adımlarıyla onedir build alın.
+2. `tools\verify_distribution.py dist\VisionForge` çalıştırın.
+3. `dist\VisionForge\VisionForge.exe` dosyasını dağıtım klasörü içinde açın.
+4. Kamera, sayfalar, kayıt, ayar kalıcılığı ve Esc kapanışını tekrar kontrol edin.
+5. Klasörü yazılabilir başka bir konuma taşıyıp yeniden deneyin.
+
+Beklenen: Özel ikon görünür, bundled yüz/el modelleri bulunur ve portable kullanıcı verileri EXE yanında oluşur.
+
+## 15. Git ve Gizlilik
+
+```powershell
+git check-ignore -v data\settings.json data\local_profiles.json data\face_labels.json models\face_recognizer_lbph.yml
+git check-ignore -v data\face_gallery\sample.png data\import_faces\sample.png assets\guild_seals\sample.png
+.venv\Scripts\python.exe tools\verify_distribution.py dist\VisionForge
+```
+
+Beklenen:
+
+- Yerel yüz, profil, ayar, eğitilmiş model ve lonca mührü Git dışında kalır.
+- Dağıtım doğrulaması kişisel veri, geliştirme klasörü veya kaynak dosyası bulmaz.
+- Public belgelerde kişisel dosya veya yerel kullanıcı verisine bağlantı yoktur.

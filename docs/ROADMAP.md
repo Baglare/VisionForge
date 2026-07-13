@@ -1,53 +1,34 @@
 # VisionForge Roadmap
 
-Bu roadmap mevcut prototipin üstüne ileride eklenebilecek fikirleri listeler. Buradaki maddeler mevcut sürümde uygulanmış özellik taahhüdü değildir.
+Bu dosya yalnız gelecekte değerlendirilecek hedefleri listeler; tamamlanmış uygulama özelliklerini tekrar etmez.
 
-## Kısa Vadeli İyileştirmeler
+## Algılama ve Kimlik Dayanıklılığı
 
-### Daha iyi yüz tanıma modeli
+- LBPH yerine veya yanında değerlendirilebilecek embedding tabanlı yerel yüz tanıma.
+- Kayıt aşamalarında gerçek kafa yönünü doğrulayan Face Landmarker desteği.
+- Farklı kamera, ışık ve kullanıcı mesafeleri için ölçülebilir kalibrasyon akışı.
+- Yanlış kabul/ret davranışını izlemek için tekrarlanabilir yerel değerlendirme veri seti ve metrikleri.
 
-LBPH yaklaşımı yerel ve hafif bir prototip için yeterlidir. İleride daha dayanıklı embedding tabanlı bir yüz tanıma modeli eklenebilir.
+## Kullanıcı ve Veri Yönetimi
 
-### Face Landmarker ile kafa yönü kontrolü
+- Yerel profili görüntüleme, güncelleme ve silme ekranları.
+- Yüz galerisi, eğitilmiş model ve lonca mührünü güvenli biçimde temizleyen kullanıcı kontrollü veri yönetimi.
+- Birden fazla yerel profil arasında daha açıklayıcı geçiş ve çakışma raporları.
 
-Kayıt sırasında kullanıcının gerçekten sağa, sola, yakına veya uzağa poz verdiğini daha net doğrulamak için Face Landmarker tabanlı kafa yönü kontrolü eklenebilir.
+## Etkileşim ve Oynanış
 
-### Büyü kalibrasyon modu
+- Donma, Ateş ve Kalkan için kullanıcıya özel hareket eşikleri.
+- Daha uzun hareket zincirleri ve yeni büyü prototipleri.
+- Kalıcı XP taahhüdü vermeden önce tasarlanacak gerçek rütbe/progression modeli.
+- Daha zengin Trial senaryoları ve erişilebilir geri bildirim seçenekleri.
 
-Kullanıcının kamera mesafesine, ışık durumuna ve el hareket hızına göre Donma, Ateş ve Kalkan eşiklerini ayarlayan basit bir kalibrasyon ekranı eklenebilir.
+## Kalite ve Dağıtım
 
-## Orta Vadeli İyileştirmeler
+- Qt sayfaları için daha geniş otomatik UI, erişilebilirlik ve uzun süreli performans testleri.
+- Farklı Windows makinelerinde tekrarlanabilir frozen smoke testleri.
+- Installer, kod imzalama, sürümleme ve checksum üretimi.
+- Doğrulanmış artifact yayımlama süreci ve public release hazırlığı.
 
-### Daha gelişmiş büyü hareketleri
+## Kapsam
 
-Mevcut büyüler MVP hareketleriyle çalışır. İleride daha uzun hareket zincirleri, yön bazlı komutlar ve iki aşamalı mühürler eklenebilir.
-
-### Rütbe ve level sistemi
-
-Büyü Kitabı'nda görünen gereken rütbe bilgisi şu an bilgilendiricidir. İleride görev başarılarına bağlı rütbe/level ilerlemesi eklenebilir.
-
-### Lonca ilerleme sistemi
-
-Kullanıcı profilleri lonca adı taşıyor. İleride lonca seviyesi, lonca görevleri ve kullanıcı başarımları gibi portfolyo değeri yüksek ek sistemler tasarlanabilir.
-
-### Daha sinematik Trial Mode
-
-Mühürlü Kapı akışı daha görsel hale getirilebilir. Örneğin kapı sembolleri, daha belirgin mühür animasyonları ve görev sonu sahnesi eklenebilir.
-
-## Uzun Vadeli İyileştirmeler
-
-### Demo kayıt modu
-
-Portfolyo videosu için kamera görüntüsünü, UI olaylarını ve tetiklenen büyüleri kayıt altına alan yerel bir demo kayıt modu eklenebilir.
-
-### Paketlenmiş masaüstü sürüm
-
-Proje ileride PyInstaller veya benzeri bir araçla tek tıkla çalışan masaüstü demosu haline getirilebilir.
-
-### Daha zengin profil yönetimi
-
-Profil silme, profil güncelleme ve yerel kullanıcı verilerini temizleme ekranı eklenebilir. Bu özellikler şu an bilerek kapsam dışında tutulmuştur.
-
-## Kapsam Notu
-
-VisionForge şu an profesyonel güvenlik sistemi değil, yerel çalışan bir portfolyo prototipidir. Roadmap maddeleri bu sınırı koruyarak demo değerini ve teknik olgunluğu artırmaya odaklanır.
+Bu hedefler VisionForge'u profesyonel güvenlik veya production biyometrik ürün olarak konumlandırmaz. Öncelik, yerel veri sınırlarını koruyan güvenilir bir masaüstü prototipidir.

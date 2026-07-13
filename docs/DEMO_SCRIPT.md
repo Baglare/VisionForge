@@ -1,182 +1,63 @@
-# VisionForge Demo Video Senaryosu
+# VisionForge 60–90 Saniyelik Demo Senaryosu
 
-Bu senaryo portfolyo videosu veya canlı sunum için kısa ve kontrollü bir akış önerir. Amaç bütün sistemi tek seferde anlatmak değil, VisionForge'un ana değerini net göstermektir.
+Bu akış güncel PySide6 masaüstü arayüzünü kısa ve tekrarlanabilir biçimde gösterir. Hazırlıkta kamera, modeller, profil ve lonca mührü önceden doğrulanmalıdır.
 
-## 1. Açılış
+## 1. Açılış — 5 sn
 
-Adım:
-1. Proje klasörünü ve uygulama penceresini göster.
-2. `python app.py` ile uygulamayı başlat.
-3. Kamera görüntüsünün geldiğini göster.
+`python app.py` veya mevcut onedir build içindeki `VisionForge.exe` ile uygulamayı açın.
 
-Anlatım:
-- VisionForge, kamera üzerinden yüz ve el algılayan, kullanıcıyı yerel doğrulama ile tanıyan ve el hareketlerini büyü komutlarına çeviren masaüstü görüntü işleme prototipidir.
+Anlatım: “VisionForge, yüz ve el algılamayı yerel doğrulama ve hareket komutlarıyla birleştiren PySide6 masaüstü prototipidir.”
 
-Beklenen ekran:
-- Kamera görüntüsü.
-- Kafa üstünde kullanıcı adı, rütbe ve lonca bilgisi.
-- Küçük büyü durumu paneli.
+## 2. Canlı Görüş — 7 sn
 
-## 2. Sistem Durumu ve Ayarlar
+Canlı Görüş'te 640×480 kamera görüntüsünü, üst profil alanını ve sağdaki oturum/büyü/Trial kartlarını gösterin. Görüntünün pencereye oranı korunarak yerleştiğini belirtin.
 
-Adım:
-1. `Q` ile ayar menüsünü aç.
-2. `8` ile Sistem Durumu panelini göster.
-3. Model ve yerel veri durumlarını kısa göster.
+## 3. Sistem Durumu — 6 sn
 
-Anlatım:
-- Uygulama eksik model veya yerel profil dosyalarında çökmeden durum gösterir.
-- Debug ve sistem durumu panelleri demo sırasında sorun ayıklamak için kullanılır.
+Sistem Durumu sayfasına geçip **Yenile** düğmesine basın. Kamera, MediaPipe modelleri ve yerel tanıma kaynaklarını kısaca gösterin.
 
-Beklenen ekran:
-- Face Detector, Hand Landmarker, yüz tanıma modeli, yüz etiketleri ve QR/lonca mührü durumları.
+## 4. Kayıt veya Hazır Profil — 7 sn
 
-## 3. Kullanıcı Kaydı veya Hazır Kayıt
+Hazır profil kullanılıyorsa Kayıt sayfasındaki native akışı kısaca gösterip kayıt başlatmayın. Yeni kayıt gösterilecekse kullanıcı adı, yöntem, aşama ve kalite/progress alanlarını özetleyin.
 
-Adım:
-1. Hazır kayıt varsa bunu belirt.
-2. Kayıt akışını göstermek istersen `E` ile başlat.
-3. Rehberli kayıt adımlarını kısaca göster: düz bak, sağa dön, sola dön, yaklaş, uzaklaş.
+Anlatım: “Yüz örnekleri, LBPH modeli ve lonca mührü cihazda tutulur.”
 
-Anlatım:
-- Kayıt sırasında yüz örnekleri yerel olarak saklanır.
-- Kötü, bulanık veya çok küçük yüz örnekleri eğitim verisine alınmaz.
-- Eğitimden sonra yerel LBPH modeli ve kullanıcıya özel QR/lonca mührü oluşur.
+## 5. Yüz + QR — 8 sn
 
-Beklenen ekran:
-- Kayıt aşaması, örnek sayısı, kalite durumu ve yönlendirme mesajları.
+Ayarlar'da `QR + Yüz` modunu gösterin. Kayıtlı yüzü tanıtın, ardından aynı profile ait lonca mührünü kameraya gösterin. Üst doğrulama rozeti ve açılan yetkileri vurgulayın.
 
-## 4. Yüz Tanıma
+Not: Bunun profesyonel güvenlik veya production biyometrik sistem olmadığını açıkça belirtin.
 
-Adım:
-1. Kameraya kayıtlı kullanıcı olarak bak.
-2. Kafa üstü profil etiketini göster.
-3. Debug panel açıksa Yüz / Doğrulama sayfasında stabil yüz tanıma bilgisini göster.
+## 6. Grace Period — 6 sn
 
-Anlatım:
-- Yüz tanıma tek karelik karar yerine birkaç karelik kararlılık ile değerlendirilir.
-- Profil ve model dosyaları tutarsızsa uygulama kullanıcıyı çökmeden bilgilendirir.
+Tam doğrulamadan sonra kısa süre kadrajdan çıkın. Amber kalan süre göstergesini gösterip 10 saniye dolmadan geri dönün.
 
-Beklenen ekran:
-- Kayıtlı kullanıcı adı, rütbe ve lonca adı.
-- Misafir modunda `Misafir`, `Misafir Büyücü`, `Loncasız`.
+Anlatım: “Aynı kullanıcı kısa kamera kaybında oturumu yeniden QR göstermeden sürdürebilir.”
 
-## 5. QR + Yüz veya Yalnızca Yüz Doğrulama
+## 7. Büyü Kitabı — 7 sn
 
-Adım:
-1. Varsayılan `QR + Yüz` modunu anlat.
-2. QR/lonca mührünü telefonda veya görsel olarak kameraya göster.
-3. İstersen `Q > 3` ile `Yalnızca Yüz` moduna geçildiğini göster.
+Büyü Kitabı sayfasına geçin. **Önceki/Sonraki** ile açık ve kilitli büyüleri, tetikleme bilgisini ve gereken rütbeyi gösterin.
 
-Anlatım:
-- QR + Yüz modunda tam yetki için hem stabil yüz tanıma hem doğru lonca mührü gerekir.
-- Yalnızca Yüz modunda kayıtlı yüz tanınırsa QR gerekmeden profil açılır.
-- Bu prototip profesyonel güvenlik sistemi değildir.
+## 8. Üç Büyü — 12–18 sn
 
-Beklenen ekran:
-- QR onay bildirimi.
-- Aktif profilin açık büyüleri.
+Canlı Görüş'e dönüp sırasıyla:
 
-## 6. Büyü Kitabı
+1. Donma: açık avucu sabit tutun.
+2. Ateş: kontrollü yatay süpürüp açık avuç gösterin.
+3. Kalkan: iki açık eli gösterin.
 
-Adım:
-1. `B` ile Büyü Kitabı'nı aç.
-2. Kapak sayfasını göster.
-3. Sağ/sol oklarla sayfalar arasında gez.
+Hazırlık, cooldown, bildirim ve kamera efektlerini kısa tutun.
 
-Anlatım:
-- Büyü Kitabı aktif profile göre açık ve kilitli büyüleri gösterir.
-- Gereken rütbe bilgisi şu an bilgilendiricidir; gerçek seviye sistemi eklenmemiştir.
+## 9. Trial — 8–12 sn
 
-Beklenen ekran:
-- Her sayfada bir büyü.
-- Tür, tetikleme, etki, durum ve gereken rütbe alanları.
+Trial sayfasında görevi başlatın. Donma → Ateş → Kalkan sırasındaki adım kartlarının tamamlanmasını ve sonuç durumunu gösterin.
 
-## 7. Donma Büyüsü
+## 10. Debug / Performans — 6 sn
 
-Adım:
-1. Avucunu kameraya açık göster.
-2. Kısa süre sabit tut.
+Debug → Genel sekmesinde FPS, 640×480 çözünürlük, pipeline ve UI frame aralığını gösterin. Gerekirse El/Tracker veya Yüz/Doğrulama sekmesine tek geçiş yapın.
 
-Anlatım:
-- Donma, açık avuç ve kısa süreli sabit duruş ile tetiklenir.
-- Hazırlık progress bar ile görünür.
+## 11. Kapanış — 4 sn
 
-Beklenen ekran:
-- Donma hazırlık barı.
-- `Donma büyüsü` bildirimi.
-- Kısa soğuk efekt.
+Canlı Görüş'e dönün ve `Esc` ile uygulamayı kapatın.
 
-## 8. Ateş Büyüsü
-
-Adım:
-1. Elini kadraj içinde kontrollü yatay süpür.
-2. Ardından açık avuç göster.
-
-Anlatım:
-- Ateş artık hızlı savurma yerine kontrollü yatay süpürmeye daha uygun çalışır.
-- Kısa el kayıpları hareket devamlılığı için tolere edilir, fakat final tetikleme için gerçek açık avuç gerekir.
-
-Beklenen ekran:
-- Ateş hazırlık durumu.
-- `Ateş büyüsü` bildirimi.
-- Kısa sıcak efekt.
-
-## 9. Kalkan Büyüsü
-
-Adım:
-1. İki açık elini kameraya göster.
-2. Kısa süre pozunu koru.
-
-Anlatım:
-- Kalkan için iki gerçek el landmarkı gerekir.
-- Optical flow tek başına Kalkan tetiklemez.
-
-Beklenen ekran:
-- Kalkan hazırlık durumu.
-- `Kalkan büyüsü` bildirimi.
-- Koruma halkası efekti.
-
-## 10. Trial Mode
-
-Adım:
-1. `T` ile Mühürlü Kapı görevini başlat.
-2. Sırayla Donma, Ateş ve Kalkan yap.
-
-Anlatım:
-- Trial Mode mevcut büyüleri küçük bir görev akışına bağlar.
-- Yanlış büyü görevi sıfırlamaz; sadece uyarı verir.
-- Tam görev için kullanıcının ilgili büyülere yetkisi olmalıdır.
-
-Beklenen ekran:
-- Trial paneli sadece görev aktifken görünür.
-- Mühür ilerlemesi 0/3, 1/3, 2/3, 3/3 olarak artar.
-- Tamamlanınca `Kapı Açıldı` mesajı görünür.
-
-## 11. Demo Rehberi
-
-Adım:
-1. `G` ile Demo Rehberi'ni aç.
-2. `N` ve `P` ile adımlar arasında geç.
-3. Rehber panelindeki kısayol satırını göster.
-
-Anlatım:
-- Demo Rehberi portfolyo sunumu sırasında sıradaki adımı hatırlatır.
-- Otomatik geçişler kullanıcının okuyabileceği kadar kısa süre bekler.
-
-Beklenen ekran:
-- Demo Rehberi paneli.
-- Adım başlığı, kısa açıklama ve kısayol ipuçları.
-
-## 12. Kapanış
-
-Adım:
-1. Genel akışı özetle.
-2. `Esc` ile uygulamayı kapat.
-
-Anlatım:
-- VisionForge bir kamera + yerel doğrulama + hareket tabanlı komut prototipidir.
-- Proje, görüntü işleme, uygulama mimarisi, kullanıcı geri bildirimi ve demo tasarımı konularını bir araya getirir.
-
-Beklenen ekran:
-- Kamera penceresi temiz kapanır.
+Kapanış cümlesi: “Kamera işleme ayrı worker thread'inde, kullanıcı verileri ise source veya portable EXE kökünde yerel olarak tutulur.”

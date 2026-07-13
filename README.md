@@ -1,217 +1,157 @@
 # VisionForge
 
-VisionForge, kamera üzerinden yüz ve el algılayan; kullanıcıyı yerel yüz tanıma ve lonca mührüyle doğrulayan; el hareketlerini büyü komutlarına çeviren modern lonca temalı interaktif görüntü işleme prototipidir.
+VisionForge; kamera görüntüsünde yüz ve el algılama, yerel kullanıcı doğrulama ve hareket tabanlı büyü komutlarını birleştiren PySide6 masaüstü prototipidir. Uygulama; MediaPipe, OpenCV LBPH, QR tabanlı lonca mührü ve yerel profil verileriyle tamamen cihaz üzerinde çalışır.
 
-Bu proje profesyonel güvenlik sistemi değildir. Amaç, yerel çalışan ve portfolyoda gösterilebilir bir masaüstü bilgisayarlı görü deneyimi oluşturmaktır.
+> VisionForge profesyonel bir güvenlik veya production-grade biyometrik doğrulama ürünü değildir. Yerel çalışan bir bilgisayarlı görü ve etkileşim prototipidir.
 
-## VisionForge Nedir?
+## English Overview
 
-VisionForge; OpenCV, MediaPipe Tasks, yerel LBPH yüz tanıma, QR tabanlı lonca mührü doğrulama ve el landmark verisini birleştiren Python tabanlı bir masaüstü uygulamasıdır. Kamera görüntüsü üzerinde profil etiketi, Büyü Kitabı, büyü efektleri, Trial Mode, Demo Rehberi, ayarlar, debug ve sistem durumu panelleri çalışır.
+VisionForge is a local-first PySide6 desktop computer-vision prototype. It combines MediaPipe face and hand detection, OpenCV LBPH face recognition, QR-based guild-seal verification, gesture-driven spells, and a native Qt enrollment workflow. It is not a professional security or production biometric-authentication product.
 
-Ana fikir, klasik webcam demosunu oyunlaştırılmış bir lonca arayüzüne dönüştürmektir: kullanıcı kamerada algılanır, yerel profil yetkisi belirlenir, el hareketleri Donma, Ateş ve Kalkan büyülerine çevrilir.
+## Güncel Özellikler
 
-## Temel Özellikler
+- PySide6 tabanlı, yeniden boyutlandırılabilir masaüstü arayüzü.
+- Gece laciverti, indigo, mor ve lavanta renk sistemi; özel VisionForge uygulama ikonu.
+- MediaPipe Tasks ile yüz ve el algılama.
+- OpenCV LBPH ile yerel yüz tanıma ve stabil etiket kararı.
+- QR/lonca mührü ile isteğe bağlı ikinci doğrulama katmanı.
+- Tam doğrulama sonrasında 10 saniyelik yüz kaybı toleransı.
+- `HandStateTracker` ile yumuşatılmış hareket, kısa kayıp toleransı ve kalite ölçümleri.
+- Donma, Ateş ve Kalkan büyüleri; yetki ve cooldown kontrolleri.
+- Sıralı Donma → Ateş → Kalkan Trial görevi.
+- Canlı kamera veya fotoğraf içe aktarma ile native Qt kayıt/yüz eğitimi akışı.
+- Sistem kaynaklarını ve performans değerlerini gösteren durum/debug sayfaları.
+- PyInstaller `onedir` Windows build ve portable veri yerleşimi.
 
-- Canlı OpenCV kamera akışı.
-- MediaPipe Tasks Face Detector ile yüz var/yok algılama.
-- OpenCV LBPH ile yerel yüz tanıma.
-- QR/lonca mührü ile ikinci doğrulama katmanı.
-- MediaPipe Tasks Hand Landmarker ile el landmark algılama.
-- HandStateTracker ile el merkezi, kısa kayıp toleransı ve debug amaçlı takip kalitesi.
-- Donma, Ateş ve Kalkan büyüleri.
-- Yetkiye göre açık/kilitli büyü sistemi.
-- Büyü Kitabı: kapak + iki sayfa görünümü, sayfa başına bir büyü.
-- Mühürlü Kapı Trial Mode: Donma -> Ateş -> Kalkan sıralı görev.
-- Demo Rehberi: portfolyo demosu için adım adım yönlendirme.
-- Q menüsü, kalıcı ayarlar, debug sayfaları ve sistem durumu paneli.
-- Türkçe karakter destekli UI metin çizimi.
-- Kısa bildirim/toast sistemi.
-- PySide6 tabanlı yeniden boyutlandırılabilir masaüstü kabuğu.
-- OpenCV pencere döngüsünden ayrılmış `VisionEngine` işleme çekirdeği.
-- Tam doğrulanmış kullanıcı için 10 saniyelik yüz kaybı toleransı.
+## Uygulama Sayfaları
 
-## Demo Akışı
+| Sayfa | Amaç |
+| --- | --- |
+| Canlı Görüş | Oranı korunan kamera görüntüsü, profil, doğrulama, aktif büyü, Trial ve bildirim özeti |
+| Büyü Kitabı | Açık/kilitli büyüler, tetikleme, etki ve gereken rütbe bilgileri |
+| Trial | Üç adımlı görevin aktif, tamamlanmış ve yetki bekleyen durumları |
+| Kayıt | Canlı kamera veya fotoğraf içe aktarma ile yerel profil ve LBPH eğitimi |
+| Ayarlar | Overlay seçenekleri, kamera aynalama, doğrulama modu ve algılama profili |
+| Sistem Durumu | Kamera, MediaPipe modelleri, yerel tanıma dosyaları ve lonca mühürleri |
+| Debug | Genel, Yüz/Doğrulama, El/Tracker ve Büyü/Trial teknik değerleri |
 
-1. Uygulamayı başlat.
-2. Q menüsü ve Sistem Durumu panelini kısa göster.
-3. Kayıtlı kullanıcı yoksa E ile kayıt/eğitim akışını başlat veya hazır kayıt olduğunu açıkla.
-4. Yüz tanıma sonucunu ve kafa üstü profil/lonca etiketini göster.
-5. QR + Yüz modunda lonca mührünü göster veya Q > 3 ile Yalnızca Yüz moduna geç.
-6. B ile Büyü Kitabı'nı aç, sağ/sol oklarla büyü sayfalarını gez.
-7. Donma: açık avuç sabit.
-8. Ateş: kontrollü yatay süpürme + avuç gösterme.
-9. Kalkan: iki açık el.
-10. T ile Mühürlü Kapı Trial Mode'u başlat.
-11. Donma -> Ateş -> Kalkan sırasıyla kapıyı aç.
-12. G ile Demo Rehberi'ni açıp portfolyo akışını özetle.
+## Mimari Akış
 
-Detaylı video senaryosu için [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) dosyasına bak.
+```text
+Kamera (640×480)
+  → CameraWorker / ayrı QThread
+  → VisionEngine.process_frame()
+  → yüz + kimlik + QR + doğrulama oturumu
+  → el + HandStateTracker + SpellEngine + TrialEngine
+  → en güncel QImage ve durum payload'u
+  → MainWindow + FrameView + Qt sayfaları
+```
 
-## Kurulum
+`CameraWorker` kamera ve görüntü işleme işini Qt ana thread'inden ayırır. Worker yalnızca en güncel kareyi tutar; böylece UI yavaşladığında eski karelerden oluşan büyüyen bir kuyruk oluşmaz. `FrameView`, 640×480 işleme görüntüsünü pencere alanına en-boy oranını koruyarak yerleştirir.
 
-Python 3.12 veya 3.13 önerilir. OpenCV tarafında contrib paketi gerekir; `opencv-python` ve `opencv-contrib-python` aynı ortamda birlikte tutulmamalıdır.
+Kamera görüntüsüne bağlı profil etiketi, debug kutuları ve büyü efektleri OpenCV/Pillow çizim katmanında kalır. Navigasyon, kartlar, ayarlar, kayıt, Büyü Kitabı, Trial, sistem durumu ve debug arayüzleri Qt widget'larıdır.
+
+Ayrıntılar için [Mimari](docs/ARCHITECTURE.md) belgesine bakın.
+
+## Doğrulama ve Grace Period
+
+Varsayılan mod `QR + Yüz`dür. Kayıtlı yüz stabil tanındıktan sonra doğru kullanıcıya ait lonca mührü okunursa tam profil açılır. `Yalnızca Yüz` modunda stabil yüz tanıma yeterlidir. Tanınmayan veya henüz tam doğrulanmamış kullanıcı Misafir yetkileriyle kalır.
+
+Tam doğrulanmış kullanıcı kameradan çıktığında oturum hemen kapanmaz. `VerificationSession`, profil ve yetkileri en fazla 10 saniye korur. Aynı kullanıcı süre dolmadan geri dönerse oturum devam eder; farklı bir stabil kullanıcı görülürse veya süre biterse eski oturum korunmaz.
+
+## Büyüler ve Trial
+
+| Büyü | Tetikleme | Varsayılan yetki |
+| --- | --- | --- |
+| Donma | Açık avucu kısa süre sabit tutma | Misafir ve üzeri |
+| Ateş | Kontrollü yatay süpürme, ardından açık avuç | Yetkili profil |
+| Kalkan | İki gerçek açık el | Yetkili profil |
+
+Trial sayfası Donma → Ateş → Kalkan sırasını izler. Doğru büyü ilerletir; yanlış büyü görevi sıfırlamaz. Gerekli büyü yetkisi olmayan adımlar kilitli gösterilir.
+
+## Kayıt Sistemi
+
+Kayıt sayfası iki kaynak destekler:
+
+- **Canlı Kamera:** Düz bakma, sağ/sol dönüş, yaklaşma ve uzaklaşma aşamalarında 30 kabul edilen örnek toplar.
+- **Fotoğraf İçe Aktarma:** Seçilen klasördeki desteklenen görselleri yüz ve kalite kontrolünden geçirir.
+
+Tamamlandığında yerel LBPH modeli, etiket eşlemesi, profil ve kullanıcıya özel QR/lonca mührü üretilir. Yeni model uygulama kapatılmadan yeniden yüklenir.
+
+## Source Kurulum
+
+Windows PowerShell:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python tools/download_models.py
+python -m pip install -r requirements.txt
+python tools\download_models.py
 python app.py
 ```
 
-Kurulum sırası:
-1. Sanal ortam oluştur ve etkinleştir.
-2. `requirements.txt` bağımlılıklarını kur.
-3. `python tools/download_models.py` ile gerekli MediaPipe modellerini indir.
-4. `python app.py` ile uygulamayı başlat.
+`opencv-contrib-python` LBPH için gereklidir. Aynı sanal ortamda ayrıca `opencv-python` veya headless OpenCV varyantları bırakılmamalıdır.
 
-## Gerekli Model Dosyaları
+## Windows Portable Build
 
-Model dosyaları Git'e dahil edilmez. Önerilen kolay yol:
+Build bağımlılıklarını kurun ve mevcut `onedir` iş akışını çalıştırın:
 
 ```powershell
-python tools/download_models.py
+.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+powershell -ExecutionPolicy Bypass -File tools\build_windows.ps1
 ```
 
-Bu komut şu dosyaları indirip doğru konuma koyar:
+Çıktı:
 
 ```text
-models/face_detector.tflite
-models/hand_landmarker.task
+dist\VisionForge\VisionForge.exe
 ```
 
-İstersen dosyaları manuel olarak aynı konumlara da yerleştirebilirsin. Script mevcut dosyayı tekrar indirmez; eksik veya indirilemeyen model için terminalde anlaşılır mesaj verir.
+Portable kullanımda yalnız EXE'yi değil, `dist\VisionForge\` klasörünün tamamını taşıyın. Bu repo henüz yayımlanmış bir public release, ZIP veya indirme bağlantısı sunmaz. Ayrıntılar için [Windows Paketleme](docs/PACKAGING.md) belgesine bakın.
 
-Kayıt/eğitim sonrasında uygulama yerel olarak şu dosyaları üretir:
+## Yerel Veri ve Gizlilik
+
+Source çalışmada kullanıcı verileri repo kökünde, frozen çalışmada `VisionForge.exe` yanındaki portable klasörlerde tutulur:
 
 ```text
-models/face_recognizer_lbph.yml
+data/settings.json
+data/face_gallery/
+data/import_faces/
 data/face_labels.json
 data/local_profiles.json
-assets/guild_seals/<username>_seal.png
+models/face_recognizer_lbph.yml
+assets/guild_seals/*.png
 ```
 
-Eksik model veya profil dosyaları uygulamayı çökertmez; Sistem Durumu panelinde uyarı olarak gösterilir.
+Bu dosyalar Git dışında tutulur ve dağıtım doğrulayıcısı tarafından build içine alınmaları engellenir. Uygulama bulut hesabı veya uzak veritabanı kullanmaz. Paylaşmadan önce yüz görüntülerinin ve lonca mühürlerinin kişisel veri olduğunu göz önünde bulundurun.
 
-## Masaüstü Kabuğu ve Görüntü İşleme Akışı
-
-Uygulama artık PySide6 tabanlı masaüstü penceresinde açılır. `app.py` yalnızca Qt uygulamasını başlatır; kamera okuma ve görüntü işleme ana UI thread'ini kilitlememek için `CameraWorker` içinde çalışır. Her ham kamera karesi `VisionEngine` tarafından işlenir ve sonuç Qt panellerine aktarılır.
-
-Kamera görüntüsü merkezde en-boy oranı korunarak gösterilir. Kamera 1280x720 çözünürlük ister; kamera farklı çözünürlük döndürürse uygulama çökmez ve görüntü letterbox ile ölçeklenir. Ana `cv2.imshow` penceresi kullanılmaz.
-
-## Kullanıcı Kaydı / Yüz Eğitimi
-
-E tuşu yeni büyücü kaydını başlatır. Kayıt iki kaynaktan yapılabilir:
-
-- Canlı kamera kaydı.
-- Fotoğraf import: `data/import_faces/<username>/`.
-
-Canlı kayıt rehberli aşamalarla ilerler:
-
-- Düz bak.
-- Hafif sağa dön.
-- Hafif sola dön.
-- Biraz yaklaş.
-- Biraz uzaklaş.
-
-Her aşamada kaliteli örnek alınmadan ilerlenmez. Yüz çok küçükse, bulanıksa, kadraj kenarındaysa veya algılama skoru düşükse örnek reddedilir. Eğitim tamamlanınca LBPH modeli, label dosyası, local profil ve QR/lonca mührü üretilir. Kayıt bitince yüz tanıma modeli uygulama kapanmadan yeniden yüklenir.
-
-## QR / Lonca Mührü Doğrulama
-
-Varsayılan doğrulama modu `QR + Yüz` modudur.
-
-- Tanınmayan yüz: Misafir Büyücü, yalnızca Donma.
-- Tanınan yüz + QR yok: sınırlı yetki, lonca mührü beklenir.
-- Tanınan yüz + doğru QR: tam profil ve profilin açık büyüleri.
-- Yanlış QR: tam yetki verilmez.
-
-Q menüsünde `3` tuşu ile `QR + Yüz` ve `Yalnızca Yüz` modları arasında geçiş yapılır. Yalnızca Yüz modunda kayıtlı yüz stabil tanınırsa QR gerekmeden tam profil açılır.
-
-Tam doğrulanan kullanıcı kısa süre kameradan çıkarsa oturum hemen kapanmaz. 10 saniyelik tolerans sırasında profil, rütbe, açık büyüler ve Trial yetkisi korunur. Aynı kullanıcı süre dolmadan tekrar stabil tanınırsa QR yeniden istenmez. Süre dolarsa oturum Misafir durumuna düşer ve doğrulama yeniden gerekir.
-
-## Büyüler
-
-| Büyü | Tetikleme | Yetki |
-| --- | --- | --- |
-| Donma | Avucu açık ve sabit tut | Misafir ve üzeri |
-| Ateş | Kontrollü yatay süpürme + avuç göster | S-Seviye profil |
-| Kalkan | İki açık el göster | S-Seviye profil |
-
-Cooldown sistemi büyü spamlenmesini engeller. Kilitli büyü denenirse efekt başlatılmaz ve kısa bildirim gösterilir.
-
-## Trial Mode
-
-Mühürlü Kapı görevi T tuşuyla başlar. Görev sırası sabittir:
-
-```text
-Donma -> Ateş -> Kalkan
-```
-
-Doğru büyü yapıldığında mühür ilerler. Yanlış büyü görevi sıfırlamaz. Tüm sıra tamamlanırsa `Kapı Açıldı` ve `Trial tamamlandı` mesajları görünür.
-
-## Demo Rehberi
-
-G tuşu Demo Rehberi'ni açar/kapatır. Rehber, portfolyo sunumunda sıradaki adımı gösteren küçük bir paneldir; gerçek sistem davranışının yerine geçmez.
-
-- G: Demo Rehberi aç/kapat.
-- N: sonraki demo adımı.
-- P: önceki demo adımı.
-
-Rehber adımları: Kamera ve profil, Doğrulama, Büyü Kitabı, Donma, Ateş, Kalkan, Trial Mode, Trial tamamlama, Final. Otomatik tamamlanan adımlar kısa süre görünür kalır.
-
-## Kısayollar
-
-| Tuş | İşlev |
-| --- | --- |
-| Q | Ayar menüsünü aç/kapat |
-| Esc | Uygulamadan çık |
-| E | Kayıt/eğitim başlat |
-| B | Büyü Kitabı aç/kapat |
-| H | El landmark/debug çizimi aç/kapat |
-| R | Doğrulama oturumunu sıfırla |
-| T | Trial Mode başlat/yeniden başlat |
-| G | Demo Rehberi aç/kapat |
-| N / P | Demo adımı ileri/geri |
-| D | Debug paneli açıkken debug sayfası değiştir |
-| Sağ/Sol ok | Büyü Kitabı sayfalarını değiştir |
-| 1-9 / 0 | Q menüsü açıkken ayarları değiştir |
-
-## Test Komutları
+## Testler
 
 ```powershell
 python -m unittest
-python -m py_compile app.py vision_engine.py auth/verification_session.py ui/main_window.py ui/camera_worker.py ui/frame_view.py
+python -m py_compile app.py vision_engine.py runtime_paths.py auth\verification_session.py ui\main_window.py ui\camera_worker.py ui\frame_view.py enrollment\enrollment_manager.py
 ```
 
-## Sistem Sınırlamaları
+Manuel doğrulama için [Manuel Testler](docs/MANUAL_TESTS.md) listesini kullanın.
 
-- Profesyonel güvenlik sistemi değildir.
-- LBPH yüz tanıma ışık, açı ve kamera kalitesinden etkilenebilir.
-- QR doğrulama yerel prototip amaçlıdır.
-- Loş ışık veya hareket bulanıklığı el takibini zayıflatabilir.
-- MediaPipe model dosyaları kullanıcı tarafından yerleştirilmelidir.
-- Veriler yerelde tutulur; online hesap, bulut veya veritabanı sistemi yoktur.
-- Büyü/rütbe sistemi prototip düzeyindedir; gerçek progression sistemi yoktur.
+## Sınırlamalar
 
-## Roadmap
-
-Kısa roadmap için [docs/ROADMAP.md](docs/ROADMAP.md) dosyasına bak. Özet hedefler:
-
-- Daha iyi yüz tanıma modeli.
-- Face Landmarker ile kafa yönü kontrolü.
-- Büyü kalibrasyon modu.
-- Daha gelişmiş hareket zincirleri.
-- Rütbe/level ve lonca ilerleme sistemi.
-- Daha sinematik Trial Mode.
-- Paketlenmiş masaüstü sürüm.
+- LBPH; ışık, açı, kamera ve kayıt örneği kalitesinden etkilenir.
+- QR/lonca mührü yerel prototip doğrulamasıdır; güvenli kimlik belgesi değildir.
+- MediaPipe algılama ve hareket eşikleri farklı kamera/ışık koşullarında kalibrasyon gerektirebilir.
+- Rütbe bilgisi bilgilendiricidir; kalıcı XP veya progression sistemi yoktur.
+- Installer, kod imzalama ve public release otomasyonu henüz yoktur.
 
 ## Belgeler
 
-- [Mimari notları](docs/ARCHITECTURE.md)
-- [Demo video senaryosu](docs/DEMO_SCRIPT.md)
-- [Demo görsel rehberi](docs/DEMO_ASSETS.md)
-- [Sorun giderme](docs/TROUBLESHOOTING.md)
+- [Mimari](docs/ARCHITECTURE.md)
+- [Manuel Testler](docs/MANUAL_TESTS.md)
+- [Sorun Giderme](docs/TROUBLESHOOTING.md)
 - [Roadmap](docs/ROADMAP.md)
-- [Manuel test listesi](docs/MANUAL_TESTS.md)
+- [Demo Senaryosu](docs/DEMO_SCRIPT.md)
+- [Windows Paketleme](docs/PACKAGING.md)
+- [Demo Görsel Rehberi](docs/DEMO_ASSETS.md)
 
-Demo görselleri eklenecekse [docs/DEMO_ASSETS.md](docs/DEMO_ASSETS.md) rehberini takip et.
+## Kısa Roadmap
+
+Gelecek hedefleri; daha dayanıklı yüz tanıma, hareket kalibrasyonu, profil/veri yönetimi, otomatik GUI-performans testleri ve imzalı/yayımlanabilir Windows dağıtımıdır. Ayrıntılar için [Roadmap](docs/ROADMAP.md) belgesine bakın.

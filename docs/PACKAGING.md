@@ -1,45 +1,64 @@
-# Windows paketleme
+# VisionForge Windows Paketleme
 
-VisionForge'un ilk Windows dağıtımı PyInstaller `onedir` biçimindedir. Bu yapı Qt, OpenCV ve MediaPipe çalışma dosyalarını ayrı dosyalar halinde tuttuğu için `onefile` paketine göre daha kolay doğrulanır, daha hızlı başlar ve sorun ayıklaması daha güvenilirdir.
+VisionForge'un mevcut Windows build iş akışı PyInstaller `onedir` biçimindedir. Çıktı tek EXE değildir; çalıştırılabilir dosya Qt, OpenCV, MediaPipe ve model dosyalarıyla aynı dağıtım klasöründe bulunur.
 
-## Build ortamı
-
-Build, proje içindeki `.venv` sanal ortamından alınır. Geliştirme bağımlılıklarını kurmak için:
+## Build
 
 ```powershell
 .venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-```
-
-PySide6, Shiboken ve PyInstaller'ın bu sanal ortamdan geldiğini doğruladıktan sonra build alın:
-
-```powershell
 powershell -ExecutionPolicy Bypass -File tools\build_windows.ps1
 ```
 
-Çıktı `dist\VisionForge\` klasöründe, çalıştırılabilir dosya ise `dist\VisionForge\VisionForge.exe` yolunda oluşur.
+Çıktı:
 
-## Paket içeriği ve kullanıcı verileri
+```text
+dist\VisionForge\VisionForge.exe
+```
 
-Paket, uygulama kodu ile `models\face_detector.tflite` ve `models\hand_landmarker.task` sabit modellerini içerir. Kişisel ayarlar, yüz galerileri, içe aktarılan fotoğraflar, yüz etiketleri, yerel profiller, eğitilmiş LBPH modeli ve oluşturulmuş lonca mühürleri build'e alınmaz.
+Build betiği gerekli iki MediaPipe modelini kontrol eder, eski `build/` ve `dist/VisionForge/` çıktılarını güvenli biçimde temizler, `packaging/VisionForge.spec` ile onedir build alır ve dağıtım doğrulayıcısını çalıştırır.
 
-Frozen uygulama aşağıdaki yazılabilir verileri `VisionForge.exe` dosyasının bulunduğu klasöre göre oluşturur:
+## Bundle İçeriği
 
-- `data\settings.json`
-- `data\face_gallery\`
-- `data\import_faces\`
-- `data\face_labels.json`
-- `data\local_profiles.json`
-- `models\face_recognizer_lbph.yml`
-- `assets\guild_seals\`
+Spec şu statik kaynakları dahil eder:
 
-Portable kullanımda kalıcılık için tüm `dist\VisionForge\` klasörünü birlikte taşıyın. Uygulama `Program Files` gibi salt okunur bir konuma kopyalanırsa kayıt ve ayar yazma işlemleri çalışmayabilir.
+- `models\face_detector.tflite`
+- `models\hand_landmarker.task`
+- `assets\branding\visionforge.ico`
+- MediaPipe native runtime dosyası
+- PySide6/Qt runtime ve Windows platform eklentileri
 
-## Doğrulama ve kısıtlar
+Özel ikon hem `VisionForge.exe` üzerinde hem uygulama penceresinde kullanılır.
 
-Build betiği gerekli MediaPipe modellerini, EXE oluşumunu ve dağıtım gizlilik kurallarını otomatik kontrol eder. Ayrı kontrol şu komutla çalıştırılabilir:
+## Source/Frozen Yolları
+
+`runtime_paths.py`, salt okunur bundle kaynakları ile yazılabilir portable veriyi ayırır:
+
+- Source: statik ve yazılabilir yollar repo kökünden çözülür.
+- Frozen: statik kaynaklar PyInstaller bundle kökünden; kullanıcı verileri `VisionForge.exe` klasöründen çözülür.
+
+Frozen uygulama ilk çalıştırmada EXE yanında gereken `data/`, `models/` ve `assets/guild_seals/` klasörlerini oluşturur.
+
+## Dağıtıma Alınmayan Yerel Veriler
+
+- Ayarlar ve local profiller
+- Yüz galerisi ve içe aktarılan fotoğraflar
+- Yüz etiketleri ve eğitilmiş LBPH modeli
+- Kullanıcıya özel QR/lonca mühürleri
+- Geliştirme klasörleri, kaynak dosyaları ve kişisel çalışma verileri
+
+Manuel doğrulama:
 
 ```powershell
 .venv\Scripts\python.exe tools\verify_distribution.py dist\VisionForge
 ```
 
-Bu aşamada installer, kod imzalama, özel Windows ikonu ve `onefile` dağıtımı yoktur. Bunlar `onedir` paketi gerçek makinelerde doğrulandıktan sonraki aşamadır.
+## Portable Kullanım
+
+1. Build tamamlandıktan sonra `dist\VisionForge\` klasörünün tamamını taşıyın.
+2. ZIP ile aktarılıyorsa önce normal, yazılabilir bir klasöre çıkarın.
+3. Uygulamayı doğrudan ZIP içinden veya salt okunur `Program Files` konumundan çalıştırmayın.
+4. Kalıcı ayarlar ve kayıt verileri isteniyorsa EXE klasörünün yazılabilir kaldığını doğrulayın.
+
+## Release Durumu
+
+Build iş akışı mevcuttur; ancak bu repo henüz installer, kod imzalama, sürümlü ZIP, checksum veya public indirme bağlantısı yayımlamaz. Bunlar release hazırlığı aşamasına bırakılmıştır.
