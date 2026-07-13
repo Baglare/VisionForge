@@ -470,17 +470,17 @@ class MainWindow(QMainWindow):
                 ),
             )
         )
-        sidebar_layout.addWidget(
-            self._live_status_card(
-                "AKTİF BÜYÜ",
-                (
-                    ("Büyü", self.spell_label),
-                    ("Hazırlık", self.live_prepare_label),
-                    ("Cooldown", self.live_cooldown_label),
-                    ("Açık büyüler", self.allowed_spells_label),
-                ),
-            )
+        active_spell_card = self._live_status_card(
+            "AKTİF BÜYÜ",
+            (
+                ("Büyü", self.spell_label),
+                ("Hazırlık", self.live_prepare_label),
+                ("Cooldown", self.live_cooldown_label),
+                ("Açık büyüler", self.allowed_spells_label),
+            ),
         )
+        active_spell_card.setProperty("cardRole", "activeSpell")
+        sidebar_layout.addWidget(active_spell_card)
         self.live_trial_button.clicked.connect(lambda: self._send_action("start_trial"))
         sidebar_layout.addWidget(
             self._live_status_card(

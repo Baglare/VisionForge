@@ -7,6 +7,10 @@ from PySide6.QtGui import QColor, QImage, QPainter
 from PySide6.QtWidgets import QWidget
 
 
+_FRAME_BACKGROUND = QColor(1, 1, 23)
+_PLACEHOLDER_TEXT = QColor(143, 136, 168)
+
+
 class FrameView(QWidget):
     """QImage karelerini letterbox ile gösterir."""
 
@@ -23,10 +27,10 @@ class FrameView(QWidget):
     def paintEvent(self, event) -> None:
         """Görüntüyü widget alanına oranı bozmadan çizer."""
         painter = QPainter(self)
-        painter.fillRect(self.rect(), QColor(5, 9, 14))
+        painter.fillRect(self.rect(), _FRAME_BACKGROUND)
 
         if self._image is None or self._image.isNull():
-            painter.setPen(QColor(111, 129, 146))
+            painter.setPen(_PLACEHOLDER_TEXT)
             painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Kamera akışı bekleniyor")
             return
 
