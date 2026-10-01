@@ -1,5 +1,5 @@
 <!-- knowledge-compiler-adapter-v1
-{"adapter_contract":"codex-agents-v1","generated_body_sha256":"417ca0b577e16ec12784f5ff4ce2764cf423f64ab63720bc1ed356c4c0084c39","generator":"knowledge-compiler","generator_version":"adapter-compiler-v2","project_id":"visionforge","routing_sha256":"0af50120a895555ca24cbeed7c2d87cc022149ded4537972c2fe6ff3914b49ba","source_structured_contract_sha256":"5300e71229fcb8a63d3fcfd2834eac026c77c355dbb70300a00222e9dc12dec3","target":"codex"}
+{"adapter_contract":"codex-agents-v1","generated_body_sha256":"417ca0b577e16ec12784f5ff4ce2764cf423f64ab63720bc1ed356c4c0084c39","generator":"knowledge-compiler","generator_version":"adapter-compiler-v3","project_id":"visionforge","routing_sha256":"0af50120a895555ca24cbeed7c2d87cc022149ded4537972c2fe6ff3914b49ba","source_structured_contract_sha256":"5300e71229fcb8a63d3fcfd2834eac026c77c355dbb70300a00222e9dc12dec3","target":"codex"}
 -->
 
 # Generated Codex Instructions: VisionForge: identity-verification
