@@ -46,3 +46,6 @@ docs/PORTFOLIO_NOTES.md
 # PyInstaller build çıktıları
 /build/
 /dist/
+
+# KnowledgeCompiler local operational state
+.knowledge-compiler/
