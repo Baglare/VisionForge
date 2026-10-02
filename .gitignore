@@ -49,3 +49,7 @@ docs/PORTFOLIO_NOTES.md
 
 # KnowledgeCompiler local operational state
 .knowledge-compiler/
+
+# Local environment variants; keep public templates available
+.env.*
+!.env.example
